@@ -49,10 +49,15 @@ export function AppShell({ children }: AppShellProps) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-lg font-bold tracking-tight">
-            <span className="text-gray-900">impost</span>
-            <span className="text-accent">e</span>
-            <span className="text-gray-900">rio</span>
+          <span className="flex items-center gap-2 text-lg font-bold tracking-tight">
+            <span>
+              <span className="text-gray-900">impost</span>
+              <span className="text-brasil-green">e</span>
+              <span className="text-gray-900">rio</span>
+            </span>
+            <span className="rounded bg-brasil-green/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-brasil-green">
+              beta
+            </span>
           </span>
         </header>
 

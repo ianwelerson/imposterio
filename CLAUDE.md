@@ -68,13 +68,21 @@ imposterio/
 │   │   │   ├── (home)/             # Home dashboard with rankings
 │   │   │   │   ├── page.tsx        # Dashboard page (StatCards, rankings, charts)
 │   │   │   │   └── HomeCharts.tsx  # Client component — cost trend, branch pie, role bar
-│   │   │   ├── camara/             # Chamber of Deputies
-│   │   │   │   ├── page.tsx        # Overview — charts + top deputies table
+│   │   │   ├── camara/             # Chamber of Deputies ✅ WIRED TO REAL API
+│   │   │   │   ├── page.tsx        # Overview — charts + top deputies table (real data)
 │   │   │   │   ├── CamaraCharts.tsx # Client — CEAP trend, category pie, party bar, attendance
-│   │   │   │   ├── deputados/      # All deputies listing
-│   │   │   │   │   └── page.tsx    # DataTable: name, party, UF, CEAP, attendance, staff
-│   │   │   │   └── [id]/           # Individual deputy detail page
-│   │   │   │       └── page.tsx
+│   │   │   │   ├── CamaraGameCard.tsx # Client — game card for chamber
+│   │   │   │   ├── deputados/      # All deputies listing (real API)
+│   │   │   │   │   ├── page.tsx    # Server: getDeputiesList() → real API
+│   │   │   │   │   └── DeputiesSearchList.tsx # Client: SearchableList + DataTable with photos
+│   │   │   │   └── [id]/           # Individual deputy detail page (real API)
+│   │   │   │       ├── page.tsx    # ProfileHeader, StatCards, InfoPanel, charts, expenses table
+│   │   │   │       ├── DeputyExpenseCharts.tsx # Client: 6 chart types (area, bar, heatmap, treemap, stacked bar)
+│   │   │   │       ├── YearSelector.tsx # Client: year picker with useTransition loading
+│   │   │   │       ├── expense-utils.ts # Server-safe aggregation functions for chart data
+│   │   │   │       └── despesas/   # Full expenses listing with search + pagination
+│   │   │   │           ├── page.tsx    # Server: getDeputyExpenses() with year from URL
+│   │   │   │           └── ExpensesList.tsx # Client: SearchableList + expandable detail rows
 │   │   │   ├── senado/             # Federal Senate
 │   │   │   │   ├── page.tsx        # Overview — charts + top senators table
 │   │   │   │   ├── SenadoCharts.tsx # Client — bills trend, type pie, party attendance
@@ -133,9 +141,10 @@ imposterio/
 │   │       │   ├── Sidebar.tsx     # Client — collapsible nav with sub-items, mobile drawer
 │   │       │   ├── TopBar.tsx      # Page header with title, subtitle, optional action
 │   │       │   ├── StatCard.tsx    # Metric card with label, value, optional trend
-│   │       │   ├── DataTable.tsx   # Generic typed table with column definitions
+│   │       │   ├── DataTable.tsx   # Generic typed table with expandable rows support
 │   │       │   ├── RankingList.tsx  # Numbered ranking with avatar + value
-│   │       │   ├── SectionHeader.tsx # Section title with optional action link
+│   │       │   ├── SearchableList.tsx # Client — search + filters + extraControls + pagination
+│   │       │   ├── SectionHeader.tsx # Section title with optional action link + sourceUrl pill
 │   │       │   ├── SourcePill.tsx  # Clickable link to official data source URL
 │   │       │   ├── Badge.tsx       # Colored label (red, green, amber variants)
 │   │       │   ├── AvatarInitials.tsx # Circular avatar with initials fallback
@@ -145,10 +154,13 @@ imposterio/
 │   │       │   └── EmptyState.tsx  # Placeholder for empty data sections
 │   │       ├── charts/             # Data visualizations (barrel: @/components/charts)
 │   │       │   ├── index.ts        # Barrel export for chart components + types
-│   │       │   ├── ChartCard.tsx   # White card wrapper with title/subtitle
-│   │       │   ├── BarChart.tsx    # Vertical/horizontal bars, custom colors per bar
-│   │       │   ├── LineChart.tsx   # Multi-series line chart, optional area fill
-│   │       │   └── PieChart.tsx    # Donut chart with legend
+│   │       │   ├── ChartCard.tsx   # White card wrapper with title/subtitle + sourceUrl pill
+│   │       │   ├── BarChart.tsx    # Vertical/horizontal bars, custom colors, truncated labels
+│   │       │   ├── LineChart.tsx   # Multi-series line/area chart (uses AreaChart when area=true)
+│   │       │   ├── PieChart.tsx    # Donut chart with high-contrast palette + custom tooltip
+│   │       │   ├── TreemapChart.tsx # Proportional area chart (better than pie for many categories)
+│   │       │   ├── CalendarHeatmap.tsx # GitHub-style daily heatmap, pure SVG, responsive
+│   │       │   └── StackedBarChart.tsx # Horizontal stacked bars for cross-tabulation
 │   │       └── game/               # Game-specific components
 │   │           └── GameCard.tsx    # "Fair or not?" swipeable card
 │   └── worker/                     # Monthly Federal Revenue QSA importer
@@ -187,8 +199,119 @@ imposterio/
 │       └── game.ts
 ├── CLAUDE.md
 ├── DECISIONS.md
+├── INTEGRATION.md                  # Master integration checklist (14 phases, 114 items)
+├── TODO.md                         # Pending items commented out during wiring phase
 ├── README.md                       # Brazilian Portuguese
 └── README.en.md                    # English
+```
+
+---
+
+## Established patterns — reference implementation (Câmara)
+
+The Câmara dos Deputados section is fully wired to real APIs and serves as the **reference implementation** for all other sections. When implementing a new section (Senado, Executivo, etc.), follow these patterns exactly.
+
+### Fetcher pattern (`packages/fetchers/camara.ts`)
+
+```
+1. Define raw API response types internally (not exported)
+2. Define a mapping function: mapRawToCleanType()
+3. Use cachedFetch() with the appropriate TTL constant
+4. Handle HATEOAS pagination via extractLastPage() helper
+5. Return WithSource<T> — _source is injected by cachedFetch()
+6. Comprehensive JSDoc: file header + per-function docs
+```
+
+### Detail page pattern (`camara/[id]/page.tsx`)
+
+```
+Server component (page.tsx):
+  1. Read params + searchParams (year from URL ?ano=YYYY)
+  2. Fetch data with Promise.all([getDetail(), getExpenses(), ...])
+  3. Compute aggregations server-side (expense-utils.ts)
+  4. Render: ProfileHeader → Dados pessoais → Stats → Charts → Recent items
+
+Sections order:
+  - ProfileHeader (photo, name, tags, sourceUrl)
+  - InfoPanel (dados pessoais)
+  - StatCards grid (totals, counts, year-over-year variation)
+  - YearSelector (useTransition for loading state)
+  - Charts section (DeputyExpenseCharts client component)
+  - Recent items table (DataTable with link to full listing)
+```
+
+### Chart integration pattern (`[id]/DeputyExpenseCharts.tsx`)
+
+```
+1. expense-utils.ts — pure server-safe aggregation functions (NOT "use client")
+   - aggregateByMonth(), aggregateByCategory(), aggregateBySupplier()
+   - aggregateByDay() — for CalendarHeatmap
+   - aggregateCategoryBySupplier() — for StackedBarChart cross-tabulation
+   - monthlyToBarData() — format for BarChart
+
+2. DeputyExpenseCharts.tsx — "use client" component
+   - Receives pre-aggregated data as props (computed server-side)
+   - Composes ChartCard + chart primitives
+   - All ChartCards receive sourceUrl prop for SourcePill
+   - Layout: 2-col grid with lg:col-span-2 for full-width charts
+
+3. Available chart types:
+   - LineChart (area=true for filled) — year-over-year comparison
+   - BarChart (horizontal=true) — monthly totals, top suppliers
+   - TreemapChart — category proportions (replaces PieChart for many items)
+   - CalendarHeatmap — daily intensity (pure SVG, responsive viewBox)
+   - StackedBarChart — cross-tabulation (category × supplier)
+   - PieChart — still available for simpler distributions
+```
+
+### Listing page pattern (`camara/deputados/`)
+
+```
+Server component (page.tsx):
+  1. Fetch all items: const items = await getList()
+  2. Pass to client component: <ItemsSearchList items={items} />
+
+Client component (DeputiesSearchList.tsx):
+  1. "use client"
+  2. SearchableList wraps DataTable
+  3. searchAccessor extracts searchable text
+  4. filters[] for dropdown filtering
+  5. extraControls slot for server-driven controls (e.g. YearSelector)
+  6. DataTable supports expandedRowKey + renderExpanded for detail rows
+```
+
+### Expenses listing pattern (`camara/[id]/despesas/`)
+
+```
+Server page.tsx:
+  1. Read ?ano= from searchParams, default to current year
+  2. Fetch expenses + deputy detail
+  3. Pass yearSelector as ReactNode to client component
+
+Client ExpensesList.tsx:
+  1. SearchableList with filters (Tipo, Fornecedor)
+  2. yearSelector passed as extraControls
+  3. Expandable rows with SourcePill for each expense
+```
+
+### Source attribution pattern
+
+```
+- Every data point → _source field from cachedFetch()
+- ChartCard → sourceUrl prop → renders small "↗ fonte" pill next to title
+- SectionHeader → sourceUrl prop → same pill pattern
+- DataTable rows → SourcePill in expandable detail or last column
+- ProfileHeader → sourceUrl prop → pill next to name
+```
+
+### Year selection pattern
+
+```
+- URL-driven: ?ano=YYYY in searchParams (server-side data fetching preserved)
+- YearSelector client component with useTransition for loading state
+- Clamped to valid range: max(FIRST_YEAR, min(currentYear, urlYear))
+- Carries across pages: detail page → expenses page
+- inline prop for matching SearchableList filter styling
 ```
 
 ---
@@ -202,8 +325,8 @@ imposterio/
 - **Key endpoints:**
   - `GET /deputados` — list of deputies currently serving
   - `GET /deputados/{id}` — full deputy profile
-  - `GET /deputados/{id}/despesas` — CEAP expenses (params: `ano`, `mes`, `pagina`)
-  - `GET /deputados/{id}/votacoes` — voting history
+  - `GET /deputados/{id}/despesas` — CEAP expenses (params: `ano`, `mes`, `pagina`, `itens`)
+  - ~~`GET /deputados/{id}/votacoes`~~ — **BROKEN** (returns 405 as of March 2026). Use `GET /votacoes` + `GET /votacoes/{id}/votos` instead
   - `GET /deputados/{id}/discursos` — floor speeches
   - `GET /deputados/{id}/frentes` — parliamentary caucuses
   - `GET /deputados/{id}/orgaos` — committee memberships
@@ -737,6 +860,69 @@ Follow this exact sequence:
 6. **Write component tests**
 7. **Update CLAUDE.md** if a new endpoint, constant, or pattern was introduced
 8. **Update DECISIONS.md** if a non-obvious architectural choice was made
+
+### Listing page pattern (mandatory for all new listings)
+
+Every listing page MUST use `SearchableList` + `DataTable`. See the "Established patterns" section above for full details. Reference implementation: `camara/deputados/`.
+
+```tsx
+// Server page — fetch data, pass to client component
+export default async function ListingPage() {
+  const items = await getItemsList()
+  return <ItemsSearchList items={items} />
+}
+
+// Client component — SearchableList wraps DataTable
+"use client"
+export function ItemsSearchList({ items }: { items: Item[] }) {
+  return (
+    <SearchableList
+      items={items}
+      searchAccessor={(i) => `${i.name} ${i.party} ${i.uf}`}
+      filters={[
+        { label: "Partido", accessor: (i) => i.party },
+        { label: "UF", accessor: (i) => i.uf },
+      ]}
+      extraControls={/* optional server-driven controls */}
+      pageSize={20}
+      placeholder="Buscar por nome, partido ou estado..."
+    >
+      {(paged) => <DataTable columns={columns} data={paged} rowKey={(r) => r.id} />}
+    </SearchableList>
+  )
+}
+```
+
+### Detail page pattern (mandatory for all new detail pages)
+
+Every detail page MUST follow the deputy detail pattern. See "Established patterns" section.
+
+```tsx
+// Server page.tsx — fetch + aggregate + render
+export default async function DetailPage({ params, searchParams }) {
+  const { id } = await params
+  const query = await searchParams
+  const year = parseYear(query.ano)
+
+  const [detail, expenses] = await Promise.all([getDetail(id), getExpenses(id, year)])
+
+  // Aggregate server-side, pass to client chart component
+  const byCategory = aggregateByCategory(expenses)
+  const dailyExpenses = aggregateByDay(expenses)
+
+  return (
+    <>
+      <ProfileHeader ... sourceUrl={detail._source} />
+      <InfoPanel fields={infoFields} />
+      <StatCards ... />
+      <SectionHeader title="Visualizações" sourceUrl={expenses._source} />
+      <ExpenseCharts byCategory={byCategory} dailyExpenses={dailyExpenses} sourceUrl={expenses._source} />
+      <SectionHeader title="Itens recentes" sourceUrl={expenses._source} action={...} />
+      <DataTable ... />
+    </>
+  )
+}
+```
 
 ### Modifying existing code
 

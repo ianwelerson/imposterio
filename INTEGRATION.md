@@ -11,7 +11,7 @@ Each phase builds on the previous — complete phases in order.
 
 Before any fetcher can work, these foundations must be in place.
 
-- [ ] **0.1** Extend `cachedFetch()` to support POST with body-based cache keys
+- [x] **0.1** Extend `cachedFetch()` to support POST with body-based cache keys
   - Current: caches by URL only. DataJud needs POST + JSON body.
   - Add optional `cacheKey` parameter for custom cache keys.
   - File: `packages/fetchers/lib/cache.ts`
@@ -21,7 +21,7 @@ Before any fetcher can work, these foundations must be in place.
   - `DATAJUD_API_KEY` — CNJ DataJud public key (from wiki, may rotate)
   - Document in `.env.example` and `CLAUDE.md`
 
-- [ ] **0.3** Create MSW test server setup
+- [x] **0.3** Create MSW test server setup
   - File: `packages/fetchers/mocks/server.ts`
   - Configure `setupServer()` with handlers from `handlers.ts`
   - Add Vitest global setup to start/stop the server
@@ -35,19 +35,28 @@ Start here to establish the fetcher pattern for all other phases.
 
 ### 1A — Câmara dos Deputados (no auth, best-documented API)
 
-- [ ] **1A.1** Create `packages/fetchers/camara.ts` with JSDoc file header
-- [ ] **1A.2** Implement `getDeputiesList()` — `GET /deputados`
+- [x] **1A.1** Create `packages/fetchers/camara.ts` with JSDoc file header
+- [x] **1A.2** Implement `getDeputiesList()` — `GET /deputados`
   - Returns: id, name, party, UF, photoUrl, email, legislature
   - TTL: `CAMARA_DEPUTIES_LIST` (24h)
   - Wire to: `camara/page.tsx` table, `camara/deputados/page.tsx` listing
-- [ ] **1A.3** Implement `getDeputyDetail(id)` — `GET /deputados/{id}`
+- [x] **1A.3** Implement `getDeputyDetail(id)` — `GET /deputados/{id}`
   - Returns: full profile (name, birthDate, education, office, etc.)
   - TTL: `CAMARA_DEPUTY_DETAIL` (24h)
   - Wire to: `camara/[id]/page.tsx` ProfileHeader + InfoPanel
-- [ ] **1A.4** Write MSW handlers for deputies list and detail
-- [ ] **1A.5** Write tests for `getDeputiesList()` and `getDeputyDetail()`
-- [ ] **1A.6** Wire `getDeputiesList()` to `camara/deputados/page.tsx` (replace mock)
-- [ ] **1A.7** Wire `getDeputyDetail()` to `camara/[id]/page.tsx` (replace mock profile)
+- [x] **1A.4** Write MSW handlers for deputies list and detail
+- [x] **1A.5** Write tests for `getDeputiesList()` and `getDeputyDetail()`
+- [x] **1A.6** Implement `getDeputyExpenses(id, year, month?)` — `GET /deputados/{id}/despesas`
+  - Returns: date, type, supplier, document, value (valorLiquido)
+  - TTL: `CAMARA_DEPUTY_EXPENSES` (6h)
+  - MSW handler + 6 tests added
+- [x] **1A.7** Wire `getDeputiesList()` to `camara/deputados/page.tsx` and `camara/page.tsx`
+  - Replaced mock data with real API call
+  - Commented out CEAP/attendance/staff columns (need bulk files — Phase 4)
+- [x] **1A.8** Wire `getDeputyDetail()` + `getDeputyExpenses()` to `camara/[id]/page.tsx`
+  - Profile header + info panel from real API
+  - Expenses table from real API
+  - StatCards and voting history commented out (see TODO.md)
 
 ### 1B — Senado Federal (no auth, append .json to URLs)
 
@@ -87,7 +96,9 @@ Still simple GET endpoints, but returns paginated data that needs processing.
 
 ### 2A — Deputy activity
 
-- [ ] **2A.1** Implement `getDeputyVotes(id)` — `GET /deputados/{id}/votacoes`
+- [ ] **2A.1** Implement deputy voting history
+  - ⚠️ `GET /deputados/{id}/votacoes` returns 405 (endpoint removed by Câmara API)
+  - New approach: query `GET /votacoes` + `GET /votacoes/{id}/votos`, filter by deputy
   - TTL: `CAMARA_DEPUTY_VOTES` (3h)
 - [ ] **2A.2** Implement `getDeputyCaucuses(id)` — `GET /deputados/{id}/frentes`
 - [ ] **2A.3** Implement `getDeputyCommittees(id)` — `GET /deputados/{id}/orgaos`
@@ -108,13 +119,18 @@ Still simple GET endpoints, but returns paginated data that needs processing.
 
 ## Phase 3 — Financial data (expenses, compensation)
 
-### 3A — Deputy expenses (CEAP) — Câmara API, no auth
+### 3A — Deputy expenses (CEAP) — Câmara API, no auth ✅
 
-- [ ] **3A.1** Implement `getDeputyExpenses(id, year, month?)` — `GET /deputados/{id}/despesas`
+- [x] **3A.1** Implement `getDeputyExpenses(id, year, month?)` — `GET /deputados/{id}/despesas`
   - TTL: `CAMARA_DEPUTY_EXPENSES` (6h)
-  - Paginated — handle `pagina` parameter
-- [ ] **3A.2** Write MSW handlers + tests
-- [ ] **3A.3** Wire to `camara/[id]/page.tsx` expenses table
+  - Paginated via HATEOAS `links` array + `extractLastPage()` helper
+  - `itens=100` per page, fetches all pages in parallel
+- [x] **3A.2** Write MSW handlers + tests
+- [x] **3A.3** Wire to `camara/[id]/page.tsx` expenses table + charts
+  - StatCards: total CEAP, previous year total, record count, year-over-year %
+  - Charts: area (YoY comparison), bar (monthly), treemap (category), heatmap (daily),
+    horizontal bar (top suppliers), stacked bar (category × supplier)
+  - Full expenses listing at `/camara/{id}/despesas` with search + filters + expandable rows
 - [ ] **3A.4** Wire aggregated CEAP totals to `camara/page.tsx` StatCards + charts
 
 ### 3B — Civil servant compensation — Portal da Transparência (requires API key)
@@ -353,10 +369,10 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 
 | Phase | Description | Items | Done |
 |-------|-------------|-------|------|
-| 0 | Infrastructure | 3 | 0 |
-| 1 | Personnel lists | 17 | 0 |
+| 0 | Infrastructure | 3 | 2 |
+| 1 | Personnel lists | 17 | 8 |
 | 2 | Activity data | 10 | 0 |
-| 3 | Financial data | 17 | 0 |
+| 3 | Financial data | 17 | 3 |
 | 4 | Bulk files | 5 | 0 |
 | 5 | State fiscal | 13 | 0 |
 | 6 | Company data | 7 | 0 |
@@ -367,4 +383,4 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 | 11 | Tax counter | 5 | 0 |
 | 12 | QSA worker | 4 | 0 |
 | 13 | Court scraping | 5 | 0 |
-| **Total** | | **114** | **0** |
+| **Total** | | **114** | **13** |

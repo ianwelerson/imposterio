@@ -47,6 +47,16 @@ interface DataTableProps<T> {
    * Falls back to the array index if not provided.
    */
   rowKey?: (row: T, index: number) => string
+  /**
+   * Key of the currently expanded row (matches the value from `rowKey`).
+   * When set, the `renderExpanded` callback is called for the matching row.
+   */
+  expandedRowKey?: string | null
+  /**
+   * Render function for the expanded detail panel below a row.
+   * Only called when `expandedRowKey` matches the row's key.
+   */
+  renderExpanded?: (row: T) => ReactNode
 }
 
 const alignClass = {
@@ -76,7 +86,13 @@ const alignClass = {
  * />
  * ```
  */
-export function DataTable<T>({ columns, data, rowKey }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns,
+  data,
+  rowKey,
+  expandedRowKey,
+  renderExpanded,
+}: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200/60 bg-white">
       <table className="w-full border-collapse text-sm">
@@ -94,21 +110,34 @@ export function DataTable<T>({ columns, data, rowKey }: DataTableProps<T>) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {data.map((row, rowIndex) => (
-            <tr
-              key={rowKey ? rowKey(row, rowIndex) : rowIndex}
-              className="transition-colors hover:bg-gray-50/50"
-            >
-              {columns.map((col, colIndex) => (
-                <td
-                  key={colIndex}
-                  className={`px-4 py-3 ${alignClass[col.align ?? "left"]}`}
+          {data.map((row, rowIndex) => {
+            const key = rowKey ? rowKey(row, rowIndex) : String(rowIndex)
+            const isExpanded = expandedRowKey === key && renderExpanded
+            return (
+              <>
+                <tr
+                  key={key}
+                  className="transition-colors hover:bg-gray-50/50"
                 >
-                  {col.cell(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+                  {columns.map((col, colIndex) => (
+                    <td
+                      key={colIndex}
+                      className={`px-4 py-3 ${alignClass[col.align ?? "left"]}`}
+                    >
+                      {col.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+                {isExpanded && (
+                  <tr key={`${key}-expanded`}>
+                    <td colSpan={columns.length} className="p-0">
+                      {renderExpanded(row)}
+                    </td>
+                  </tr>
+                )}
+              </>
+            )
+          })}
         </tbody>
       </table>
     </div>

@@ -241,6 +241,24 @@ export default function HomePage() {
     <>
       <TopBar title="Painel geral" defaultPeriod="30d" />
 
+      {/* Open source + data disclaimer */}
+      <div className="mb-6 rounded-lg border border-indigo-100 bg-indigo-50/50 px-4 py-3">
+        <p className="text-xs leading-relaxed text-gray-600">
+          <span className="font-semibold text-gray-800">100% transparente.</span>{" "}
+          Todos os dados exibidos são obtidos em tempo real de fontes oficiais do governo
+          brasileiro — cada número pode ser verificado na fonte com um clique.
+          Este projeto é inteiramente de{" "}
+          <a
+            href="https://github.com/ianwelerson/imposterio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-accent underline decoration-accent/30 hover:decoration-accent"
+          >
+            código aberto
+          </a>.
+        </p>
+      </div>
+
       {/* Stat cards grid — broad metrics across all branches */}
       <section
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"

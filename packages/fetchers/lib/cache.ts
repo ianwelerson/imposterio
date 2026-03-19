@@ -24,7 +24,17 @@ import { Redis } from "@upstash/redis"
 import type { WithSource } from "@imposterio/types"
 
 /**
+ * Whether Redis is available. When the Upstash env vars are missing,
+ * cachedFetch() skips the cache layer entirely and calls the external
+ * API directly. This allows local development without a Redis instance.
+ */
+const redisEnabled =
+  !!process.env.UPSTASH_REDIS_REST_URL &&
+  !!process.env.UPSTASH_REDIS_REST_TOKEN
+
+/**
  * Upstash Redis client, initialized from environment variables.
+ * `null` when env vars are missing (local dev without Redis).
  *
  * Required env vars:
  * - `UPSTASH_REDIS_REST_URL` — the REST endpoint for your Upstash database
@@ -32,10 +42,12 @@ import type { WithSource } from "@imposterio/types"
  *
  * These are set in `apps/web/.env.local` (see `.env.example` at the repo root).
  */
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+const redis = redisEnabled
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null
 
 /**
  * Fetches data from an external API with Redis caching and source injection.
@@ -55,13 +67,20 @@ const redis = new Redis({
  *
  * @typeParam T - The shape of the API response body (before `_source` injection)
  *
- * @param url     - The full URL to fetch, including query parameters.
- *                  This URL is also used as the Redis cache key.
- * @param ttl     - Time-to-live in seconds for the Redis cache entry.
- *                  Use constants from `lib/ttl.ts` to keep values consistent.
- * @param options - Optional `RequestInit` overrides (headers, method, body, etc.)
- *                  passed directly to `fetch()`. Useful for APIs that require
- *                  authentication headers (e.g., Portal da Transparência).
+ * @param url      - The full URL to fetch, including query parameters.
+ *                   For GET requests, this is also used as the Redis cache key.
+ * @param ttl      - Time-to-live in seconds for the Redis cache entry.
+ *                   Use constants from `lib/ttl.ts` to keep values consistent.
+ * @param options  - Optional `RequestInit` overrides (headers, method, body, etc.)
+ *                   passed directly to `fetch()`. Useful for APIs that require
+ *                   authentication headers (e.g., Portal da Transparência) or
+ *                   POST requests (e.g., DataJud Elasticsearch queries).
+ * @param cacheKey - Optional custom Redis cache key. When provided, this key is
+ *                   used instead of the URL for cache lookups and storage. Required
+ *                   for POST endpoints where different request bodies target the
+ *                   same URL (e.g., DataJud `POST /api_publica_stf/_search` with
+ *                   different ES query bodies). The `_source` field still uses the
+ *                   original URL for traceability.
  *
  * @returns The API response body of type `T`, augmented with `_source: string`
  *          containing the exact URL that produced the data.
@@ -92,16 +111,41 @@ const redis = new Redis({
  *   { headers: { "chave-api-dados": process.env.TRANSPARENCIA_API_KEY! } }
  * )
  * ```
+ *
+ * @example
+ * ```typescript
+ * // POST request with custom cache key (DataJud Elasticsearch)
+ * const esBody = { size: 0, aggs: { by_area: { terms: { field: "assunto.keyword" } } } }
+ * const data = await cachedFetch<EsAggregationResponse>(
+ *   "https://api-publica.datajud.cnj.jus.br/api_publica_stf/_search",
+ *   TTL.DATAJUD_CASES,
+ *   {
+ *     method: "POST",
+ *     headers: {
+ *       "Content-Type": "application/json",
+ *       "Authorization": `APIKey ${process.env.DATAJUD_API_KEY}`,
+ *     },
+ *     body: JSON.stringify(esBody),
+ *   },
+ *   `datajud:stf:cases_by_area`
+ * )
+ * ```
  */
 export async function cachedFetch<T>(
   url: string,
   ttl: number,
   options?: RequestInit,
+  cacheKey?: string,
 ): Promise<WithSource<T>> {
-  const cached = await redis.get<string>(url)
-  if (cached) {
-    const parsed = typeof cached === "string" ? JSON.parse(cached) : cached
-    return { ...parsed, _source: url }
+  const key = cacheKey ?? url
+
+  // Try Redis cache first (skipped when Redis is not configured)
+  if (redis) {
+    const cached = await redis.get<string>(key)
+    if (cached) {
+      const parsed = typeof cached === "string" ? JSON.parse(cached) : cached
+      return { ...parsed, _source: url }
+    }
   }
 
   const res = await fetch(url, options)
@@ -110,7 +154,11 @@ export async function cachedFetch<T>(
   }
 
   const data = (await res.json()) as T
-  await redis.set(url, JSON.stringify(data), { ex: ttl })
+
+  // Store in Redis if available
+  if (redis) {
+    await redis.set(key, JSON.stringify(data), { ex: ttl })
+  }
 
   return { ...data, _source: url }
 }

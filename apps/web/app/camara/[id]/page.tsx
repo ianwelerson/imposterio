@@ -3,118 +3,256 @@
  * @description Individual deputy detail page.
  *
  * Displays comprehensive data for a single deputy from the Câmara dos Deputados:
- * - Profile header (name, party, state, status)
- * - Key metrics (total CEAP, attendance, votes, caucuses)
+ * - Profile header with photo (name, party, state, status)
+ * - Key metrics (CEAP total for current year)
  * - Biographical info panel
- * - Expenses table by month
- * - Voting history
+ * - Expense comparison chart (current year vs last year)
+ * - Recent expenses table (last 10, with link to full listing)
  *
- * Data source: https://dadosabertos.camara.leg.br/api/v2/deputados/{id}
- * Currently renders static mock data — real integration pending.
+ * Data sources:
+ * - Profile: GET /deputados/{id}
+ * - Expenses: GET /deputados/{id}/despesas
  */
 
 import {
-  StatCard, DataTable, SourcePill, SectionHeader,
+  StatCard, DataTable, SectionHeader,
   ProfileHeader, InfoPanel,
 } from "@/components/ui"
+import { getDeputyDetail, getDeputyExpenses } from "@imposterio/fetchers"
+import { DeputyExpenseCharts } from "./DeputyExpenseCharts"
+import { YearSelector } from "./YearSelector"
+import {
+  aggregateByMonth,
+  aggregateByCategory,
+  aggregateBySupplier,
+  monthlyToBarData,
+  aggregateByDay,
+  aggregateCategoryBySupplier,
+} from "./expense-utils"
 
-// -- Mock data ---------------------------------------------------------------
+/** CEAP data is available from 2008 onward. */
+const FIRST_CEAP_YEAR = 2008
 
-interface ExpenseRow {
-  id: string
-  month: string
-  type: string
-  supplier: string
-  value: string
-  _source: string
+interface DeputyDetailPageProps {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ ano?: string }>
 }
 
-const MOCK_EXPENSES: ExpenseRow[] = [
-  { id: "1", month: "Mar/2024", type: "Divulgação parlamentar", supplier: "Gráfica Nacional LTDA", value: "R$ 15.200,00", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=3&pagina=1" },
-  { id: "2", month: "Mar/2024", type: "Passagens aéreas", supplier: "LATAM Airlines", value: "R$ 8.430,50", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=3&pagina=1" },
-  { id: "3", month: "Fev/2024", type: "Locação de veículos", supplier: "Localiza Rent a Car", value: "R$ 6.800,00", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=2&pagina=1" },
-  { id: "4", month: "Fev/2024", type: "Combustíveis", supplier: "Posto Shell Centro", value: "R$ 3.210,30", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=2&pagina=1" },
-  { id: "5", month: "Jan/2024", type: "Manutenção de escritório", supplier: "Office Clean Serviços", value: "R$ 4.590,00", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=1&pagina=1" },
-  { id: "6", month: "Jan/2024", type: "Serviços postais", supplier: "Correios", value: "R$ 1.200,20", _source: "https://dadosabertos.camara.leg.br/api/v2/deputados/204554/despesas?ano=2024&mes=1&pagina=1" },
-]
+export default async function DeputyDetailPage({ params, searchParams }: DeputyDetailPageProps) {
+  const { id } = await params
+  const query = await searchParams
+  const now = new Date().getFullYear()
 
-interface VoteRow {
-  id: string
-  date: string
-  proposal: string
-  vote: string
-  _source: string
-}
+  // Selected year from URL, clamped to valid range, defaults to current year
+  const selectedYear = query.ano
+    ? Math.max(FIRST_CEAP_YEAR, Math.min(now, Number(query.ano) || now))
+    : now
 
-const MOCK_VOTES: VoteRow[] = [
-  { id: "v1", date: "15/03/2024", proposal: "PL 1234/2024 — Reforma tributária (destaques)", vote: "Sim", _source: "https://dadosabertos.camara.leg.br/api/v2/votacoes/2356789/votos" },
-  { id: "v2", date: "12/03/2024", proposal: "PEC 45/2024 — Limite de gastos públicos", vote: "Não", _source: "https://dadosabertos.camara.leg.br/api/v2/votacoes/2356701/votos" },
-  { id: "v3", date: "08/03/2024", proposal: "PL 987/2024 — Marco regulatório da IA", vote: "Sim", _source: "https://dadosabertos.camara.leg.br/api/v2/votacoes/2356650/votos" },
-  { id: "v4", date: "01/03/2024", proposal: "MPV 1203/2024 — Desoneração da folha", vote: "Abstenção", _source: "https://dadosabertos.camara.leg.br/api/v2/votacoes/2356598/votos" },
-]
+  const availableYears = Array.from(
+    { length: now - FIRST_CEAP_YEAR + 1 },
+    (_, i) => now - i,
+  )
 
-const expenseColumns = [
-  { header: "Mês", cell: (r: ExpenseRow) => <span className="text-gray-600">{r.month}</span> },
-  { header: "Tipo", cell: (r: ExpenseRow) => <span className="text-gray-900">{r.type}</span> },
-  { header: "Fornecedor", cell: (r: ExpenseRow) => <span className="text-gray-600">{r.supplier}</span> },
-  { header: "Valor", align: "right" as const, cell: (r: ExpenseRow) => <span className="font-semibold text-red-600">{r.value}</span> },
-  { header: "Fonte", align: "center" as const, cell: (r: ExpenseRow) => <SourcePill url={r._source} /> },
-]
+  const [deputy, expenses, prevYearExpenses] = await Promise.all([
+    getDeputyDetail(id),
+    getDeputyExpenses(id, selectedYear),
+    getDeputyExpenses(id, selectedYear - 1),
+  ])
 
-const voteColumns = [
-  { header: "Data", cell: (r: VoteRow) => <span className="text-gray-600">{r.date}</span> },
-  { header: "Proposição", cell: (r: VoteRow) => <span className="text-gray-900">{r.proposal}</span> },
-  {
-    header: "Voto",
-    cell: (r: VoteRow) => {
-      const color = r.vote === "Sim" ? "text-emerald-600" : r.vote === "Não" ? "text-red-600" : "text-amber-600"
-      return <span className={`font-medium ${color}`}>{r.vote}</span>
+  const initials = deputy.name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+
+  const tags = [
+    deputy.party,
+    deputy.uf,
+    `${deputy.legislature}ª Legislatura`,
+    deputy.situation ?? "Em exercício",
+  ]
+
+  const infoFields = [
+    { label: "Nome civil", value: deputy.fullName },
+    deputy.electoralName && deputy.electoralName !== deputy.name
+      && { label: "Nome eleitoral", value: deputy.electoralName },
+    deputy.birthDate && { label: "Data de nascimento", value: formatDate(deputy.birthDate) },
+    deputy.birthPlace && { label: "Naturalidade", value: deputy.birthPlace },
+    deputy.education && { label: "Escolaridade", value: deputy.education },
+    deputy.email && { label: "E-mail", value: deputy.email },
+    deputy.office && { label: "Gabinete", value: deputy.office },
+    deputy.phone && { label: "Telefone", value: deputy.phone },
+  ].filter(Boolean) as Array<{ label: string; value: string }>
+
+  // Compute totals for stat cards
+  const totalCeap = expenses.reduce((sum, e) => sum + e.value, 0)
+  const prevYearTotal = prevYearExpenses.reduce((sum, e) => sum + e.value, 0)
+  const ceapVariation = prevYearTotal > 0
+    ? ((totalCeap - prevYearTotal) / prevYearTotal) * 100
+    : null
+
+  // Chart data: aggregate expenses for different visualizations
+  const currentMonthly = aggregateByMonth(expenses)
+  const prevYearMonthly = aggregateByMonth(prevYearExpenses)
+  const byCategory = aggregateByCategory(expenses)
+  const bySupplier = aggregateBySupplier(expenses)
+  const monthlyBarData = monthlyToBarData(currentMonthly)
+  const dailyExpenses = aggregateByDay(expenses)
+  const categoryBySupplier = aggregateCategoryBySupplier(expenses)
+
+  // Show only last 10 expenses on the detail page
+  const recentExpenses = expenses.slice(0, 10)
+
+  const expenseColumns = [
+    {
+      header: "Data",
+      cell: (r: (typeof expenses)[number]) => (
+        <span className="text-gray-600">{formatDate(r.date)}</span>
+      ),
     },
-  },
-  { header: "Fonte", align: "center" as const, cell: (r: VoteRow) => <SourcePill url={r._source} /> },
-]
+    {
+      header: "Tipo",
+      cell: (r: (typeof expenses)[number]) => (
+        <span className="text-gray-900 line-clamp-1">{r.type}</span>
+      ),
+    },
+    {
+      header: "Fornecedor",
+      cell: (r: (typeof expenses)[number]) => (
+        <span className="text-gray-600 line-clamp-1">{r.supplierName}</span>
+      ),
+    },
+    {
+      header: "CPF/CNPJ",
+      cell: (r: (typeof expenses)[number]) => (
+        <span className="text-gray-400 text-xs font-mono">
+          {formatDocument(r.supplierDocument)}
+        </span>
+      ),
+    },
+    {
+      header: "Valor",
+      align: "right" as const,
+      cell: (r: (typeof expenses)[number]) => (
+        <span className="font-semibold text-red-600">
+          {formatCurrency(r.value)}
+        </span>
+      ),
+    },
+  ]
 
-export default function DeputyDetailPage() {
   return (
     <>
       <ProfileHeader
-        initials="AB"
-        name="André Brandão"
-        tags={["PL", "São Paulo", "57ª Legislatura", "Em exercício"]}
-        sourceUrl="https://dadosabertos.camara.leg.br/api/v2/deputados/204554"
+        initials={initials}
+        name={deputy.name}
+        tags={tags}
+        sourceUrl={deputy._source}
+        photoUrl={deputy.photoUrl}
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do deputado"
-      >
-        <StatCard label="Gasto CEAP (2024)" value="R$ 187.420,00" badge={{ text: "+12% vs 2023", variant: "red" }} />
-        <StatCard label="Presença plenário" value="92%" badge={{ text: "Acima da média", variant: "green" }} />
-        <StatCard label="Votações participadas" value="118" />
-        <StatCard label="Frentes parlamentares" value="7" />
-      </section>
-
-      <section className="mt-8">
+      {/* ── Dados pessoais ─────────────────────────────────────────── */}
+      <section>
         <SectionHeader title="Dados pessoais" />
-        <InfoPanel fields={[
-          { label: "Nome civil", value: "André da Silva Brandão" },
-          { label: "Data de nascimento", value: "15/03/1975" },
-          { label: "Naturalidade", value: "São Paulo — SP" },
-          { label: "Escolaridade", value: "Superior completo" },
-          { label: "E-mail", value: "dep.andrebrandao@camara.leg.br" },
-          { label: "Gabinete", value: "Anexo IV, Sala 422" },
-        ]} />
+        <InfoPanel fields={infoFields} />
       </section>
 
-      <section className="mt-8">
-        <SectionHeader title="Despesas (CEAP)" />
-        <DataTable columns={expenseColumns} data={MOCK_EXPENSES} rowKey={(r) => r.id} />
+      {/* ── Gastos CEAP ────────────────────────────────────────────── */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-center justify-between">
+          <SectionHeader title="Gastos CEAP" />
+          <YearSelector years={availableYears} selected={selectedYear} />
+        </div>
+
+        <div
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          aria-label="Indicadores de gastos"
+        >
+          <StatCard
+            label={`Total (${selectedYear})`}
+            value={formatCurrency(totalCeap)}
+            badge={ceapVariation !== null ? {
+              text: `${ceapVariation > 0 ? "+" : ""}${ceapVariation.toFixed(1)}% vs ${selectedYear - 1}`,
+              variant: ceapVariation > 5 ? "red" : ceapVariation < -5 ? "green" : "amber",
+            } : undefined}
+          />
+          <StatCard
+            label={`Total (${selectedYear - 1})`}
+            value={formatCurrency(prevYearTotal)}
+          />
+          <StatCard
+            label={`Registros (${selectedYear})`}
+            value={`${expenses.length}`}
+          />
+        </div>
+
+        {/* TODO: Add attendance, votes, and caucuses StatCards once bulk data and
+            voting API integration are complete (see TODO.md) */}
       </section>
 
-      <section className="mt-8">
-        <SectionHeader title="Votações recentes" />
-        <DataTable columns={voteColumns} data={MOCK_VOTES} rowKey={(r) => r.id} />
+      {/* ── Visualizações ──────────────────────────────────────────── */}
+      {(expenses.length > 0 || prevYearExpenses.length > 0) && (
+        <section className="mt-10">
+          <SectionHeader title="Visualizações" />
+          <DeputyExpenseCharts
+            selectedYearMonthly={currentMonthly}
+            prevYearMonthly={prevYearMonthly}
+            year={selectedYear}
+            byCategory={byCategory}
+            bySupplier={bySupplier}
+            monthlyBarData={monthlyBarData}
+            dailyExpenses={dailyExpenses}
+            categoryBySupplier={categoryBySupplier}
+            sourceUrl={expenses._source}
+          />
+        </section>
+      )}
+
+      {/* ── Despesas recentes ──────────────────────────────────────── */}
+      <section className="mt-10">
+        <SectionHeader
+          title={`Despesas recentes — ${selectedYear}`}
+          sourceUrl={expenses._source}
+          action={expenses.length > 10
+            ? { label: "Ver todas", href: `/camara/${id}/despesas?ano=${selectedYear}` }
+            : undefined}
+        />
+        {recentExpenses.length > 0 ? (
+          <DataTable columns={expenseColumns} data={recentExpenses} rowKey={(r) => r.document} />
+        ) : (
+          <p className="rounded-lg border border-gray-200/60 bg-white p-5 text-sm text-gray-500">
+            Nenhuma despesa registrada para {selectedYear}.
+          </p>
+        )}
       </section>
     </>
   )
+}
+
+/** Formats an ISO date string to DD/MM/YYYY. */
+function formatDate(isoDate: string): string {
+  const d = new Date(isoDate)
+  return d.toLocaleDateString("pt-BR")
+}
+
+/** Formats a number as BRL currency. */
+function formatCurrency(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+}
+
+/**
+ * Formats a CPF or CNPJ string with the standard Brazilian mask.
+ * CPF (11 digits): 123.456.789-00
+ * CNPJ (14 digits): 12.345.678/0001-90
+ */
+function formatDocument(doc: string): string {
+  if (!doc) return "—"
+  const digits = doc.replace(/\D/g, "")
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+  }
+  if (digits.length === 14) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`
+  }
+  return doc
 }

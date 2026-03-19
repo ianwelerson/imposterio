@@ -2,16 +2,17 @@
  * @file ProfileHeader.tsx
  * @description Profile header for individual detail pages (deputy, senator, company).
  *
- * Displays the entity's avatar, name, and metadata tags (party, state, status, etc.)
- * in a horizontal layout. Used at the top of detail pages like `/camara/[id]`
- * and `/senado/[id]`.
+ * Displays the entity's avatar (photo or initials fallback), name, and
+ * metadata tags (party, state, status, etc.) in a horizontal layout.
+ * Used at the top of detail pages like `/camara/[id]` and `/senado/[id]`.
  */
 
+import Image from "next/image"
 import { AvatarInitials } from "./AvatarInitials"
 import { SourcePill } from "./SourcePill"
 
 interface ProfileHeaderProps {
-  /** One or two letter initials for the avatar. */
+  /** One or two letter initials for the avatar fallback. */
   initials: string
   /** Primary display name (e.g. official's full name or company name). */
   name: string
@@ -22,30 +23,29 @@ interface ProfileHeaderProps {
    * Rendered as a SourcePill next to the name.
    */
   sourceUrl: string
+  /** Optional photo URL. When provided, renders an image instead of initials. */
+  photoUrl?: string
 }
 
 /**
- * Renders a profile header with avatar, name, metadata tags, and source link.
- *
- * @param initials  - Avatar initials
- * @param name      - Display name
- * @param tags      - Metadata labels rendered as pills
- * @param sourceUrl - API URL for the SourcePill
- *
- * @example
- * ```tsx
- * <ProfileHeader
- *   initials="AB"
- *   name="André Brandão"
- *   tags={["PL", "São Paulo", "Em exercício"]}
- *   sourceUrl="https://dadosabertos.camara.leg.br/api/v2/deputados/204554"
- * />
- * ```
+ * Renders a profile header with avatar (photo or initials), name, metadata tags,
+ * and source link.
  */
-export function ProfileHeader({ initials, name, tags, sourceUrl }: ProfileHeaderProps) {
+export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl }: ProfileHeaderProps) {
   return (
     <div className="flex items-center gap-4 pb-6">
-      <AvatarInitials initials={initials} size="lg" />
+      {photoUrl ? (
+        <Image
+          src={photoUrl}
+          alt={name}
+          width={64}
+          height={64}
+          className="h-16 w-16 shrink-0 rounded-full bg-gray-100 object-cover"
+          unoptimized
+        />
+      ) : (
+        <AvatarInitials initials={initials} size="lg" />
+      )}
       <div>
         <div className="flex items-center gap-2.5">
           <h1 className="text-xl font-semibold text-gray-900">{name}</h1>

@@ -10,3 +10,6 @@
 export { cachedFetch } from "./lib/cache"
 export { ENDPOINTS } from "./lib/endpoints"
 export { TTL } from "./lib/ttl"
+
+// ── Fetchers ─────────────────────────────────────────────────────────
+export { getDeputiesList, getDeputyDetail, getDeputyExpenses } from "./camara"

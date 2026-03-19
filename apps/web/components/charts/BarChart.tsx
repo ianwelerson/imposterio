@@ -80,8 +80,11 @@ export function BarChart({
             <YAxis
               type="category"
               dataKey="label"
-              tick={{ fontSize: 12, fill: "#6b7280" }}
-              width={120}
+              tick={{ fontSize: 11, fill: "#6b7280" }}
+              width={140}
+              tickFormatter={(val: string) =>
+                val.length > 20 ? `${val.slice(0, 18)}...` : val
+              }
             />
           </>
         ) : (
@@ -100,6 +103,7 @@ export function BarChart({
             borderRadius: 8,
             border: "1px solid #e5e7eb",
             fontSize: 13,
+            maxWidth: 320,
           }}
           formatter={(value) => [
             formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),

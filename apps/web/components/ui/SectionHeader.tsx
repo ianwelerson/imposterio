@@ -12,6 +12,8 @@ import Link from "next/link"
 interface SectionHeaderProps {
   /** Section title text. */
   title: string
+  /** Optional source URL displayed as a small pill next to the title. */
+  sourceUrl?: string
   /** Optional action link displayed on the right side. */
   action?: {
     /** Link label text (e.g. "Ver todos"). */
@@ -35,16 +37,31 @@ interface SectionHeaderProps {
  * />
  * ```
  */
-export function SectionHeader({ title, action }: SectionHeaderProps) {
+export function SectionHeader({ title, sourceUrl, action }: SectionHeaderProps) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Verificar na fonte oficial"
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full
+                       bg-indigo-50 text-indigo-600 border border-indigo-200
+                       hover:bg-indigo-100 font-mono transition-colors whitespace-nowrap"
+          >
+            ↗ fonte
+          </a>
+        )}
+      </div>
       {action && (
         <Link
           href={action.href}
           className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
         >
-          {action.label} →
+          {action.label}{!action.label.startsWith("←") && " →"}
         </Link>
       )}
     </div>

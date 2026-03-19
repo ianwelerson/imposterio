@@ -30,14 +30,26 @@ export interface DeputyDetail extends Deputy {
   birthPlace?: string
   education?: string
   office?: string
+  /** "M" or "F" from the API sexo field. */
+  sex?: string
+  /** Current situation — e.g. "Exercício", "Fim de Mandato", "Licença". */
+  situation?: string
+  /** Electoral name used during campaigns. */
+  electoralName?: string
+  /** Office phone number from the gabinete data. */
+  phone?: string
 }
 
 /** A single CEAP expense record from GET /deputados/{id}/despesas. */
 export interface DeputyExpense {
   date: string
   type: string
-  supplier: string
+  /** Supplier name (nomeFornecedor from the API). */
+  supplierName: string
+  /** Internal document number (numDocumento from the API). */
   document: string
+  /** Supplier's CPF or CNPJ (cnpjCpfFornecedor from the API). */
+  supplierDocument: string
   value: number
 }
 

@@ -11,8 +11,9 @@
 
 import {
   LineChart as RechartsLineChart,
-  Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Area,
+  AreaChart as RechartsAreaChart,
+  Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer,
 } from "recharts"
 
 /** Definition of a single data series. */
@@ -54,47 +55,77 @@ export function LineChart({
   area = false,
   formatValue,
 }: LineChartProps) {
+  const sharedProps = {
+    data,
+    margin: { top: 4, right: 12, bottom: 4, left: 0 },
+  }
+
+  const sharedChildren = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+      <XAxis
+        dataKey="label"
+        tick={{ fontSize: 12, fill: "#6b7280" }}
+        tickLine={false}
+      />
+      <YAxis tick={{ fontSize: 12, fill: "#9ca3af" }} />
+      <Tooltip
+        contentStyle={{
+          borderRadius: 8,
+          border: "1px solid #e5e7eb",
+          fontSize: 13,
+        }}
+        formatter={(value, name) => [
+          formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),
+          name,
+        ]}
+        labelStyle={{ fontWeight: 600, color: "#111827" }}
+      />
+      <Legend
+        verticalAlign="top"
+        align="right"
+        iconType="line"
+        wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+      />
+    </>
+  )
+
+  // Recharts Area components only work inside AreaChart, not LineChart.
+  // We conditionally use the correct parent chart type.
+  if (area) {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <RechartsAreaChart {...sharedProps}>
+          {sharedChildren}
+          {series.map((s) => {
+            const color = s.color ?? "#4f46e5"
+            return (
+              <Area
+                key={s.dataKey}
+                type="monotone"
+                dataKey={s.dataKey}
+                name={s.name}
+                stroke={color}
+                fill={color}
+                fillOpacity={0.1}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            )
+          })}
+        </RechartsAreaChart>
+      </ResponsiveContainer>
+    )
+  }
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsLineChart
-        data={data}
-        margin={{ top: 4, right: 12, bottom: 4, left: 0 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis
-          dataKey="label"
-          tick={{ fontSize: 12, fill: "#6b7280" }}
-          tickLine={false}
-        />
-        <YAxis tick={{ fontSize: 12, fill: "#9ca3af" }} />
-        <Tooltip
-          contentStyle={{
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            fontSize: 13,
-          }}
-          formatter={(value) => [
-            formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),
-          ]}
-          labelStyle={{ fontWeight: 600, color: "#111827" }}
-        />
-
+      <RechartsLineChart {...sharedProps}>
+        {sharedChildren}
         {series.map((s) => {
           const color = s.color ?? "#4f46e5"
-          return area ? (
-            <Area
-              key={s.dataKey}
-              type="monotone"
-              dataKey={s.dataKey}
-              name={s.name}
-              stroke={color}
-              fill={color}
-              fillOpacity={0.1}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          ) : (
+          return (
             <Line
               key={s.dataKey}
               type="monotone"

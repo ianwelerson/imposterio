@@ -14,6 +14,7 @@ const config: Config = {
           light: "#eef2ff",
           hover: "#4338ca",
         },
+        "brasil-green": "#009739",
       },
       fontSize: {
         "data": ["0.875rem", { lineHeight: "1.25rem" }],

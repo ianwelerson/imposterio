@@ -120,6 +120,46 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 
 ---
 
+## 2026-03-19 — URL-driven year selection with useTransition loading state
+
+**Context:** Deputy expense data spans from 2008 to the current year. Users need to explore different years, but the year must be preserved across page navigations (detail page → expenses listing) and the data is fetched server-side.
+
+**Decision:** Year selection is URL-driven via `?ano=YYYY` searchParams. A `YearSelector` client component uses `useRouter().push()` with `useTransition()` to show a loading spinner during navigation. The year is clamped to `[FIRST_CEAP_YEAR, currentYear]` and defaults to the current year. The expenses listing page reads `?ano=` from the URL and the deputy detail page passes it when linking to the full listing.
+
+**Consequences:** Server-side data fetching is fully preserved — no client-side fetch required. The loading state via `useTransition` is non-blocking (the old UI stays visible while the new data loads). The pattern works for any section that needs time-period selection.
+
+---
+
+## 2026-03-19 — Treemap, Calendar Heatmap, and Stacked Bar charts for expense visualization
+
+**Context:** The initial PieChart was insufficient for showing expense categories (too many categories with similar sizes, poor contrast). Users also wanted to see daily spending patterns and which suppliers dominate each category.
+
+**Decision:** Three new chart components were created: (1) `TreemapChart` — proportional area visualization that replaces PieChart for categories with many items; (2) `CalendarHeatmap` — GitHub-style pure SVG heatmap showing daily spending intensity, responsive via `viewBox`; (3) `StackedBarChart` — horizontal stacked bars showing category × supplier cross-tabulation with top N suppliers individually + "Outros" grouping. All chart data is pre-aggregated server-side in `expense-utils.ts` and passed as props to the client component.
+
+**Consequences:** The chart library is now 7 components. CalendarHeatmap is independent of Recharts (pure SVG), while TreemapChart and StackedBarChart use Recharts. The aggregation functions in `expense-utils.ts` are reusable for any section that has categorized financial data (future: contracts, travel, payment cards).
+
+---
+
+## 2026-03-19 — SourcePill on charts and section headers via sourceUrl prop
+
+**Context:** Architecture rule §4 requires a SourcePill next to every data point. Charts and section headers were missing source attribution.
+
+**Decision:** `ChartCard` and `SectionHeader` both accept an optional `sourceUrl` prop that renders a small "↗ fonte" pill inline next to the title. The pill is smaller than the standalone `SourcePill` (10px font, tighter padding) to avoid visual clutter on chart titles. The `DeputyExpenseCharts` client component receives `sourceUrl` and passes it to all ChartCards.
+
+**Consequences:** Every chart and data section on the deputy page now links to the exact API call. This pattern must be replicated for all future sections.
+
+---
+
+## 2026-03-19 — Expense aggregation functions in a separate server-safe module
+
+**Context:** Chart data needs to be computed from raw expense records. Initially, aggregation was done inside a `"use client"` component, which broke server-side imports.
+
+**Decision:** All aggregation functions live in `expense-utils.ts` — a plain TypeScript module (no `"use client"` directive). Functions: `aggregateByMonth`, `aggregateByCategory`, `aggregateBySupplier`, `aggregateByDay`, `aggregateCategoryBySupplier`, `monthlyToBarData`. The server page component calls these functions and passes pre-aggregated results as props to the client chart component.
+
+**Consequences:** Aggregation happens at build/request time on the server. The client component receives only the data it needs to render — no raw expense array shipped to the browser. This pattern should be followed for all future chart integrations.
+
+---
+
 ## 2026-03-18 — Estados section expanded with comprehensive fiscal data
 
 **Context:** The Estados section initially focused only on governors. Using impostometro.org as reference, the user requested expanding it to include state-level fiscal data — tax revenue, ICMS/IPVA/ITCMD breakdown, federal transfers, budget execution, debt indicators, and CAPAG ratings. This aligns with the project's core mission of tax transparency.

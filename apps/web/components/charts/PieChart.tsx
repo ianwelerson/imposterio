@@ -39,18 +39,20 @@ interface PieChartProps {
   formatValue?: (value: number) => string
 }
 
-/** Default color palette — indigo/blue family with enough contrast between slices. */
+/** Color palette with high contrast between adjacent slices. */
 const PALETTE = [
-  "#4f46e5", // indigo-600 (accent)
+  "#4f46e5", // indigo-600
+  "#f59e0b", // amber-500
+  "#10b981", // emerald-500
+  "#ef4444", // red-500
+  "#8b5cf6", // violet-500
+  "#06b6d4", // cyan-500
+  "#f97316", // orange-500
+  "#ec4899", // pink-500
+  "#14b8a6", // teal-500
   "#6366f1", // indigo-500
-  "#818cf8", // indigo-400
-  "#a5b4fc", // indigo-300
-  "#c7d2fe", // indigo-200
-  "#3b82f6", // blue-500
-  "#60a5fa", // blue-400
-  "#93c5fd", // blue-300
-  "#7c3aed", // violet-600
-  "#a78bfa", // violet-400
+  "#84cc16", // lime-500
+  "#a855f7", // purple-500
 ]
 
 /**
@@ -86,14 +88,41 @@ export function PieChart({
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            fontSize: 13,
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null
+            const entry = payload[0]
+            const val = Number(entry.value)
+            return (
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  maxWidth: 280,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                }}
+              >
+                <p style={{
+                  margin: 0,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#111827",
+                  wordWrap: "break-word",
+                  lineHeight: 1.4,
+                }}>
+                  {entry.name}
+                </p>
+                <p style={{
+                  margin: "4px 0 0",
+                  fontSize: 13,
+                  color: "#4b5563",
+                }}>
+                  {formatValue ? formatValue(val) : val.toLocaleString("pt-BR")}
+                </p>
+              </div>
+            )
           }}
-          formatter={(value) => [
-            formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),
-          ]}
         />
         <Legend
           iconType="circle"
