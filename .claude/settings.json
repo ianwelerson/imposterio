@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm build)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:coverage)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm db:migrate)",
+      "Bash(pnpm db:generate)",
+      "Bash(pnpm db:studio)",
+      "Bash(pnpm typecheck)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__github__create_or_update_file",
+      "mcp__github__search_repositories",
+      "mcp__github__create_issue",
+      "mcp__github__create_pull_request",
+      "mcp__github__get_file_contents",
+      "mcp__github__list_commits",
+      "mcp__github__search_code",
+      "mcp__postgres__query",
+      "mcp__postgres__describe_table",
+      "mcp__postgres__list_tables",
+      "mcp__upstash__get_redis_database",
+      "mcp__upstash__list_redis_databases",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "mcp__portal-transparencia__*"
+    ],
+    "deny": [
+      "mcp__upstash__delete_redis_database",
+      "mcp__upstash__create_redis_database",
+      "mcp__github__delete_file",
+      "mcp__postgres__execute"
+    ]
+  }
+}

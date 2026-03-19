@@ -1,0 +1,22 @@
+{
+  "name": "@imposterio/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/qsa-import.ts",
+    "build": "tsc",
+    "start": "node dist/qsa-import.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@imposterio/db": "workspace:*",
+    "@imposterio/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

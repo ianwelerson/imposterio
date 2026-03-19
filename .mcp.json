@@ -1,0 +1,56 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Forces step-by-step reasoning before implementation. Use for complex features, architectural decisions, and cross-cutting changes. Built by Anthropic."
+    },
+
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub integration: create PRs, open issues, search code, review history. Useful for referencing how other open-source transparency projects are structured."
+    },
+
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL}"
+      ],
+      "description": "Direct PostgreSQL access. Use to inspect game_cards, game_votes, and QSA tables during development without leaving the terminal."
+    },
+
+    "upstash": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/mcp-server@latest",
+        "--email",
+        "${UPSTASH_EMAIL}",
+        "--api-key",
+        "${UPSTASH_API_KEY}"
+      ],
+      "description": "Upstash Redis management: inspect cache keys, check TTLs, flush specific keys, monitor throughput. Essential for debugging cache behaviour during development."
+    },
+
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Up-to-date, version-specific documentation for every library used in this project (Next.js, Prisma, Vitest, MSW, etc.). Prevents hallucinated APIs from outdated training data. Use 'use context7' in prompts when working with a library."
+    },
+
+    "portal-transparencia": {
+      "command": "npx",
+      "args": ["-y", "mcp-portal-transparencia-brasil"],
+      "env": {
+        "PORTAL_API_KEY": "${TRANSPARENCIA_API_KEY}"
+      },
+      "description": "Direct access to all Portal da Transparência API endpoints. Use to test and explore real government data during fetcher development without writing fetch calls manually."
+    }
+  }
+}

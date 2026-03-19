@@ -1,0 +1,12 @@
+/**
+ * @file index.ts
+ * @description Public API for the fetchers package.
+ *
+ * Re-exports all fetcher functions and the cachedFetch utility.
+ * Individual fetcher modules (camara.ts, senado.ts, etc.) will be
+ * re-exported here as they are implemented.
+ */
+
+export { cachedFetch } from "./lib/cache"
+export { ENDPOINTS } from "./lib/endpoints"
+export { TTL } from "./lib/ttl"
