@@ -1,40 +1,42 @@
 /**
  * @file ExpensesList.tsx
  * @description Client component for the full expenses listing with search,
- * filters, pagination, and expandable expense detail rows.
+ * filters, and pagination. Each row links to a detail page.
  *
  * Filters:
  * - Text search by supplier name
  * - Dropdown filter by expense type (extracted from data)
- *
- * Each row expands on click to show full expense details including
- * the source API link (SourcePill).
  */
 
 "use client"
 
-import { useState, type ReactNode } from "react"
-import { SearchableList, DataTable, SourcePill } from "@/components/ui"
+import Link from "next/link"
+import type { ReactNode } from "react"
+import { SearchableList, DataTable } from "@/components/ui"
 import type { DeputyExpense } from "@imposterio/types"
 
 interface ExpensesListProps {
   expenses: DeputyExpense[]
   sourceUrl: string
+  /** Deputy ID for building detail page links. */
+  deputyId: string
+  /** Selected year for carrying across page links. */
+  selectedYear: number
   /** Optional year selector rendered inline with the filters. */
   yearSelector?: ReactNode
 }
 
-export function ExpensesList({ expenses, sourceUrl, yearSelector }: ExpensesListProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  const toggle = (id: string) =>
-    setExpandedId((prev) => (prev === id ? null : id))
-
+export function ExpensesList({ expenses, sourceUrl, deputyId, selectedYear, yearSelector }: ExpensesListProps) {
   const columns = [
     {
       header: "Data",
       cell: (r: DeputyExpense) => (
-        <span className="text-gray-600">{formatDate(r.date)}</span>
+        <Link
+          href={`/camara/${deputyId}/despesas/${r.documentCode}?ano=${selectedYear}`}
+          className="text-gray-900 hover:text-accent transition-colors tabular-nums"
+        >
+          {formatDate(r.date)}
+        </Link>
       ),
     },
     {
@@ -61,85 +63,42 @@ export function ExpensesList({ expenses, sourceUrl, yearSelector }: ExpensesList
       header: "Valor",
       align: "right" as const,
       cell: (r: DeputyExpense) => (
-        <span className="font-semibold text-red-600">{formatCurrency(r.value)}</span>
+        <span className="font-semibold text-red-600 tabular-nums">{formatCurrency(r.value)}</span>
       ),
     },
     {
       header: "",
       align: "center" as const,
-      cell: (r: DeputyExpense) => {
-        const id = `${r.document}-${r.date}`
-        const isOpen = expandedId === id
-        return (
-          <button
-            onClick={() => toggle(id)}
-            className="text-sm font-medium text-accent hover:text-accent-hover"
-          >
-            {isOpen ? "Fechar" : "Detalhes"}
-          </button>
-        )
-      },
+      cell: (r: DeputyExpense) => (
+        <Link
+          href={`/camara/${deputyId}/despesas/${r.documentCode}?ano=${selectedYear}`}
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Detalhes →
+        </Link>
+      ),
     },
   ]
 
   return (
     <SearchableList
       items={expenses}
-      searchAccessor={(e) => e.supplierName}
+      searchAccessor={(e) => `${e.supplierName} ${e.document} ${e.type}`}
       filters={[
         { label: "Tipo de despesa", accessor: (e) => e.type, allLabel: "Todos os tipos" },
       ]}
       extraControls={yearSelector}
       pageSize={20}
-      placeholder="Buscar por fornecedor..."
+      placeholder="Buscar por fornecedor, documento ou tipo..."
     >
       {(paged) => (
         <DataTable
           columns={columns}
           data={paged}
-          rowKey={(r) => `${r.document}-${r.date}`}
-          expandedRowKey={expandedId}
-          renderExpanded={(r) => (
-            <ExpenseDetail expense={r} sourceUrl={sourceUrl} />
-          )}
+          rowKey={(r) => `${r.documentCode}-${r.date}`}
         />
       )}
     </SearchableList>
-  )
-}
-
-/** Expanded detail panel for a single expense record. */
-function ExpenseDetail({
-  expense,
-  sourceUrl,
-}: {
-  expense: DeputyExpense
-  sourceUrl: string
-}) {
-  const fields = [
-    { label: "Data", value: formatDate(expense.date) },
-    { label: "Tipo de despesa", value: expense.type },
-    { label: "Fornecedor", value: expense.supplierName },
-    { label: "CPF/CNPJ do fornecedor", value: formatDocument(expense.supplierDocument) },
-    { label: "Documento", value: expense.document || "—" },
-    { label: "Valor líquido", value: formatCurrency(expense.value) },
-  ]
-
-  return (
-    <div className="bg-gray-50 px-6 py-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {fields.map((f) => (
-          <div key={f.label}>
-            <dt className="text-xs font-medium text-gray-500">{f.label}</dt>
-            <dd className="mt-0.5 text-sm text-gray-900">{f.value}</dd>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-2 border-t border-gray-200 pt-3">
-        <span className="text-xs text-gray-500">Fonte oficial:</span>
-        <SourcePill url={sourceUrl} />
-      </div>
-    </div>
   )
 }
 

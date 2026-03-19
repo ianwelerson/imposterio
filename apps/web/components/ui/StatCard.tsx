@@ -25,7 +25,7 @@ interface StatCardProps {
     /** Badge label text (e.g. "+12,4%", "-3,2%"). */
     text: string
     /** Semantic color: "red" (bad/increase), "green" (good/decrease), "amber" (warning). */
-    variant: "red" | "green" | "amber"
+    variant: "red" | "green" | "amber" | "gray"
   }
 }
 

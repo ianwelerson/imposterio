@@ -12,4 +12,13 @@ export { ENDPOINTS } from "./lib/endpoints"
 export { TTL } from "./lib/ttl"
 
 // ── Fetchers ─────────────────────────────────────────────────────────
-export { getDeputiesList, getDeputyDetail, getDeputyExpenses } from "./camara"
+export {
+  getDeputiesList, getDeputyDetail, getDeputyExpenses,
+  getDeputyCommittees, getDeputyCaucuses,
+  getDeputySpeeches, getDeputyEvents, getEventDetail,
+  getDeputyPreviousMandates, getDeputyHistory, getDeputyProfessions,
+  getPropositions, getPropositionDetail, getPropositionAuthors,
+  getPropositionThemes, getPropositionProgress,
+  getVotingSessions, getVotingSessionDetail,
+  getVotingSessionVotes, getVotingSessionOrientations,
+} from "./camara"

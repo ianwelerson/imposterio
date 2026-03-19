@@ -160,6 +160,26 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 
 ---
 
+## 2026-03-19 — Câmara legislative agenda wired to real APIs (propositions + voting sessions)
+
+**Context:** The `/camara/pautas/` pages used mock data. The Câmara API provides `GET /proposicoes` and `GET /votacoes` endpoints with paginated data for legislative propositions and voting sessions, but with non-obvious limitations.
+
+**Decision:** Nine new fetcher functions were added to `camara.ts` covering propositions (list, detail, authors, themes, progress) and voting sessions (list, detail, votes, orientations). Key API quirks required workarounds: (1) `/votacoes` only accepts `ordenarPor=id`, not `dataHoraRegistro`; (2) date ranges on `/votacoes` are limited to 3 months, requiring a `splitDateRangeIntoQuarters()` helper; (3) list vs detail endpoints for voting sessions return different response shapes (`proposicaoObjeto` string vs `proposicoesAfetadas` array), requiring separate raw types and mapping functions; (4) propositions are capped at `maxPages=5` (500 items) to avoid thousands of API calls, filtering to main types `PL,PEC,PLP,MP,PDL`. Seven new types were added to `proposition.ts` (CamaraProposition, CamaraVotingSession, CamaraIndividualVote, CamaraVoteOrientation, etc.).
+
+**Consequences:** The Pautas section is now fully functional with real data: overview page with charts, proposition listing with search/filters, proposition detail with authors/themes/tramitação timeline, voting sessions listing, and voting session detail with individual votes and party orientations. The quarterly date splitting pattern should be reused for any future endpoint with date range limits.
+
+---
+
+## 2026-03-19 — Individual expense detail pages instead of expandable rows
+
+**Context:** The expenses listing originally used expandable rows in the DataTable to show expense details inline. This was cluttered and limited the amount of information that could be displayed (receipt preview, value breakdowns, internal reference fields).
+
+**Decision:** Each expense now links to a dedicated detail page at `/camara/{id}/despesas/{docId}`. The page fetches the full year's expenses and finds the matching record by `documentCode` (there is no single-expense API endpoint). The `DeputyExpense` type was extended with all available fields from the raw API: `grossValue`, `deductedValue`, `documentUrl`, `documentType`, `documentCode`, `reimbursementNumber`, `batchNumber`, `installment`, `year`, `month`. The detail page shows: header with expense type as title (sentence case), deputy name with link, value StatCards, info panel, internal reference, and an embedded receipt viewer (iframe, 900px tall) as the last section.
+
+**Consequences:** Users get a full-page view of each expense with the receipt document prominently displayed. The trade-off is an extra API call to fetch the full year's expenses for a single record, but caching (6h TTL) mitigates this. The `documentCode` serves as the unique identifier in the URL. The sentence-case conversion of expense types (API returns ALL CAPS) is done via a simple `toSentenceCase()` helper.
+
+---
+
 ## 2026-03-18 — Estados section expanded with comprehensive fiscal data
 
 **Context:** The Estados section initially focused only on governors. Using impostometro.org as reference, the user requested expanding it to include state-level fiscal data — tax revenue, ICMS/IPVA/ITCMD breakdown, federal transfers, budget execution, debt indicators, and CAPAG ratings. This aligns with the project's core mission of tax transparency.

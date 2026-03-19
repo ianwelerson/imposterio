@@ -31,6 +31,11 @@ interface Column<T> {
    * @default "left"
    */
   align?: "left" | "center" | "right"
+  /**
+   * Optional Tailwind classes applied to both `<th>` and `<td>` for this column.
+   * Useful for controlling width (`max-w-xs`), wrapping (`whitespace-nowrap`), etc.
+   */
+  className?: string
 }
 
 /**
@@ -102,7 +107,7 @@ export function DataTable<T>({
               <th
                 key={i}
                 className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider
-                  text-gray-500 ${alignClass[col.align ?? "left"]}`}
+                  text-gray-500 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
               >
                 {col.header}
               </th>
@@ -122,7 +127,7 @@ export function DataTable<T>({
                   {columns.map((col, colIndex) => (
                     <td
                       key={colIndex}
-                      className={`px-4 py-3 ${alignClass[col.align ?? "left"]}`}
+                      className={`px-4 py-3 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
                     >
                       {col.cell(row)}
                     </td>

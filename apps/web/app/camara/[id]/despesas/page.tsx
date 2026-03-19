@@ -45,16 +45,18 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
   return (
     <>
       <header className="pb-6">
-        <Link
-          href={`/camara/${id}?ano=${selectedYear}`}
-          className="mb-2 inline-block text-sm text-accent hover:text-accent-hover"
-        >
-          ← Voltar para {deputy.name}
-        </Link>
-        <h1 className="text-xl font-semibold text-gray-900">
-          Despesas — {deputy.name}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-xl font-semibold text-gray-900">
+            Despesas — {deputy.name}
+          </h1>
+          <Link
+            href={`/camara/${id}?ano=${selectedYear}`}
+            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+          >
+            ← Voltar para {deputy.name}
+          </Link>
+        </div>
+        <p className="text-sm text-gray-500">
           {expenses.length} registros em {selectedYear} — Total:{" "}
           {totalCeap.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
         </p>
@@ -63,6 +65,8 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
       <ExpensesList
         expenses={expenses}
         sourceUrl={expenses._source}
+        deputyId={id}
+        selectedYear={selectedYear}
         yearSelector={
           <div className="w-full sm:w-auto sm:min-w-[100px]">
             <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>

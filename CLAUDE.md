@@ -75,14 +75,31 @@ imposterio/
 │   │   │   │   ├── deputados/      # All deputies listing (real API)
 │   │   │   │   │   ├── page.tsx    # Server: getDeputiesList() → real API
 │   │   │   │   │   └── DeputiesSearchList.tsx # Client: SearchableList + DataTable with photos
-│   │   │   │   └── [id]/           # Individual deputy detail page (real API)
-│   │   │   │       ├── page.tsx    # ProfileHeader, StatCards, InfoPanel, charts, expenses table
-│   │   │   │       ├── DeputyExpenseCharts.tsx # Client: 6 chart types (area, bar, heatmap, treemap, stacked bar)
-│   │   │   │       ├── YearSelector.tsx # Client: year picker with useTransition loading
-│   │   │   │       ├── expense-utils.ts # Server-safe aggregation functions for chart data
-│   │   │   │       └── despesas/   # Full expenses listing with search + pagination
-│   │   │   │           ├── page.tsx    # Server: getDeputyExpenses() with year from URL
-│   │   │   │           └── ExpensesList.tsx # Client: SearchableList + expandable detail rows
+│   │   │   │   ├── [id]/           # Individual deputy detail page (real API)
+│   │   │   │   │   ├── page.tsx    # ProfileHeader, StatCards, InfoPanel, charts, expenses table
+│   │   │   │   │   ├── DeputyExpenseCharts.tsx # Client: 6 chart types (area, bar, heatmap, treemap, stacked bar)
+│   │   │   │   │   ├── YearSelector.tsx # Client: year picker with useTransition loading
+│   │   │   │   │   ├── expense-utils.ts # Server-safe aggregation functions for chart data
+│   │   │   │   │   └── despesas/   # Full expenses listing with search + pagination
+│   │   │   │   │       ├── page.tsx    # Server: getDeputyExpenses() with year from URL
+│   │   │   │   │       ├── ExpensesList.tsx # Client: SearchableList + links to detail pages
+│   │   │   │   │       └── [docId]/    # Individual expense detail page (real API)
+│   │   │   │   │           └── page.tsx # Values StatCards, info panel, receipt iframe viewer
+│   │   │   │   └── pautas/         # Legislative agenda ✅ WIRED TO REAL API
+│   │   │   │       ├── page.tsx    # Overview — charts + latest propositions/votes tables
+│   │   │   │       ├── PautasCharts.tsx # Client: proposition/voting chart groups
+│   │   │   │       ├── pautas-utils.ts # Server-safe aggregation for propositions/votes
+│   │   │   │       ├── lista/      # All propositions listing (real API)
+│   │   │   │       │   ├── page.tsx # Server: getPropositions() with year + type filter
+│   │   │   │       │   └── CamaraPautasList.tsx # Client: SearchableList + filters (type, status, organ)
+│   │   │   │       ├── [id]/       # Individual proposition detail (real API)
+│   │   │   │       │   └── page.tsx # InfoPanel, authors, themes, tramitação timeline
+│   │   │   │       └── votacoes/   # Voting sessions (real API)
+│   │   │   │           ├── page.tsx # Server: getVotingSessions() with year selector
+│   │   │   │           ├── VotingSessionsList.tsx # Client: SearchableList + result filter
+│   │   │   │           └── [id]/   # Individual voting session detail
+│   │   │   │               ├── page.tsx # Stats, orientations, affected propositions
+│   │   │   │               └── VotesList.tsx # Client: individual votes with party/UF filters
 │   │   │   ├── senado/             # Federal Senate
 │   │   │   │   ├── page.tsx        # Overview — charts + top senators table
 │   │   │   │   ├── SenadoCharts.tsx # Client — bills trend, type pie, party attendance
@@ -286,12 +303,21 @@ Client component (DeputiesSearchList.tsx):
 Server page.tsx:
   1. Read ?ano= from searchParams, default to current year
   2. Fetch expenses + deputy detail
-  3. Pass yearSelector as ReactNode to client component
+  3. Pass deputyId, selectedYear, yearSelector as ReactNode to client component
 
 Client ExpensesList.tsx:
-  1. SearchableList with filters (Tipo, Fornecedor)
+  1. SearchableList with filters (Tipo de despesa)
   2. yearSelector passed as extraControls
-  3. Expandable rows with SourcePill for each expense
+  3. Each row links to /camara/{id}/despesas/{docId}?ano={year} detail page
+
+Expense detail page ([docId]/page.tsx):
+  1. Fetches full year expenses, finds by documentCode (no single-expense API)
+  2. Header: expense type in sentence case + CEAP badge + SourcePill
+  3. Deputy name with link + month/year (prominent, text-base)
+  4. Values section: StatCards (gross, net with "reembolso" badge, deducted with explanation)
+  5. Info panel: supplier, CPF/CNPJ, document type/number, date, reference period
+  6. Internal reference: document code, reimbursement number, batch, installment
+  7. Receipt viewer (last section): iframe 900px tall + "Abrir documento" button
 ```
 
 ### Source attribution pattern

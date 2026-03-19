@@ -96,14 +96,30 @@ Still simple GET endpoints, but returns paginated data that needs processing.
 
 ### 2A — Deputy activity
 
-- [ ] **2A.1** Implement deputy voting history
+- [ ] **2A.1** Implement deputy voting history on detail page
   - ⚠️ `GET /deputados/{id}/votacoes` returns 405 (endpoint removed by Câmara API)
-  - New approach: query `GET /votacoes` + `GET /votacoes/{id}/votos`, filter by deputy
+  - Voting session fetchers exist (getVotingSessions, getVotingSessionVotes, etc.)
+  - Still need: filter voting sessions by deputy participation on detail page
   - TTL: `CAMARA_DEPUTY_VOTES` (3h)
 - [ ] **2A.2** Implement `getDeputyCaucuses(id)` — `GET /deputados/{id}/frentes`
 - [ ] **2A.3** Implement `getDeputyCommittees(id)` — `GET /deputados/{id}/orgaos`
 - [ ] **2A.4** Write MSW handlers + tests
 - [ ] **2A.5** Wire to `camara/[id]/page.tsx` voting history table
+
+### 2C — Câmara legislative agenda (propositions + voting sessions) ✅
+
+- [x] **2C.1** Add 7 types to `proposition.ts` (CamaraProposition, CamaraVotingSession, etc.)
+- [x] **2C.2** Add 11 endpoint constants + 10 TTL values
+- [x] **2C.3** Implement 9 fetcher functions in `camara.ts`
+  - getPropositions (with maxPages cap), getPropositionDetail, getPropositionAuthors,
+    getPropositionThemes, getPropositionProgress, getVotingSessions (quarterly date split),
+    getVotingSessionDetail, getVotingSessionVotes, getVotingSessionOrientations
+- [x] **2C.4** Wire overview page `/camara/pautas/` with charts and StatCards
+- [x] **2C.5** Wire proposition listing `/camara/pautas/lista/` with SearchableList
+- [x] **2C.6** Wire proposition detail `/camara/pautas/[id]/` with authors, themes, tramitação
+- [x] **2C.7** Wire voting sessions listing `/camara/pautas/votacoes/`
+- [x] **2C.8** Wire voting session detail `/camara/pautas/votacoes/[id]/` with votes + orientations
+- [ ] **2C.9** Write MSW handlers + tests for all 9 new fetcher functions
 
 ### 2B — Senator activity
 
@@ -130,8 +146,12 @@ Still simple GET endpoints, but returns paginated data that needs processing.
   - StatCards: total CEAP, previous year total, record count, year-over-year %
   - Charts: area (YoY comparison), bar (monthly), treemap (category), heatmap (daily),
     horizontal bar (top suppliers), stacked bar (category × supplier)
-  - Full expenses listing at `/camara/{id}/despesas` with search + filters + expandable rows
-- [ ] **3A.4** Wire aggregated CEAP totals to `camara/page.tsx` StatCards + charts
+  - Full expenses listing at `/camara/{id}/despesas` with search + filters + link to detail pages
+- [x] **3A.4** Individual expense detail page at `/camara/{id}/despesas/{docId}`
+  - Extended DeputyExpense type with all raw API fields
+  - Value StatCards, info panel, internal reference, embedded receipt viewer (iframe)
+  - Sentence-case expense type title, deputy name with link, SourcePill
+- [ ] **3A.5** Wire aggregated CEAP totals to `camara/page.tsx` StatCards + charts
 
 ### 3B — Civil servant compensation — Portal da Transparência (requires API key)
 
@@ -371,8 +391,8 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 |-------|-------------|-------|------|
 | 0 | Infrastructure | 3 | 2 |
 | 1 | Personnel lists | 17 | 8 |
-| 2 | Activity data | 10 | 0 |
-| 3 | Financial data | 17 | 3 |
+| 2 | Activity data | 19 | 8 |
+| 3 | Financial data | 18 | 4 |
 | 4 | Bulk files | 5 | 0 |
 | 5 | State fiscal | 13 | 0 |
 | 6 | Company data | 7 | 0 |
@@ -383,4 +403,4 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 | 11 | Tax counter | 5 | 0 |
 | 12 | QSA worker | 4 | 0 |
 | 13 | Court scraping | 5 | 0 |
-| **Total** | | **114** | **13** |
+| **Total** | | **124** | **22** |

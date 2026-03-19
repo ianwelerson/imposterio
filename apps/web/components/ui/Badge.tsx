@@ -13,7 +13,7 @@
  */
 
 /** Semantic color variants for the Badge component. */
-type BadgeVariant = "red" | "green" | "amber"
+type BadgeVariant = "red" | "green" | "amber" | "gray"
 
 interface BadgeProps {
   /** The text content displayed inside the badge. */
@@ -31,6 +31,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   red: "bg-red-50 text-red-700 border-red-200",
   green: "bg-emerald-50 text-emerald-700 border-emerald-200",
   amber: "bg-amber-50 text-amber-700 border-amber-200",
+  gray: "bg-gray-100 text-gray-600 border-gray-200",
 }
 
 /**

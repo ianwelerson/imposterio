@@ -24,10 +24,40 @@ export const TTL = {
   CAMARA_DEPUTY_EXPENSES: 60 * 60 * 6,
   /** Deputy voting history — 3h (updated during sessions) */
   CAMARA_DEPUTY_VOTES: 60 * 60 * 3,
+  /** Deputy speeches — 12h (occasional floor speeches) */
+  CAMARA_DEPUTY_SPEECHES: 60 * 60 * 12,
+  /** Deputy events (sessions, hearings) — 3h (changes during session days) */
+  CAMARA_DEPUTY_EVENTS: 60 * 60 * 3,
+  /** Deputy status history — 24h (rare changes) */
+  CAMARA_DEPUTY_HISTORY: 60 * 60 * 24,
+  /** Deputy previous mandates — 30d (sourced from TSE, static) */
+  CAMARA_DEPUTY_MANDATES: 60 * 60 * 24 * 30,
+  /** Deputy professions — 30d (rarely updated) */
+  CAMARA_DEPUTY_PROFESSIONS: 60 * 60 * 24 * 30,
+  /** Individual event detail — 6h */
+  CAMARA_EVENT_DETAIL: 60 * 60 * 6,
   /** Deputy attendance from yearly bulk file — 6h */
   CAMARA_DEPUTY_ATTENDANCE: 60 * 60 * 6,
   /** Chamber staff/aides list — 24h */
   CAMARA_STAFF: 60 * 60 * 24,
+  /** Propositions list (filtered by year/type) — 3h (updated during sessions) */
+  CAMARA_PROPOSITIONS: 60 * 60 * 3,
+  /** Individual proposition detail — 6h */
+  CAMARA_PROPOSITION_DETAIL: 60 * 60 * 6,
+  /** Proposition authors — 24h (rarely changes after submission) */
+  CAMARA_PROPOSITION_AUTHORS: 60 * 60 * 24,
+  /** Proposition themes — 24h (rarely changes) */
+  CAMARA_PROPOSITION_THEMES: 60 * 60 * 24,
+  /** Proposition legislative progress (tramitações) — 3h */
+  CAMARA_PROPOSITION_PROGRESS: 60 * 60 * 3,
+  /** Voting sessions list — 3h (updated during sessions) */
+  CAMARA_VOTING_SESSIONS: 60 * 60 * 3,
+  /** Individual voting session detail — 6h */
+  CAMARA_VOTING_SESSION_DETAIL: 60 * 60 * 6,
+  /** Individual votes in a session — 12h (final after session ends) */
+  CAMARA_VOTING_SESSION_VOTES: 60 * 60 * 12,
+  /** Party orientations for a vote — 12h (final after session ends) */
+  CAMARA_VOTING_SESSION_ORIENTATIONS: 60 * 60 * 12,
 
   // ── Senado Federal ──────────────────────────────────────────────────
   /** List of all senators currently serving — 24h */
