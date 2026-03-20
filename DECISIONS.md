@@ -170,6 +170,16 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 
 ---
 
+## 2026-03-19 — Deputy voting history via composite fetcher pattern
+
+**Context:** The `GET /deputados/{id}/votacoes` endpoint was removed by the Câmara API (returns 405 since at least March 2026). There is no direct way to get a deputy's voting record.
+
+**Decision:** A composite fetcher `getDeputyVotingHistory(deputyId, startDate, endDate)` was created that: (1) fetches all voting sessions in the date range via `getVotingSessions()`; (2) for each session, fetches individual votes via `getVotingSessionVotes()`; (3) filters for the target deputy's vote. Sessions are fetched in batches of 10 to avoid overwhelming the API. A `maxSessions` parameter (default 50) caps the number of API calls. A new `DeputyVotingRecord` type combines session metadata with the individual vote.
+
+**Consequences:** This is an N+1 API call pattern (1 session list call + up to 50 individual vote calls). Performance is acceptable due to aggressive caching: session list has 3h TTL, individual session votes have 12h TTL. After first load, all subsequent views are cache hits. The "alignment" metric (how often the deputy voted with the winning side) is a derived value computed server-side. This pattern can be reused for any future composite queries that need to cross-reference paginated data.
+
+---
+
 ## 2026-03-19 — Individual expense detail pages instead of expandable rows
 
 **Context:** The expenses listing originally used expandable rows in the DataTable to show expense details inline. This was cluttered and limited the amount of information that could be displayed (receipt preview, value breakdowns, internal reference fields).
@@ -177,6 +187,76 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 **Decision:** Each expense now links to a dedicated detail page at `/camara/{id}/despesas/{docId}`. The page fetches the full year's expenses and finds the matching record by `documentCode` (there is no single-expense API endpoint). The `DeputyExpense` type was extended with all available fields from the raw API: `grossValue`, `deductedValue`, `documentUrl`, `documentType`, `documentCode`, `reimbursementNumber`, `batchNumber`, `installment`, `year`, `month`. The detail page shows: header with expense type as title (sentence case), deputy name with link, value StatCards, info panel, internal reference, and an embedded receipt viewer (iframe, 900px tall) as the last section.
 
 **Consequences:** Users get a full-page view of each expense with the receipt document prominently displayed. The trade-off is an extra API call to fetch the full year's expenses for a single record, but caching (6h TTL) mitigates this. The `documentCode` serves as the unique identifier in the URL. The sentence-case conversion of expense types (API returns ALL CAPS) is done via a simple `toSentenceCase()` helper.
+
+---
+
+## 2026-03-20 — Toast-based error handling with graceful degradation for all API calls
+
+**Context:** Pages that fetch from multiple API endpoints would crash entirely if any single fetch failed (e.g. rate-limited, 403, or 500). Users had no visibility into what went wrong.
+
+**Decision:** A three-part error handling system was introduced: (1) `ApiError` class in `packages/fetchers/lib/cache.ts` — extends `Error` with `status`, `url`, and a `userMessage` getter that returns Portuguese-language messages per HTTP status (429 = rate limit, 403 = blocked, 404 = not found, etc.); (2) `collectErrors()` utility in `apps/web/lib/error-utils.ts` — wraps fetcher calls, catches failures into an array and returns a fallback value via `emptySourced()` so the page renders with partial data; (3) `ToastTrigger` + `ToastProvider` in `apps/web/components/ui/Toast.tsx` — server pages pass collected errors to the client trigger, which fires toasts on mount. `ToastProvider` wraps `AppShell` in `layout.tsx`.
+
+**Consequences:** Pages degrade gracefully — a failed expense fetch shows empty charts but the profile still renders. All 9 Câmara pages were updated with this pattern. The `collectErrors(fn, fallback, errors, label)` pattern is the standard for all future pages. Primary data (e.g. deputy profile) still uses try/catch → `notFound()` for hard failures.
+
+---
+
+## 2026-03-20 — Voting session detail enriched with additional API payload fields
+
+**Context:** The voting session detail page showed minimal information. The Câmara API detail endpoint (`GET /votacoes/{id}`) returns significantly more data than the list endpoint — including `objetosPossiveis`, `descUltimaAberturaVotacao`, `dataHoraUltimaAberturaVotacao`, `ultimaApresentacaoProposicao`, and `idOrgao`. Meanwhile, voting tables in listings should keep showing the description (not proposition info) because votes aren't always about a specific proposition — they can be urgency requests, amendments, procedural motions, etc.
+
+**Decision:** The `CamaraVotingSession` type was extended with `organ?`, `openingDescription?`, `openingDate?`, `lastPresentation?`, and `votingObjects[]`. The detail page now shows: organ, opening date, opening description, last presentation text, affected propositions (with links), and voting objects (with links) — all in addition to the existing stats, orientations, and individual votes. Listing tables across all pages continue to show the `description` field.
+
+**Consequences:** The detail page is now comprehensive. The raw detail endpoint fields are mapped in `mapRawToVotingSessionDetail()` in the fetcher. This distinction between list-level summary and detail-level enrichment should be followed for all future detail pages.
+
+---
+
+## 2026-03-20 — ChartCard action prop for "see all" navigation on truncated charts
+
+**Context:** Charts showing top N items (e.g. "top 12 parties", "top 15 states") gave no indication that more data existed or how to see the full listing.
+
+**Decision:** `ChartCard` now accepts an optional `action` prop (`{ label: string; href: string }`) that renders a navigation link to the right of the title. Used on the Câmara overview charts: "Ver todos os partidos" → `/partidos`, "Ver todos os estados" → `/estados`.
+
+**Consequences:** Minor UI addition. All future charts showing truncated data should use this prop to link to the full listing page.
+
+---
+
+## 2026-03-20 — Deputy comparison page with shared useTransition
+
+**Context:** Users wanted to compare deputies side by side. The comparison page involves multiple independent controls (year selector, deputy picker with 3 slots) that all trigger server-side navigation, creating a fragmented loading experience when each control had its own `useTransition`.
+
+**Decision:** A `ComparisonControls.tsx` wrapper component owns a single `useTransition` and passes `loading` + `navigate` callback props down to both the year selector and `DeputyPicker`. All URL changes (year, add/remove deputy) funnel through the same `startTransition`, so all picker slots show loading simultaneously. The comparison table always renders 4 columns (1 label + 3 deputy slots) with empty padding cells, matching the 3-slot picker grid above. The table uses `min-w-[480px]` with horizontal scroll on mobile.
+
+**Consequences:** Unified loading UX — changing the year shows loading on all picker slots, not just a spinner next to the dropdown. The URL is fully shareable (`?ids=204554,178957&ano=2025`). The `navigate` callback pattern is reusable for any page that needs multiple controls to share a single loading state.
+
+---
+
+## 2026-03-20 — Umami Cloud analytics with type-safe event tracking
+
+**Context:** The project needed analytics to understand usage patterns (which pages are visited, what users search for, which source pills are clicked). Traditional analytics tools (Google Analytics) conflict with the project's privacy-first principles.
+
+**Decision:** Umami Cloud was chosen as the analytics provider — privacy-focused, no cookies, LGPD compliant. The tracking script is injected via Next.js `Script` component in `layout.tsx`, controlled by `NEXT_PUBLIC_UMAMI_WEBSITE_ID` env var. A type-safe wrapper in `lib/analytics.ts` defines all events with their payloads (`AnalyticsEvents` interface). The `track()` function is a silent no-op when Umami is unavailable (SSR, ad-blockers, missing env). Client components that need tracking (SourcePill, GameCard, Sidebar, SearchableList, etc.) import `track()` and call it on user interactions. Search tracking is debounced at 800ms.
+
+**Consequences:** Analytics requires `"use client"` on any component that calls `track()` — this forced SourcePill and GitHubLink to become client components. The type-safe wrapper prevents typos in event names and ensures consistent payload shapes. No personal data is collected.
+
+---
+
+## 2026-03-20 — About page with runtime TTL values from fetchers package
+
+**Context:** The user requested an About page explaining the project's data sources, cache methodology, and infrastructure. Cache TTL values needed to be accurate and not go stale.
+
+**Decision:** The `/sobre` page imports TTL constants directly from `@imposterio/fetchers` and formats them at render time using a `formatTtl()` helper. The page is structured: hero → principles → data sources → bulk processing → cache methodology → open source → infrastructure. Data sources use a responsive layout: card-based on mobile, table on `sm+`. The "Sobre o projeto" link is a regular nav item in the sidebar, pinned to the bottom via `mt-auto`, styled consistently with other nav items but visually separated.
+
+**Consequences:** TTL values on the About page always match the actual runtime configuration. The responsive data sources layout avoids cramped tables on mobile. Infrastructure cards (Vercel, Neon, Upstash, Umami, Railway) document the full deployment stack.
+
+---
+
+## 2026-03-20 — Mobile-first responsive overhaul for all components
+
+**Context:** Mobile devices are the primary platform for Imposterio's target audience. Many components had fixed layouts that broke on small screens: headers with `flex justify-between` overflowed, tables were too wide, padding was too generous, and detail page headers pushed back links off-screen.
+
+**Decision:** Systematic mobile-first pass across all shared components and Câmara/Sobre pages: (1) All page headers changed from `flex justify-between` to `flex-col sm:flex-row sm:justify-between` — title and controls stack vertically on mobile; (2) `StatCard` reduced padding (`p-4 sm:p-5`), smaller text (`text-xs sm:text-sm` for labels, `text-xl sm:text-2xl` for values), badges wrap via `flex-wrap`; (3) `DataTable` uses `px-3 sm:px-4` cell padding; (4) `ProfileHeader` stacks photo/name vertically on mobile; (5) `SectionHeader` uses `flex-wrap` to prevent action links from overflowing; (6) `ChartCard` and `InfoPanel` reduced mobile padding; (7) Expense receipt iframe responsive heights (`h-[400px] sm:h-[600px] lg:h-[900px]`); (8) Comparison table gets `min-w-[480px]` with horizontal scroll; (9) About page data sources use stacked cards on mobile instead of table; (10) Party orientations grid `grid-cols-1 sm:2 lg:4`.
+
+**Consequences:** All UI components now follow a mobile-first approach. This pattern (responsive padding, stacking layouts, `flex-wrap`, responsive text sizes) must be applied to all future pages. The `sm:` breakpoint is the primary transition point from mobile to tablet layout.
 
 ---
 

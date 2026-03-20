@@ -12,6 +12,10 @@
  * field. See CLAUDE.md §3 and §4.
  */
 
+"use client"
+
+import { track } from "@/lib/analytics"
+
 interface SourcePillProps {
   /**
    * The exact URL of the API call that generated the associated data point.
@@ -44,6 +48,7 @@ export function SourcePill({ url }: SourcePillProps) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Verificar na fonte oficial"
+      onClick={() => track("click_source_link", { url })}
       className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full
                  bg-indigo-50 text-indigo-600 border border-indigo-200
                  hover:bg-indigo-100 font-mono transition-colors whitespace-nowrap"

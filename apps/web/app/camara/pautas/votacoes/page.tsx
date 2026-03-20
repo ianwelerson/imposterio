@@ -10,6 +10,8 @@
 
 import Link from "next/link"
 import { getVotingSessions } from "@imposterio/fetchers"
+import { ToastTrigger } from "@/components/ui"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { VotingSessionsList } from "./VotingSessionsList"
 
@@ -36,10 +38,12 @@ export default async function VotingSessionsPage({ searchParams }: PageProps) {
   const yearStart = `${selectedYear}-01-01`
   const yearEnd = `${selectedYear}-12-31`
 
-  const sessions = await getVotingSessions(yearStart, yearEnd)
+  const errors: PageError[] = []
+  const sessions = await collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações")
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
       <header className="pb-6">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-semibold text-gray-900">

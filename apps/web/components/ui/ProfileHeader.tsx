@@ -33,7 +33,7 @@ interface ProfileHeaderProps {
  */
 export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl }: ProfileHeaderProps) {
   return (
-    <div className="flex items-center gap-4 pb-6">
+    <div className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-center sm:gap-4">
       {photoUrl ? (
         <Image
           src={photoUrl}
@@ -46,9 +46,9 @@ export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl }: Pro
       ) : (
         <AvatarInitials initials={initials} size="lg" />
       )}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-xl font-semibold text-gray-900">{name}</h1>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">{name}</h1>
           <SourcePill url={sourceUrl} />
         </div>
         <div className="mt-1.5 flex flex-wrap gap-2">

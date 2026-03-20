@@ -34,12 +34,13 @@
  * - Detail: `nomeCivil` → `fullName`, `dataNascimento` → `birthDate`, etc.
  */
 
-import { cachedFetch } from "./lib/cache"
+import { cachedFetch, ApiError } from "./lib/cache"
 import { ENDPOINTS } from "./lib/endpoints"
 import { TTL } from "./lib/ttl"
 import type {
   Deputy, DeputyDetail, DeputyExpense, DeputyCommittee, DeputyCaucus,
   DeputySpeech, DeputyEvent, DeputyPreviousMandate, DeputyStatusHistory, DeputyProfession,
+  DeputyVotingRecord,
   CamaraProposition, CamaraPropositionAuthor, CamaraPropositionTheme,
   CamaraPropositionProgress, CamaraVotingSession, CamaraIndividualVote,
   CamaraVoteOrientation, VoteTally,
@@ -310,7 +311,26 @@ interface CamaraVotingSessionRaw {
  * Extends the list shape with `proposicoesAfetadas` array and `idEvento`.
  */
 interface CamaraVotingSessionDetailRaw extends CamaraVotingSessionRaw {
+  idOrgao?: number
   idEvento?: number
+  /** More descriptive text about the opening of the vote. */
+  descUltimaAberturaVotacao?: string
+  dataHoraUltimaAberturaVotacao?: string
+  /** Last proposition presentation (typically the rapporteur's opinion). */
+  ultimaApresentacaoProposicao?: {
+    dataHoraRegistro: string
+    descricao: string
+  }
+  /** Propositions that could be the object of this vote. */
+  objetosPossiveis?: Array<{
+    id: number
+    uri: string
+    siglaTipo: string
+    codTipo: number
+    numero: number
+    ano: number
+    ementa: string
+  }>
   proposicoesAfetadas?: Array<{
     id: number
     uri: string
@@ -1038,6 +1058,82 @@ export async function getVotingSessionOrientations(id: string): Promise<WithSour
   return Object.assign(orientations, { _source: response._source })
 }
 
+// ── Deputy voting history (composite fetcher) ────────────────────────
+
+/**
+ * Builds a deputy's voting history by cross-referencing voting sessions
+ * with individual votes.
+ *
+ * The `GET /deputados/{id}/votacoes` endpoint has been removed by the Câmara
+ * API (returns 405). The only way to get a deputy's voting record is:
+ * 1. Fetch all voting sessions in the date range via `getVotingSessions()`
+ * 2. For each session, fetch individual votes via `getVotingSessionVotes()`
+ * 3. Filter for the target deputy
+ *
+ * This is expensive (1 + N API calls) but heavily mitigated by caching:
+ * - Voting sessions: 3h TTL
+ * - Session votes: 12h TTL
+ * After first load, subsequent views are cache hits.
+ *
+ * @param deputyId  - Deputy's numeric ID in the Câmara API
+ * @param startDate - ISO date string (YYYY-MM-DD) for range start
+ * @param endDate   - ISO date string (YYYY-MM-DD) for range end
+ * @param maxSessions - Cap on how many sessions to query (default 50)
+ * @returns Array of voting records for the deputy with `_source` injected
+ *
+ * @example
+ * const votes = await getDeputyVotingHistory('204554', '2026-01-01', '2026-12-31')
+ * console.log(votes[0].vote) // "Sim"
+ */
+export async function getDeputyVotingHistory(
+  deputyId: string,
+  startDate: string,
+  endDate: string,
+  maxSessions = 50,
+): Promise<WithSource<DeputyVotingRecord[]>> {
+  const sessions = await getVotingSessions(startDate, endDate)
+
+  // Limit sessions to avoid excessive API calls
+  const capped = sessions.slice(0, maxSessions)
+
+  // Fetch votes for all sessions in parallel batches of 10
+  const BATCH_SIZE = 10
+  const records: DeputyVotingRecord[] = []
+
+  for (let i = 0; i < capped.length; i += BATCH_SIZE) {
+    const batch = capped.slice(i, i + BATCH_SIZE)
+
+    // Some session IDs returned by the list endpoint are stale/invalid and
+    // return 404 on the votes sub-resource. Catch these gracefully.
+    const batchVotes = await Promise.all(
+      batch.map((s) =>
+        getVotingSessionVotes(s.id).catch(() => [] as CamaraIndividualVote[]),
+      ),
+    )
+
+    for (let j = 0; j < batch.length; j++) {
+      const session = batch[j]
+      const deputyVote = batchVotes[j].find((v) => v.deputyId === deputyId)
+
+      if (deputyVote) {
+        records.push({
+          sessionId: session.id,
+          date: session.date,
+          description: session.description,
+          approved: session.approved,
+          vote: deputyVote.vote,
+          propositions: session.propositions,
+        })
+      }
+    }
+  }
+
+  // Sort by date descending (most recent first)
+  records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  return Object.assign(records, { _source: sessions._source })
+}
+
 // ── Pagination helpers (internal) ─────────────────────────────────────
 
 /**
@@ -1143,7 +1239,7 @@ function mapRawToDeputyDetail(raw: CamaraDeputyDetailRaw): DeputyDetail {
     party: status.siglaPartido,
     uf: status.siglaUf,
     photoUrl: status.urlFoto || undefined,
-    email: status.email || undefined,
+    email: status.email || gabinete.email || undefined,
     legislature: status.idLegislatura,
     fullName: raw.nomeCivil,
     birthDate: raw.dataNascimento || undefined,
@@ -1333,17 +1429,27 @@ function mapRawToVotingSession(raw: CamaraVotingSessionRaw): CamaraVotingSession
     approved: raw.aprovacao === 1 ? true : raw.aprovacao === 0 ? false : null,
     voteTally: parseVoteTally(raw.descricao),
     propositions: [],
+    votingObjects: [],
     eventId,
   }
 }
 
 /**
- * Maps a detail-endpoint voting session (with proposicoesAfetadas and idEvento).
+ * Maps a detail-endpoint voting session (with proposicoesAfetadas, idEvento,
+ * and additional context fields like openingDescription and lastPresentation).
  */
 function mapRawToVotingSessionDetail(raw: CamaraVotingSessionDetailRaw): CamaraVotingSession {
   const eventId = raw.idEvento
     ? String(raw.idEvento)
     : raw.uriEvento?.match(/eventos\/(\d+)/)?.[1]
+
+  const mapProposition = (p: { id: number; siglaTipo: string; numero: number; ano: number; ementa: string }) => ({
+    id: String(p.id),
+    typeCode: p.siglaTipo,
+    number: p.numero,
+    year: p.ano,
+    summary: p.ementa,
+  })
 
   return {
     id: raw.id,
@@ -1351,14 +1457,13 @@ function mapRawToVotingSessionDetail(raw: CamaraVotingSessionDetailRaw): CamaraV
     description: raw.descricao,
     approved: raw.aprovacao === 1 ? true : raw.aprovacao === 0 ? false : null,
     voteTally: parseVoteTally(raw.descricao),
-    propositions: (raw.proposicoesAfetadas ?? []).map((p) => ({
-      id: String(p.id),
-      typeCode: p.siglaTipo,
-      number: p.numero,
-      year: p.ano,
-      summary: p.ementa,
-    })),
+    propositions: (raw.proposicoesAfetadas ?? []).map(mapProposition),
+    votingObjects: (raw.objetosPossiveis ?? []).map(mapProposition),
     eventId,
+    organ: raw.siglaOrgao || undefined,
+    openingDescription: raw.descUltimaAberturaVotacao || undefined,
+    openingDate: raw.dataHoraUltimaAberturaVotacao || undefined,
+    lastPresentation: raw.ultimaApresentacaoProposicao?.descricao || undefined,
   }
 }
 
@@ -1373,6 +1478,122 @@ function mapRawToVotingSessionDetail(raw: CamaraVotingSessionDetailRaw): CamaraV
  *
  * @returns Parsed VoteTally or undefined if parsing fails
  */
+// ── Bulk attendance ─────────────────────────────────────────────────
+
+/** Raw attendance record from the yearly bulk attendance JSON file. */
+interface CamaraAttendanceRaw {
+  idEvento: number
+  uriEvento: string
+  dataHoraInicio: string
+  idDeputado: number
+  uriDeputado: string
+}
+
+/**
+ * Pre-aggregated attendance summary for a single deputy.
+ * Computed from the bulk file to avoid caching the full ~5MB payload.
+ */
+export interface DeputyAttendanceSummary {
+  /** Deputy ID in the Câmara API. */
+  deputyId: string
+  /** Number of events this deputy attended in the year. */
+  eventsAttended: number
+}
+
+/**
+ * Aggregated attendance data for the entire Chamber in a given year.
+ * This is the cached result — much smaller than the raw bulk file.
+ */
+export interface AttendanceBulkSummary {
+  /** Total number of unique events in the year. */
+  totalEvents: number
+  /** Per-deputy attendance counts. */
+  deputies: DeputyAttendanceSummary[]
+}
+
+/**
+ * Fetches the yearly bulk attendance file and returns a pre-aggregated summary.
+ *
+ * The Câmara publishes yearly JSON files listing every deputy's presence
+ * at every event (plenary sessions, committee meetings, hearings, etc.).
+ * Each record represents one deputy's attendance at one event — deputies
+ * who were absent from an event simply have no record for it.
+ *
+ * The raw file can exceed 5MB, which exceeds Next.js's 2MB fetch cache limit.
+ * To avoid this, we aggregate inside the fetcher: count unique events and
+ * events per deputy, then cache only the small summary (~20KB) in Redis.
+ * The raw fetch uses `cache: 'no-store'` to bypass Next.js's internal cache.
+ *
+ * @param year - Reference year (e.g. 2025). Files are published from ~2019 onward.
+ * @returns Aggregated attendance summary with `_source` injected for traceability
+ * @throws {ApiError} When the bulk file is not available for the given year
+ *
+ * @see {@link https://dadosabertos.camara.leg.br/swagger/api.html} Câmara docs
+ */
+export async function getDeputyAttendanceBulk(
+  year: number
+): Promise<WithSource<AttendanceBulkSummary>> {
+  const url = ENDPOINTS.CAMARA_BULK_ATTENDANCE(year)
+  const cacheKey = `camara:attendance:summary:${year}`
+
+  // Use cachedFetch with a custom cache key so Redis stores only the
+  // small summary (~20KB) under a distinct key, not the raw 5MB file.
+  // On cache hit, the raw URL is never fetched.
+  try {
+    const cached = await cachedFetch<AttendanceBulkSummary>(
+      url, TTL.CAMARA_DEPUTY_ATTENDANCE, undefined, cacheKey,
+    )
+    // Verify this is a valid summary (not an accidental raw response)
+    if (cached.totalEvents !== undefined) return cached
+  } catch {
+    // Cache miss or invalid data — proceed to fetch raw file
+  }
+
+  // Fetch the raw bulk file, bypassing Next.js's 2MB data cache.
+  // The raw file is ~5MB and must NOT be cached by Next.js or Redis as-is.
+  const res = await fetch(url, { cache: "no-store" })
+  if (!res.ok) {
+    throw new ApiError(res.status, url)
+  }
+
+  const raw = (await res.json()) as { dados: CamaraAttendanceRaw[] }
+
+  // Aggregate: count unique events and events per deputy
+  const uniqueEvents = new Set<number>()
+  const deputyCounts = new Map<string, number>()
+
+  for (const r of raw.dados) {
+    uniqueEvents.add(r.idEvento)
+    const id = String(r.idDeputado)
+    deputyCounts.set(id, (deputyCounts.get(id) ?? 0) + 1)
+  }
+
+  const summary: AttendanceBulkSummary = {
+    totalEvents: uniqueEvents.size,
+    deputies: Array.from(deputyCounts.entries()).map(([deputyId, eventsAttended]) => ({
+      deputyId,
+      eventsAttended,
+    })),
+  }
+
+  // Store only the small summary in Redis via cachedFetch's cache key.
+  // We re-use cachedFetch here by pointing it at a no-op URL — but simpler
+  // to just write to Redis directly.
+  try {
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
+    if (redisUrl && redisToken) {
+      const { Redis } = await import("@upstash/redis")
+      const redis = new Redis({ url: redisUrl, token: redisToken })
+      await redis.set(cacheKey, JSON.stringify(summary), { ex: TTL.CAMARA_DEPUTY_ATTENDANCE })
+    }
+  } catch {
+    // Cache write failure is non-fatal — data is still returned
+  }
+
+  return Object.assign(summary, { _source: url })
+}
+
 function parseVoteTally(description: string): VoteTally | undefined {
   if (!description) return undefined
 

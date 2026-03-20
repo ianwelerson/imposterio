@@ -16,13 +16,14 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Badge, InfoPanel, SourcePill, SectionHeader } from "@/components/ui"
+import { Badge, InfoPanel, SourcePill, SectionHeader, ToastTrigger } from "@/components/ui"
 import {
   getPropositionDetail,
   getPropositionAuthors,
   getPropositionThemes,
   getPropositionProgress,
 } from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -41,10 +42,12 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
     notFound()
   }
 
+  const errors: PageError[] = []
+
   const [authors, themes, progress] = await Promise.all([
-    getPropositionAuthors(id),
-    getPropositionThemes(id),
-    getPropositionProgress(id),
+    collectErrors(() => getPropositionAuthors(id), emptySourced([]), errors, "Autores"),
+    collectErrors(() => getPropositionThemes(id), emptySourced([]), errors, "Temas"),
+    collectErrors(() => getPropositionProgress(id), emptySourced([]), errors, "Tramitação"),
   ])
 
   const leadAuthor = authors.find((a) => a.isLead) ?? authors[0]
@@ -82,21 +85,24 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+
       {/* Header */}
       <header className="mb-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">
               {proposition.typeCode} {proposition.number}/{proposition.year}
             </h1>
             <Badge variant="gray">{proposition.typeCode}</Badge>
             {proposition.statusDescription && (
               <Badge variant="amber">{proposition.statusDescription}</Badge>
             )}
+            <SourcePill url={proposition._source} />
           </div>
           <Link
             href={`/camara/pautas/lista?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
           >
             ← Voltar à lista
           </Link>
@@ -104,9 +110,6 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
         <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
           {proposition.summary}
         </p>
-        <div className="mt-2">
-          <SourcePill url={proposition._source} />
-        </div>
       </header>
 
       {/* Info panel */}
@@ -148,8 +151,8 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
           <SectionHeader title="Autores" sourceUrl={authors._source} />
           <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
             {authors.map((author, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-2">
+              <div key={i} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-gray-900">{author.name}</span>
                   <Badge variant="gray">{author.type}</Badge>
                   {author.isLead && <Badge variant="green">Proponente</Badge>}

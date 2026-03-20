@@ -199,6 +199,28 @@ export interface DeputyVote {
   vote: "Sim" | "Não" | "Abstenção" | "Obstrução"
 }
 
+/**
+ * A record of how a deputy voted in a specific voting session.
+ *
+ * Built by cross-referencing `getVotingSessions()` with per-session
+ * `getVotingSessionVotes()`, filtering for the target deputy. This type
+ * combines session metadata with the individual vote.
+ */
+export interface DeputyVotingRecord {
+  /** Voting session ID in the Câmara API. */
+  sessionId: string
+  /** ISO datetime of the voting session. */
+  date: string
+  /** Description of what was voted. */
+  description: string
+  /** Whether the measure was approved overall. */
+  approved: boolean | null
+  /** How the deputy voted: "Sim", "Não", "Abstenção", "Obstrução", etc. */
+  vote: string
+  /** Affected propositions from the session. */
+  propositions: Array<{ id: string; typeCode: string; number: number; year: number; summary: string }>
+}
+
 /** Deputy attendance summary computed from the yearly bulk file. */
 export interface DeputyAttendance {
   totalSessions: number

@@ -16,6 +16,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
+import { track } from "@/lib/analytics"
 
 /** A child navigation item shown under a parent. */
 interface NavChild {
@@ -63,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Deputados", href: "/camara/deputados" },
           { label: "Pauta Legislativa", href: "/camara/pautas" },
+          { label: "Comparar", href: "/camara/comparar" },
         ],
       },
       {
@@ -248,6 +250,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         >
           <Link
             href={item.href}
+            onClick={() => track("navigate", { href: item.href, label: item.label })}
             className="flex min-w-0 flex-1 items-center gap-3"
             aria-current={isActive ? "page" : undefined}
           >
@@ -284,6 +287,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 <li key={child.href}>
                   <Link
                     href={child.href}
+                    onClick={() => track("navigate", { href: child.href, label: child.label })}
                     className={`block rounded-md px-3 py-1.5 text-sm transition-colors
                       ${isChildActive
                         ? "font-medium text-accent"
@@ -334,16 +338,39 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       {/* Navigation sections */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.title} className="mb-6">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-              {section.title}
-            </p>
-            <ul role="list" className="space-y-0.5">
-              {section.items.map(renderNavItem)}
-            </ul>
+        <div className="flex min-h-full flex-col">
+          <div className="flex-1">
+            {NAV_SECTIONS.map((section) => (
+              <div key={section.title} className="mb-6">
+                <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  {section.title}
+                </p>
+                <ul role="list" className="space-y-0.5">
+                  {section.items.map(renderNavItem)}
+                </ul>
+              </div>
+            ))}
           </div>
-        ))}
+
+          {/* "Sobre o projeto" — bottom-aligned nav item */}
+          <div className="mt-auto pt-3">
+            <Link
+              href="/sobre"
+              onClick={() => track("navigate", { href: "/sobre", label: "Sobre o projeto" })}
+              className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors
+                ${pathname === "/sobre"
+                  ? "bg-accent-light text-accent"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              aria-current={pathname === "/sobre" ? "page" : undefined}
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span className="truncate text-sm font-medium">Sobre o projeto</span>
+            </Link>
+          </div>
+        </div>
       </nav>
 
       {/* Footer */}
@@ -357,7 +384,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
           </svg>
-          Colabore com o projeto
+          Colabore no GitHub
         </a>
       </div>
     </>

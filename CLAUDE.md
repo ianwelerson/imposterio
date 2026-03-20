@@ -53,6 +53,7 @@ Charts:           Recharts (responsive, composable)
 Monorepo:         Turborepo + pnpm workspaces
 Web deploy:       Vercel
 Worker deploy:    Railway
+Analytics:        Umami Cloud (privacy-first, LGPD compliant)
 Testing:          Vitest + Testing Library + MSW
 ```
 
@@ -69,8 +70,9 @@ imposterio/
 │   │   │   │   ├── page.tsx        # Dashboard page (StatCards, rankings, charts)
 │   │   │   │   └── HomeCharts.tsx  # Client component — cost trend, branch pie, role bar
 │   │   │   ├── camara/             # Chamber of Deputies ✅ WIRED TO REAL API
-│   │   │   │   ├── page.tsx        # Overview — charts + top deputies table (real data)
-│   │   │   │   ├── CamaraCharts.tsx # Client — CEAP trend, category pie, party bar, attendance
+│   │   │   │   ├── page.tsx        # Overview — StatCards, charts, deputies/propositions/votes tables (real data)
+│   │   │   │   ├── CamaraCharts.tsx # Client — party bar, UF bar, proposition type pie, vote result pie
+│   │   │   │   ├── camara-utils.ts  # Server-safe aggregations: byParty, byUF, byType, byResult
 │   │   │   │   ├── CamaraGameCard.tsx # Client — game card for chamber
 │   │   │   │   ├── deputados/      # All deputies listing (real API)
 │   │   │   │   │   ├── page.tsx    # Server: getDeputiesList() → real API
@@ -78,8 +80,26 @@ imposterio/
 │   │   │   │   ├── [id]/           # Individual deputy detail page (real API)
 │   │   │   │   │   ├── page.tsx    # ProfileHeader, StatCards, InfoPanel, charts, expenses table
 │   │   │   │   │   ├── DeputyExpenseCharts.tsx # Client: 6 chart types (area, bar, heatmap, treemap, stacked bar)
+│   │   │   │   │   ├── DeputyOverviewCharts.tsx # Client: speech, event, committee, voting charts
+│   │   │   │   │   ├── CompareButton.tsx # Client: "Comparar" button with analytics tracking
 │   │   │   │   │   ├── YearSelector.tsx # Client: year picker with useTransition loading
 │   │   │   │   │   ├── expense-utils.ts # Server-safe aggregation functions for chart data
+│   │   │   │   │   ├── activity-utils.ts # Server-safe aggregation for speeches, events, committees, votes
+│   │   │   │   │   ├── comissoes/  # Deputy committee memberships listing
+│   │   │   │   │   │   ├── page.tsx # Server: getDeputyCommittees()
+│   │   │   │   │   │   └── CommitteesList.tsx # Client: SearchableList
+│   │   │   │   │   ├── frentes/    # Deputy parliamentary caucuses listing
+│   │   │   │   │   │   ├── page.tsx # Server: getDeputyCaucuses()
+│   │   │   │   │   │   └── CaucusesList.tsx # Client: SearchableList
+│   │   │   │   │   ├── discursos/  # Deputy speeches listing
+│   │   │   │   │   │   ├── page.tsx # Server: getDeputySpeeches()
+│   │   │   │   │   │   └── SpeechesList.tsx # Client: SearchableList
+│   │   │   │   │   ├── eventos/    # Deputy events listing
+│   │   │   │   │   │   ├── page.tsx # Server: getDeputyEvents()
+│   │   │   │   │   │   └── EventsList.tsx # Client: SearchableList
+│   │   │   │   │   ├── votacoes/   # Deputy voting history listing (real API)
+│   │   │   │   │   │   ├── page.tsx # Server: getDeputyVotingHistory() with year
+│   │   │   │   │   │   └── VotingHistoryList.tsx # Client: SearchableList + vote/result filters
 │   │   │   │   │   └── despesas/   # Full expenses listing with search + pagination
 │   │   │   │   │       ├── page.tsx    # Server: getDeputyExpenses() with year from URL
 │   │   │   │   │       ├── ExpensesList.tsx # Client: SearchableList + links to detail pages
@@ -100,6 +120,18 @@ imposterio/
 │   │   │   │           └── [id]/   # Individual voting session detail
 │   │   │   │               ├── page.tsx # Stats, orientations, affected propositions
 │   │   │   │               └── VotesList.tsx # Client: individual votes with party/UF filters
+│   │   │   │   ├── comparar/      # Deputy comparison page (up to 3 side-by-side)
+│   │   │   │   │   ├── page.tsx   # Server: fetch deputies + expenses + votes for each
+│   │   │   │   │   ├── ComparisonControls.tsx # Client: shared useTransition for year + picker
+│   │   │   │   │   ├── DeputyPicker.tsx # Client: 3-slot search/select picker
+│   │   │   │   │   ├── ComparisonCharts.tsx # Client: multi-series expense/vote charts
+│   │   │   │   │   └── comparison-utils.ts # Server-safe metrics + monthly merge
+│   │   │   │   └── eventos/       # Chamber event detail pages
+│   │   │   │       └── [id]/
+│   │   │   │           └── page.tsx # Individual event detail
+│   │   │   ├── sobre/             # About page
+│   │   │   │   ├── page.tsx       # Project info, data sources, cache methodology, infra
+│   │   │   │   └── GitHubLink.tsx # Client: GitHub button with analytics tracking
 │   │   │   ├── senado/             # Federal Senate
 │   │   │   │   ├── page.tsx        # Overview — charts + top senators table
 │   │   │   │   ├── SenadoCharts.tsx # Client — bills trend, type pie, party attendance
@@ -149,8 +181,11 @@ imposterio/
 │   │   │   │       └── page.tsx    # ProfileHeader, fiscal StatCards, governor info, tax breakdown, budget, transfers, fiscal indicators
 │   │   │   ├── jogo/               # "Fair or not?" game
 │   │   │   │   └── page.tsx
+│   │   │   ├── icon.svg           # Favicon — green "e" on white background
 │   │   │   └── api/                # Next.js API Routes
 │   │   │       └── game/           # Game endpoints (vote, rankings)
+│   │   ├── lib/
+│   │   │   └── analytics.ts       # Type-safe Umami tracking wrapper (silent no-op when unavailable)
 │   │   └── components/
 │   │       ├── ui/                 # Base components (barrel: @/components/ui)
 │   │       │   ├── index.ts        # Barrel export for all UI components
@@ -168,7 +203,9 @@ imposterio/
 │   │       │   ├── ProfileHeader.tsx # Detail page header with photo, name, role, stats
 │   │       │   ├── InfoPanel.tsx   # Key-value breakdown panel
 │   │       │   ├── TaxCounter.tsx  # Client — animated tax collection counter (Impostômetro)
-│   │       │   └── EmptyState.tsx  # Placeholder for empty data sections
+│   │       │   ├── EmptyState.tsx  # Placeholder for empty data sections
+│   │       │   ├── VoteBreakdown.tsx # Client — vote tally bar + individual votes table
+│   │       │   └── Toast.tsx      # Client — ToastProvider + ToastTrigger + useToast hook
 │   │       ├── charts/             # Data visualizations (barrel: @/components/charts)
 │   │       │   ├── index.ts        # Barrel export for chart components + types
 │   │       │   ├── ChartCard.tsx   # White card wrapper with title/subtitle + sourceUrl pill

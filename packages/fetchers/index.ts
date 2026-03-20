@@ -7,7 +7,7 @@
  * re-exported here as they are implemented.
  */
 
-export { cachedFetch } from "./lib/cache"
+export { cachedFetch, ApiError } from "./lib/cache"
 export { ENDPOINTS } from "./lib/endpoints"
 export { TTL } from "./lib/ttl"
 
@@ -21,4 +21,8 @@ export {
   getPropositionThemes, getPropositionProgress,
   getVotingSessions, getVotingSessionDetail,
   getVotingSessionVotes, getVotingSessionOrientations,
+  getDeputyVotingHistory,
+  getDeputyAttendanceBulk,
+  type AttendanceBulkSummary,
+  type DeputyAttendanceSummary,
 } from "./camara"

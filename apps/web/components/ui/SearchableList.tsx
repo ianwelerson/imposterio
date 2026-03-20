@@ -14,7 +14,8 @@
 
 "use client"
 
-import { useState, useMemo, type ReactNode } from "react"
+import { useState, useMemo, useRef, type ReactNode } from "react"
+import { track } from "@/lib/analytics"
 
 /** Configuration for a dropdown filter. */
 interface FilterConfig<T> {
@@ -69,17 +70,28 @@ export function SearchableList<T>({
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>()
 
   const resetPage = () => setPage(1)
 
   const handleSearch = (value: string) => {
     setQuery(value)
     resetPage()
+    // Debounce search tracking to avoid firing on every keystroke
+    clearTimeout(searchDebounce.current)
+    if (value.trim().length >= 2) {
+      searchDebounce.current = setTimeout(() => {
+        track("search", { query: value.trim(), results: -1 })
+      }, 800)
+    }
   }
 
   const handleFilter = (label: string, value: string) => {
     setActiveFilters((prev) => ({ ...prev, [label]: value }))
     resetPage()
+    if (value) {
+      track("filter", { name: label, value })
+    }
   }
 
   // Extract unique options for each filter from the data

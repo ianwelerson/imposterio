@@ -239,6 +239,22 @@ export interface CamaraVotingSession {
   }>
   /** Event ID where this vote took place. */
   eventId?: string
+  /** Organ abbreviation where the vote took place (e.g. "PLEN"). */
+  organ?: string
+  /** More descriptive text about what was being voted on. */
+  openingDescription?: string
+  /** ISO datetime when the vote was opened. */
+  openingDate?: string
+  /** Rapporteur's opinion or last presentation text. */
+  lastPresentation?: string
+  /** Propositions that could be the object of this vote (broader than propositions). */
+  votingObjects: Array<{
+    id: string
+    typeCode: string
+    number: number
+    year: number
+    summary: string
+  }>
 }
 
 /**

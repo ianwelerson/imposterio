@@ -10,6 +10,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useCallback, useTransition } from "react"
+import { track } from "@/lib/analytics"
 
 interface YearSelectorProps {
   /** Available years, ordered most recent first. */
@@ -32,6 +33,7 @@ export function YearSelector({ years, selected, inline = false }: YearSelectorPr
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
+      track("change_year", { year: e.target.value, page: pathname })
       const params = new URLSearchParams(searchParams.toString())
       params.set("ano", e.target.value)
       startTransition(() => {

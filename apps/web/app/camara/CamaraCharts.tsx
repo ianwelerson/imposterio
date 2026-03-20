@@ -1,125 +1,183 @@
 /**
  * @file CamaraCharts.tsx
- * @description Chart section for the Chamber of Deputies (Câmara) page.
+ * @description Chart section for the Chamber of Deputies (Câmara) overview page.
  *
- * Visualizations based on Câmara dos Deputados Open Data API:
- * - Monthly CEAP spending trend (line chart)
- * - CEAP spending by category (pie chart)
- * - Attendance vs CEAP spending scatter-like comparison (bar chart)
- * - Top spenders by party (bar chart)
+ * Receives pre-aggregated data as props (computed server-side) and renders
+ * chart primitives. All data comes from real API calls.
  *
- * Data sources:
- * - GET /deputados/{id}/despesas — CEAP parliamentary expenses
- * - Bulk attendance file — eventosPresencaDeputados-{year}.json
- * - GET /deputados — deputy profiles with party info
+ * Charts:
+ * - Deputies by party (horizontal bar) — from GET /deputados
+ * - Deputies by state (horizontal bar) — from GET /deputados
+ * - Monthly legislative production (area line) — from GET /proposicoes
+ * - Monthly voting sessions (area line) — from GET /votacoes
+ * - Attendance by party (bar) — from bulk attendance file
+ * - Propositions by type (pie) — from GET /proposicoes
+ * - Voting results (pie) — from GET /votacoes
  */
 
 "use client"
 
-import { ChartCard, LineChart, PieChart, BarChart } from "@/components/charts"
+import { ChartCard, BarChart, PieChart, LineChart } from "@/components/charts"
+import type { CountItem, MonthlyCount } from "./camara-utils"
 
-// -- Monthly CEAP spending trend ----------------------------------------------
+interface CamaraChartsProps {
+  /** Deputies grouped by party (sorted by caucus size). */
+  byParty: CountItem[]
+  /** Deputies grouped by state (sorted by seat count). */
+  byUF: CountItem[]
+  /** Propositions grouped by type code. */
+  propositionsByType: CountItem[]
+  /** Voting sessions grouped by result (approved/rejected/inconclusive). */
+  votesByResult: CountItem[]
+  /** Propositions grouped by month of presentation. */
+  propositionsByMonth: MonthlyCount[]
+  /** Voting sessions grouped by month. */
+  votesByMonth: MonthlyCount[]
+  /** Average attendance rate (%) by party. */
+  attendanceByParty: CountItem[]
+  /** Source URL for deputy data. */
+  deputiesSourceUrl: string
+  /** Source URL for propositions data. */
+  propositionsSourceUrl: string
+  /** Source URL for voting sessions data. */
+  votesSourceUrl: string
+  /** Source URL for attendance data. */
+  attendanceSourceUrl: string
+}
 
-const MONTHLY_CEAP_DATA = [
-  { label: "Out", gasto: 38.2 },
-  { label: "Nov", gasto: 41.5 },
-  { label: "Dez", gasto: 52.3 },
-  { label: "Jan", gasto: 35.8 },
-  { label: "Fev", gasto: 44.1 },
-  { label: "Mar", gasto: 48.7 },
-]
+export function CamaraCharts({
+  byParty,
+  byUF,
+  propositionsByType,
+  votesByResult,
+  propositionsByMonth,
+  votesByMonth,
+  attendanceByParty,
+  deputiesSourceUrl,
+  propositionsSourceUrl,
+  votesSourceUrl,
+  attendanceSourceUrl,
+}: CamaraChartsProps) {
+  // Top 12 parties for readability
+  const topParties = byParty.slice(0, 12).map((p) => ({
+    label: p.name,
+    value: p.value,
+  }))
 
-const CEAP_SERIES = [
-  { dataKey: "gasto", name: "Gasto CEAP total (R$ mi)", color: "#4f46e5" },
-]
+  // Top 15 states
+  const topUFs = byUF.slice(0, 15).map((u) => ({
+    label: u.name,
+    value: u.value,
+  }))
 
-// -- CEAP by category (pie) ---------------------------------------------------
+  // Attendance formatted for BarChart
+  const attendanceBars = attendanceByParty.map((a) => ({
+    label: a.name,
+    value: a.value,
+  }))
 
-const CEAP_BY_CATEGORY = [
-  { name: "Divulgação parlamentar", value: 16.6 },
-  { name: "Passagens aéreas", value: 10.7 },
-  { name: "Locação de veículos", value: 7.8 },
-  { name: "Combustíveis", value: 5.8 },
-  { name: "Manutenção de escritório", value: 4.4 },
-  { name: "Alimentação", value: 2.1 },
-  { name: "Outros", value: 1.3 },
-]
+  // Monthly data formatted for LineChart (needs { label, proposicoes/votacoes } keys)
+  const monthlyProductions = propositionsByMonth.map((m) => ({
+    label: m.label,
+    proposicoes: m.value,
+  }))
 
-// -- Spending by party (bar) --------------------------------------------------
+  const monthlyVotes = votesByMonth.map((m) => ({
+    label: m.label,
+    votacoes: m.value,
+  }))
 
-const SPENDING_BY_PARTY = [
-  { label: "PL", value: 8.9 },
-  { label: "PT", value: 7.2 },
-  { label: "MDB", value: 5.8 },
-  { label: "PP", value: 4.6 },
-  { label: "PSD", value: 4.1 },
-  { label: "PSDB", value: 3.2 },
-  { label: "PSOL", value: 2.1 },
-  { label: "PCdoB", value: 1.4 },
-]
-
-// -- Attendance vs spending comparison ----------------------------------------
-
-const ATTENDANCE_VS_SPENDING = [
-  { label: "PL", presenca: 84, gasto: 8.9 },
-  { label: "PT", presenca: 88, gasto: 7.2 },
-  { label: "MDB", presenca: 76, gasto: 5.8 },
-  { label: "PP", presenca: 72, gasto: 4.6 },
-  { label: "PSD", presenca: 89, gasto: 4.1 },
-  { label: "PSDB", presenca: 91, gasto: 3.2 },
-  { label: "PSOL", presenca: 94, gasto: 2.1 },
-]
-
-const ATTENDANCE_SERIES = [
-  { dataKey: "presenca", name: "Presença média (%)", color: "#10b981" },
-  { dataKey: "gasto", name: "Gasto CEAP (R$ mi)", color: "#4f46e5" },
-]
-
-export function CamaraCharts() {
   return (
-    <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <ChartCard
-        title="Gasto CEAP mensal — tendência"
-        subtitle="Total da Câmara por mês (R$ milhões) — fonte: API Dados Abertos Câmara"
+        title="Produção legislativa mensal"
+        subtitle="Proposições apresentadas por mês no ano"
+        sourceUrl={propositionsSourceUrl}
+        action={{ label: "Ver todas", href: "/camara/pautas/lista" }}
       >
         <LineChart
-          data={MONTHLY_CEAP_DATA}
-          series={CEAP_SERIES}
+          data={monthlyProductions}
+          series={[{ dataKey: "proposicoes", name: "Proposições", color: "#4f46e5" }]}
           area
           height={280}
-          formatValue={(v) => `R$ ${v.toFixed(1)} mi`}
         />
       </ChartCard>
 
       <ChartCard
-        title="Gastos por categoria (CEAP)"
-        subtitle="Distribuição dos tipos de despesa parlamentar — R$ milhões"
-      >
-        <PieChart
-          data={CEAP_BY_CATEGORY}
-          height={280}
-          formatValue={(v) => `R$ ${v.toFixed(1)} mi`}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Gasto CEAP por partido"
-        subtitle="Total acumulado no período por bancada (R$ milhões)"
-      >
-        <BarChart
-          data={SPENDING_BY_PARTY}
-          height={280}
-          formatValue={(v) => `R$ ${v.toFixed(1)} mi`}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Presença vs gasto por partido"
-        subtitle="Comparação entre presença média em plenário e gasto CEAP total"
+        title="Votações por mês"
+        subtitle="Sessões de votação realizadas por mês no ano"
+        sourceUrl={votesSourceUrl}
+        action={{ label: "Ver todas", href: "/camara/pautas/votacoes" }}
       >
         <LineChart
-          data={ATTENDANCE_VS_SPENDING}
-          series={ATTENDANCE_SERIES}
+          data={monthlyVotes}
+          series={[{ dataKey: "votacoes", name: "Votações", color: "#10b981" }]}
+          area
+          height={280}
+        />
+      </ChartCard>
+
+      {attendanceBars.length > 0 && (
+        <ChartCard
+          title="Presença em eventos por partido"
+          subtitle="Taxa média de presença dos deputados em eventos da Câmara (%)"
+          sourceUrl={attendanceSourceUrl}
+        >
+          <BarChart
+            data={attendanceBars}
+            height={320}
+            color="#10b981"
+            formatValue={(v) => `${v}%`}
+          />
+        </ChartCard>
+      )}
+
+      <ChartCard
+        title="Deputados por partido"
+        subtitle="Tamanho das bancadas na Câmara"
+        sourceUrl={deputiesSourceUrl}
+        action={{ label: "Ver todos os partidos", href: "/partidos" }}
+      >
+        <BarChart
+          data={topParties}
+          horizontal
+          height={320}
+          formatValue={(v) => `${v} deputados`}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Deputados por estado"
+        subtitle="Distribuição de cadeiras por UF"
+        sourceUrl={deputiesSourceUrl}
+        action={{ label: "Ver todos os estados", href: "/estados" }}
+      >
+        <BarChart
+          data={topUFs}
+          horizontal
+          height={320}
+          formatValue={(v) => `${v} deputados`}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Proposições por tipo"
+        subtitle="PL, PEC, PLP, MP e PDL apresentados no ano"
+        sourceUrl={propositionsSourceUrl}
+      >
+        <PieChart
+          data={propositionsByType}
+          height={280}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Resultado das votações"
+        subtitle="Votações nominais em plenário no ano"
+        sourceUrl={votesSourceUrl}
+      >
+        <PieChart
+          data={votesByResult}
           height={280}
         />
       </ChartCard>

@@ -24,6 +24,33 @@ import { Redis } from "@upstash/redis"
 import type { WithSource } from "@imposterio/types"
 
 /**
+ * Structured error thrown when an external government API returns a non-2xx status.
+ * Carries the HTTP status code and original URL for downstream error handling.
+ */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly url: string,
+  ) {
+    super(`API error: ${status} ${url}`)
+    this.name = "ApiError"
+  }
+
+  /** Human-readable error message in Portuguese for display in toasts. */
+  get userMessage(): string {
+    if (this.status === 429) return "A API atingiu o limite de requisições. Tente novamente em alguns minutos."
+    if (this.status === 403) return "Acesso bloqueado pela API. Tente novamente mais tarde."
+    if (this.status === 404) return "Recurso não encontrado na API oficial."
+    if (this.status === 405) return "Endpoint indisponível na API oficial."
+    if (this.status === 500) return "Erro interno na API oficial. Tente novamente mais tarde."
+    if (this.status === 502) return "API oficial fora do ar (bad gateway). Tente novamente mais tarde."
+    if (this.status === 503) return "API oficial temporariamente indisponível. Tente novamente mais tarde."
+    if (this.status >= 500) return "Erro no servidor da API oficial. Tente novamente mais tarde."
+    return `Erro ao consultar a API oficial (código ${this.status}).`
+  }
+}
+
+/**
  * Whether Redis is available. When the Upstash env vars are missing,
  * cachedFetch() skips the cache layer entirely and calls the external
  * API directly. This allows local development without a Redis instance.
@@ -150,7 +177,7 @@ export async function cachedFetch<T>(
 
   const res = await fetch(url, options)
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${url}`)
+    throw new ApiError(res.status, url)
   }
 
   const data = (await res.json()) as T

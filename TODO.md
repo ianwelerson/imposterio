@@ -34,19 +34,20 @@ static mock data or is temporarily removed.
   - ✅ Record count
   - ✅ Year-over-year variation badge
   - [ ] Attendance % — from bulk attendance file (Phase 4)
-  - [ ] Votes participated count — see voting history issue below
+  - [x] Votes participated count — from `getDeputyVotingHistory()`
+  - [x] Abstention count — from `getDeputyVotingHistory()`
+  - [x] Alignment StatCard with tooltip explanation (CSS-only hover)
   - [ ] Caucuses count — from `GET /deputados/{id}/frentes` (simple, can be added now)
 
-- [ ] **Voting history table** — The endpoint `GET /deputados/{id}/votacoes`
-  returns HTTP 405 (Method Not Allowed). The Câmara API changed this endpoint.
-  Individual votes must now be queried per voting session:
-  - `GET /votacoes?ordem=DESC&ordenarPor=id` — list recent votes (NOT `dataHoraRegistro`, returns 400)
-  - `GET /votacoes/{voteId}/votos` — get how each deputy voted
-  - ⚠️ Date ranges limited to 3 months — use `splitDateRangeIntoQuarters()` helper from `camara.ts`
-  - To build a deputy's voting history, we need to either:
-    1. Query recent voting sessions and filter for the deputy's participation
-    2. Use bulk vote data files if available
-  - **Depends on:** Phase 2 (activity data — votes, bills, speeches)
+- [x] **Voting history** — Implemented via composite fetcher `getDeputyVotingHistory()`
+  - Fetches voting sessions, then per-session votes, filtered by deputy ID
+  - Batched in groups of 10 with configurable `maxSessions` cap (default 50)
+  - Detail page: StatCards (total, Sim, Não, Abstenção, alignment %), charts (by type pie, by month bar)
+  - Sub-page: `/camara/{id}/votacoes/` with SearchableList + filters (vote type, result)
+
+- [x] **InfoPanel email** — Deputy email is clickable (mailto: link via InfoPanel `href` prop)
+
+- [x] **Error handling** — All fetcher calls wrapped in `collectErrors()` with `emptySourced()` fallback, ToastTrigger for user-visible error messages
 
 ### Expenses detail page (`camara/[id]/despesas/[docId]/page.tsx`)
 
@@ -69,16 +70,31 @@ static mock data or is temporarily removed.
 - [x] **Propositions listing** (`camara/pautas/lista/`) — SearchableList with type/status/organ filters
 - [x] **Proposition detail** (`camara/pautas/[id]/`) — Info panel, authors, themes, tramitação timeline
 - [x] **Voting sessions listing** (`camara/pautas/votacoes/`) — SearchableList with result filter
-- [x] **Voting session detail** (`camara/pautas/votacoes/[id]/`) — Stats, party orientations, individual votes
+- [x] **Voting session detail** (`camara/pautas/votacoes/[id]/`) — Stats, party orientations, individual votes, organ, opening description, voting objects, last presentation
 
-### Overview page (`camara/page.tsx`)
+### Overview page (`camara/page.tsx`) — ✅ Mostly wired
 
-- [ ] **StatCard: CEAP total** — Static "R$ 48,7 mi". Needs aggregated expense data.
-- [ ] **StatCard: Average attendance** — Static "82,1%". Needs bulk attendance file.
-- [ ] **StatCard: Votes count** — Static "127". Needs voting session query.
-- [ ] **Deputy table sort by spending** — Currently alphabetical. Needs CEAP aggregation.
-- [ ] **Expense category ranking** — Static mock data. Needs aggregated CEAP by `tipoDespesa`.
-- [ ] **Charts** — `CamaraCharts.tsx` still uses hardcoded data. Needs aggregated time series.
+- [x] **StatCard: Deputies count** — Real data from `getDeputiesList()`
+- [x] **StatCard: Propositions count** — Real data from `getPropositions()` (PL,PEC,PLP,MP,PDL)
+- [x] **StatCard: Votes count** — Real data from `getVotingSessions()`
+- [x] **StatCard: Approval rate** — Computed from voting sessions
+- [x] **Charts: Deputies by party** — Horizontal bar chart from real deputy list
+- [x] **Charts: Deputies by UF** — Horizontal bar chart from real deputy list
+- [x] **Charts: Propositions by type** — Pie chart from real propositions
+- [x] **Charts: Voting results** — Pie chart from real voting sessions
+- [x] **Latest propositions table** — 5 most recent from `getPropositions()`
+- [x] **Latest votes table** — 5 most recent from `getVotingSessions()`
+- [x] **Year selector** — URL-driven (?ano=YYYY) for propositions/votes
+- [x] **Chart action links** — "Ver todos os partidos" and "Ver todos os estados" on truncated charts
+- [x] **Error handling** — All fetcher calls wrapped in `collectErrors()` with toast notifications
+
+**Still pending (require bulk file processing or expensive aggregation):**
+- [ ] **CEAP total** — Needs aggregated expense data across all 513 deputies (Phase 4/9)
+- [ ] **Average attendance** — Needs bulk attendance file (Phase 4)
+- [ ] **Deputy table sort by spending** — Needs per-deputy CEAP aggregation (Phase 4/9)
+- [ ] **CEAP by category chart** — Needs aggregated expenses across all deputies (Phase 4/9)
+- [ ] **CEAP by party chart** — Needs per-party expense aggregation (Phase 4/9)
+- [ ] **Attendance vs spending chart** — Needs both bulk files (Phase 4)
 
 ---
 

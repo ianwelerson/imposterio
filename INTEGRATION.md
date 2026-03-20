@@ -96,15 +96,19 @@ Still simple GET endpoints, but returns paginated data that needs processing.
 
 ### 2A — Deputy activity
 
-- [ ] **2A.1** Implement deputy voting history on detail page
-  - ⚠️ `GET /deputados/{id}/votacoes` returns 405 (endpoint removed by Câmara API)
-  - Voting session fetchers exist (getVotingSessions, getVotingSessionVotes, etc.)
-  - Still need: filter voting sessions by deputy participation on detail page
-  - TTL: `CAMARA_DEPUTY_VOTES` (3h)
-- [ ] **2A.2** Implement `getDeputyCaucuses(id)` — `GET /deputados/{id}/frentes`
-- [ ] **2A.3** Implement `getDeputyCommittees(id)` — `GET /deputados/{id}/orgaos`
-- [ ] **2A.4** Write MSW handlers + tests
-- [ ] **2A.5** Wire to `camara/[id]/page.tsx` voting history table
+- [x] **2A.1** Implement deputy voting history
+  - Composite fetcher `getDeputyVotingHistory()` — fetches sessions + per-session votes, filtered by deputy
+  - New `DeputyVotingRecord` type in `parliamentarian.ts`
+  - Batched in groups of 10, `maxSessions` cap (default 50)
+- [x] **2A.2** Implement `getDeputyCaucuses(id)` — `GET /deputados/{id}/frentes`
+- [x] **2A.3** Implement `getDeputyCommittees(id)` — `GET /deputados/{id}/orgaos`
+- [ ] **2A.4** Write MSW handlers + tests for voting history
+- [x] **2A.5** Wire voting history to `camara/[id]/page.tsx`
+  - StatCards: total, Sim, Não, alignment %
+  - Charts: vote type pie, monthly bar (VotingCharts component)
+- [x] **2A.6** Create voting history sub-page `/camara/{id}/votacoes/`
+  - SearchableList with vote type and result filters
+  - Links to voting session detail pages
 
 ### 2C — Câmara legislative agenda (propositions + voting sessions) ✅
 
@@ -151,7 +155,13 @@ Still simple GET endpoints, but returns paginated data that needs processing.
   - Extended DeputyExpense type with all raw API fields
   - Value StatCards, info panel, internal reference, embedded receipt viewer (iframe)
   - Sentence-case expense type title, deputy name with link, SourcePill
-- [ ] **3A.5** Wire aggregated CEAP totals to `camara/page.tsx` StatCards + charts
+- [x] **3A.5** Wire Câmara overview page with real deputy, proposition, and voting data
+  - Deputies: count, party distribution chart, UF distribution chart
+  - Propositions: count, type distribution chart, latest 5 table
+  - Voting sessions: count, approval rate, result chart, latest 5 table
+  - Year selector for proposition/voting data
+  - Note: CEAP aggregation across all deputies still needs Phase 4/9
+- [ ] **3A.6** Wire aggregated CEAP totals to `camara/page.tsx` StatCards + charts (Phase 4/9)
 
 ### 3B — Civil servant compensation — Portal da Transparência (requires API key)
 
@@ -391,8 +401,8 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 |-------|-------------|-------|------|
 | 0 | Infrastructure | 3 | 2 |
 | 1 | Personnel lists | 17 | 8 |
-| 2 | Activity data | 19 | 8 |
-| 3 | Financial data | 18 | 4 |
+| 2 | Activity data | 20 | 13 |
+| 3 | Financial data | 19 | 5 |
 | 4 | Bulk files | 5 | 0 |
 | 5 | State fiscal | 13 | 0 |
 | 6 | Company data | 7 | 0 |
@@ -403,4 +413,4 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 | 11 | Tax counter | 5 | 0 |
 | 12 | QSA worker | 4 | 0 |
 | 13 | Court scraping | 5 | 0 |
-| **Total** | | **124** | **22** |
+| **Total** | | **126** | **29** |

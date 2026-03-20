@@ -20,19 +20,23 @@
  * Data sources: 10 parallel API calls to the Câmara dos Deputados API.
  */
 
+import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
   StatCard, SectionHeader,
-  ProfileHeader, InfoPanel, Badge,
+  ProfileHeader, InfoPanel, Badge, ToastTrigger,
 } from "@/components/ui"
 import {
   getDeputyDetail, getDeputyExpenses,
   getDeputyCommittees, getDeputyCaucuses,
   getDeputySpeeches, getDeputyEvents,
   getDeputyPreviousMandates, getDeputyHistory, getDeputyProfessions,
+  getDeputyVotingHistory,
 } from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
+import { CompareButton } from "./CompareButton"
 import { DeputyExpenseCharts } from "./DeputyExpenseCharts"
-import { SpeechCharts, EventCharts, CommitteeCharts } from "./DeputyOverviewCharts"
+import { SpeechCharts, EventCharts, CommitteeCharts, VotingCharts } from "./DeputyOverviewCharts"
 import { YearSelector } from "./YearSelector"
 import {
   aggregateByMonth,
@@ -49,6 +53,9 @@ import {
   aggregateEventsByMonth,
   aggregateCommitteesByRole,
   aggregateCommitteesByType,
+  aggregateVotesByType,
+  aggregateVotesByMonth,
+  computeVoteAlignment,
 } from "./activity-utils"
 
 /** CEAP data is available from 2008 onward. */
@@ -76,22 +83,34 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
   const yearStart = `${selectedYear}-01-01`
   const yearEnd = `${selectedYear}-12-31`
 
+  // Deputy detail is critical — 404 if not found
+  let deputy
+  try {
+    deputy = await getDeputyDetail(id)
+  } catch {
+    notFound()
+  }
+
+  // All other calls degrade gracefully — errors are collected and shown as toasts
+  const errors: PageError[] = []
+
   const [
-    deputy, expenses, prevYearExpenses,
+    expenses, prevYearExpenses,
     committees, caucuses,
     speeches, events,
     previousMandates, history, professions,
+    votingHistory,
   ] = await Promise.all([
-    getDeputyDetail(id),
-    getDeputyExpenses(id, selectedYear),
-    getDeputyExpenses(id, selectedYear - 1),
-    getDeputyCommittees(id),
-    getDeputyCaucuses(id),
-    getDeputySpeeches(id, yearStart, yearEnd),
-    getDeputyEvents(id, yearStart, yearEnd),
-    getDeputyPreviousMandates(id),
-    getDeputyHistory(id),
-    getDeputyProfessions(id),
+    collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP"),
+    collectErrors(() => getDeputyExpenses(id, selectedYear - 1), emptySourced([]), errors, `Despesas CEAP (${selectedYear - 1})`),
+    collectErrors(() => getDeputyCommittees(id), emptySourced([]), errors, "Comissões"),
+    collectErrors(() => getDeputyCaucuses(id), emptySourced([]), errors, "Frentes parlamentares"),
+    collectErrors(() => getDeputySpeeches(id, yearStart, yearEnd), emptySourced([]), errors, "Discursos"),
+    collectErrors(() => getDeputyEvents(id, yearStart, yearEnd), emptySourced([]), errors, "Eventos"),
+    collectErrors(() => getDeputyPreviousMandates(id), emptySourced([]), errors, "Mandatos anteriores"),
+    collectErrors(() => getDeputyHistory(id), emptySourced([]), errors, "Histórico de status"),
+    collectErrors(() => getDeputyProfessions(id), emptySourced([]), errors, "Profissões"),
+    collectErrors(() => getDeputyVotingHistory(id, yearStart, yearEnd), emptySourced([]), errors, "Votações"),
   ])
 
   // ── Profile data ────────────────────────────────────────────────────
@@ -121,10 +140,10 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     deputy.birthPlace && { label: "Naturalidade", value: deputy.birthPlace },
     deputy.education && { label: "Escolaridade", value: deputy.education },
     professionStr && { label: "Profissões", value: professionStr },
-    deputy.email && { label: "E-mail", value: deputy.email },
+    deputy.email && { label: "E-mail", value: deputy.email, href: `mailto:${deputy.email}` },
     deputy.office && { label: "Gabinete", value: deputy.office },
     deputy.phone && { label: "Telefone", value: deputy.phone },
-  ].filter(Boolean) as Array<{ label: string; value: string }>
+  ].filter(Boolean) as Array<{ label: string; value: string; href?: string }>
 
   // ── Expense aggregations ────────────────────────────────────────────
 
@@ -153,12 +172,22 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
   const committeesByRole = aggregateCommitteesByRole(activeCommittees)
   const committeesByType = aggregateCommitteesByType(activeCommittees)
 
+  // ── Voting history aggregations ───────────────────────────────────
+  const votesByType = aggregateVotesByType(votingHistory)
+  const votesByMonth = aggregateVotesByMonth(votingHistory)
+  const voteAlignment = computeVoteAlignment(votingHistory)
+  const simCount = votingHistory.filter((v) => v.vote === "Sim").length
+  const naoCount = votingHistory.filter((v) => v.vote === "Não").length
+  const abstCount = votingHistory.filter((v) => v.vote === "Abstenção").length
+
   // Count events by status
   const eventsFinished = events.filter((e) => e.status === "Encerrada").length
   const eventsUpcoming = events.filter((e) => e.status !== "Encerrada").length
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+
       {/* ── 1. Profile header ──────────────────────────────────────── */}
       <ProfileHeader
         initials={initials}
@@ -168,6 +197,9 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         photoUrl={deputy.photoUrl}
       />
 
+      {/* Compare button */}
+      <CompareButton deputyId={id} year={selectedYear} />
+
       {/* ── 2. Dados pessoais ──────────────────────────────────────── */}
       <section>
         <SectionHeader title="Dados pessoais" />
@@ -175,9 +207,9 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── Global year selector ───────────────────────────────────── */}
-      <div className="mt-10 mb-6 flex items-center justify-between">
+      <div className="mt-10 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Atividade parlamentar</h2>
+          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Atividade parlamentar</h2>
           <p className="text-sm text-gray-500">
             Dados filtrados por ano. Selecione o período para visualizar.
           </p>
@@ -188,7 +220,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 3. Resumo geral ────────────────────────────────────────── */}
       <section className="mb-10">
         <div
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
           aria-label="Resumo geral"
         >
           <StatCard
@@ -208,12 +240,12 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
             value={String(activeCommittees.length)}
           />
           <StatCard
-            label="Frentes"
-            value={String(caucuses.length)}
+            label="Votações"
+            value={String(votingHistory.length)}
           />
           <StatCard
-            label="Registros CEAP"
-            value={String(expenses.length)}
+            label="Frentes"
+            value={String(caucuses.length)}
           />
         </div>
       </section>
@@ -221,8 +253,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 4. Gastos CEAP ─────────────────────────────────────────── */}
       <section className="mb-10">
         <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Gastos CEAP</h2>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Gastos CEAP</h2>
             <Link
               href={`/camara/${id}/despesas?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -269,11 +301,63 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         )}
       </section>
 
-      {/* ── 5. Discursos ───────────────────────────────────────────── */}
+      {/* ── 5. Votações ────────────────────────────────────────────── */}
       <section className="mb-10">
         <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Discursos</h2>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Votações</h2>
+            <Link
+              href={`/camara/${id}/votacoes?ano=${selectedYear}`}
+              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+            >
+              Ver todas as votações →
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Participação em votações nominais em plenário. Indica como o deputado votou em cada sessão e se acompanhou o resultado final.
+          </p>
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard
+            label="Votações"
+            value={String(votingHistory.length)}
+          />
+          <StatCard
+            label="Sim"
+            value={String(simCount)}
+          />
+          <StatCard
+            label="Não"
+            value={String(naoCount)}
+          />
+          <StatCard
+            label="Abstenção"
+            value={String(abstCount)}
+          />
+          <StatCard
+            label="Alinhamento"
+            value={`${voteAlignment}%`}
+            badge={{ text: "com resultado", variant: voteAlignment >= 70 ? "green" : voteAlignment >= 40 ? "amber" : "red" }}
+            tooltip="Frequência com que o deputado votou no lado vencedor — 'Sim' em aprovadas e 'Não' em rejeitadas. Abstenções e obstruções não são consideradas."
+          />
+        </div>
+
+        {votingHistory.length > 0 && (
+          <VotingCharts
+            byType={votesByType}
+            byMonth={votesByMonth}
+            year={selectedYear}
+            sourceUrl={votingHistory._source}
+          />
+        )}
+      </section>
+
+      {/* ── 6. Discursos ───────────────────────────────────────────── */}
+      <section className="mb-10">
+        <div className="mb-2">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Discursos</h2>
             <Link
               href={`/camara/${id}/discursos?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -314,8 +398,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 6. Eventos ─────────────────────────────────────────────── */}
       <section className="mb-10">
         <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Eventos</h2>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Eventos</h2>
             <Link
               href={`/camara/${id}/eventos?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -356,8 +440,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 7. Comissões ───────────────────────────────────────────── */}
       <section className="mb-10">
         <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Comissões</h2>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Comissões</h2>
             <Link
               href={`/camara/${id}/comissoes?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -400,8 +484,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 8. Frentes parlamentares ───────────────────────────────── */}
       <section className="mb-10">
         <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Frentes parlamentares</h2>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Frentes parlamentares</h2>
             <Link
               href={`/camara/${id}/frentes?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -441,7 +525,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
                 {previousMandates.map((m) => (
                   <div
                     key={`${m.office}-${m.startYear}`}
-                    className="flex items-center justify-between px-5 py-3"
+                    className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
                   >
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm font-medium text-gray-900">{m.office || "Cargo não informado"}</span>

@@ -18,8 +18,9 @@
  */
 
 import Link from "next/link"
-import { StatCard, SectionHeader, Badge, DataTable } from "@/components/ui"
+import { StatCard, SectionHeader, Badge, DataTable, ToastTrigger } from "@/components/ui"
 import { getPropositions, getVotingSessions } from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { CamaraProposition, CamaraVotingSession } from "@imposterio/types"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { PautasCharts } from "./PautasCharts"
@@ -55,9 +56,11 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
 
   // Fetch main proposition types only (PL, PEC, PLP, MP, PDL).
   // The Câmara has thousands of propositions per year including REQs and amendments.
+  const errors: PageError[] = []
+
   const [propositions, votingSessions] = await Promise.all([
-    getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }),
-    getVotingSessions(yearStart, yearEnd),
+    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições"),
+    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações"),
   ])
 
   // Proposition stats
@@ -183,6 +186,8 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+
       {/* Header */}
       <header className="mb-6">
         <div className="flex items-center justify-between mb-1">

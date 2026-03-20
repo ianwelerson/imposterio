@@ -82,6 +82,41 @@ export function EventCharts({ byType, byMonth, year, sourceUrl }: EventChartsPro
   )
 }
 
+// ── Voting history ───────────────────────────────────────────────────
+
+interface VotingChartsProps {
+  byType: CountItem[]
+  byMonth: MonthlyCount[]
+  year: number
+  sourceUrl?: string
+}
+
+export function VotingCharts({ byType, byMonth, year, sourceUrl }: VotingChartsProps) {
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {byType.length > 0 && (
+        <ChartCard
+          sourceUrl={sourceUrl}
+          title="Votos por tipo"
+          subtitle="Distribuição de Sim, Não, Abstenção e Obstrução"
+        >
+          <PieChart data={byType} height={280} />
+        </ChartCard>
+      )}
+
+      {byMonth.some((m) => m.value > 0) && (
+        <ChartCard
+          sourceUrl={sourceUrl}
+          title={`Votações por mês (${year})`}
+          subtitle="Participação em votações nominais ao longo do ano"
+        >
+          <BarChart data={byMonth} height={280} />
+        </ChartCard>
+      )}
+    </div>
+  )
+}
+
 // ── Committees ────────────────────────────────────────────────────────
 
 interface CommitteeChartsProps {

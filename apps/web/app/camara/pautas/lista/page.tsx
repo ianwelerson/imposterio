@@ -10,6 +10,8 @@
 
 import Link from "next/link"
 import { getPropositions } from "@imposterio/fetchers"
+import { ToastTrigger } from "@/components/ui"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { CamaraPautasList } from "./CamaraPautasList"
 
@@ -33,10 +35,12 @@ export default async function CamaraPautasListaPage({ searchParams }: PageProps)
     (_, i) => now - i,
   )
 
-  const propositions = await getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" })
+  const errors: PageError[] = []
+  const propositions = await collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições")
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
       <header className="pb-6">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-semibold text-gray-900">

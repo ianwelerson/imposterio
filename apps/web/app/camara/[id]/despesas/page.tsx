@@ -8,8 +8,11 @@
  * Data source: GET /deputados/{id}/despesas?ano={year}
  */
 
+import { notFound } from "next/navigation"
 import Link from "next/link"
+import { ToastTrigger } from "@/components/ui"
 import { getDeputyDetail, getDeputyExpenses } from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "../YearSelector"
 import { ExpensesList } from "./ExpensesList"
 
@@ -35,15 +38,21 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
     (_, i) => now - i,
   )
 
-  const [deputy, expenses] = await Promise.all([
-    getDeputyDetail(id),
-    getDeputyExpenses(id, selectedYear),
-  ])
+  let deputy
+  try {
+    deputy = await getDeputyDetail(id)
+  } catch {
+    notFound()
+  }
+
+  const errors: PageError[] = []
+  const expenses = await collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP")
 
   const totalCeap = expenses.reduce((sum, e) => sum + e.value, 0)
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
       <header className="pb-6">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-semibold text-gray-900">

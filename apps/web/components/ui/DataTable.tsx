@@ -12,7 +12,7 @@
  * `<tbody>`, `<th>`, `<td>`) for accessibility.
  */
 
-import type { ReactNode } from "react"
+import { Fragment, type ReactNode } from "react"
 
 /**
  * Definition for a single table column.
@@ -106,8 +106,8 @@ export function DataTable<T>({
             {columns.map((col, i) => (
               <th
                 key={i}
-                className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider
-                  text-gray-500 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
+                className={`px-3 py-3 text-xs font-semibold uppercase tracking-wider
+                  text-gray-500 sm:px-4 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
               >
                 {col.header}
               </th>
@@ -119,28 +119,25 @@ export function DataTable<T>({
             const key = rowKey ? rowKey(row, rowIndex) : String(rowIndex)
             const isExpanded = expandedRowKey === key && renderExpanded
             return (
-              <>
-                <tr
-                  key={key}
-                  className="transition-colors hover:bg-gray-50/50"
-                >
+              <Fragment key={key}>
+                <tr className="transition-colors hover:bg-gray-50/50">
                   {columns.map((col, colIndex) => (
                     <td
                       key={colIndex}
-                      className={`px-4 py-3 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
+                      className={`px-3 py-3 sm:px-4 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
                     >
                       {col.cell(row)}
                     </td>
                   ))}
                 </tr>
                 {isExpanded && (
-                  <tr key={`${key}-expanded`}>
+                  <tr>
                     <td colSpan={columns.length} className="p-0">
                       {renderExpanded(row)}
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             )
           })}
         </tbody>

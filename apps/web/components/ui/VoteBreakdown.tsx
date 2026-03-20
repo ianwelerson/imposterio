@@ -47,13 +47,13 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
   return (
     <div className="space-y-3">
       {/* Summary line */}
-      <p className="text-sm text-gray-700">
+      <p className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-gray-700">
         <span className="font-semibold text-emerald-700">{tally.yes} Sim</span>
-        {" · "}
+        <span className="text-gray-300">·</span>
         <span className="font-semibold text-red-700">{tally.no} Não</span>
-        {" · "}
+        <span className="text-gray-300">·</span>
         <span className="font-semibold text-amber-600">{tally.abstention} Abstenção</span>
-        {" · "}
+        <span className="text-gray-300">·</span>
         <span className="font-semibold text-gray-500">{tally.absent} Ausentes</span>
       </p>
 

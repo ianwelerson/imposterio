@@ -2,50 +2,122 @@
  * @file page.tsx
  * @description Chamber of Deputies (Câmara dos Deputados) overview page.
  *
- * Displays an overview of the lower house of Brazil's National Congress:
- * - Key metrics (total deputies, CEAP spending, average attendance)
- * - Charts and comparisons
- * - Table of deputies with source links
- * - Expense breakdown by category
+ * Displays a comprehensive overview of the lower house of Brazil's National
+ * Congress, structured into sections following the established detail page pattern:
  *
- * Data source: https://dadosabertos.camara.leg.br/api/v2
+ * 1. Header with year selector
+ * 2. Resumo geral — key StatCards (deputies, propositions, voting sessions)
+ * 3. Charts — party/UF distribution, proposition types, voting results
+ * 4. Deputados — top deputies table with link to full listing
+ * 5. Pauta legislativa — latest propositions + latest votes
+ * 6. Acha Justo? — game card
  *
- * StatCards currently use static values for CEAP total, attendance, and
- * vote count — these require expense aggregation and bulk file processing
- * (see TODO.md). The deputy count is derived from the real API.
+ * Data sources:
+ * - GET /deputados — real API, full list
+ * - GET /proposicoes — real API, filtered to PL,PEC,PLP,MP,PDL
+ * - GET /votacoes — real API, quarterly date splitting
+ *
+ * Note: CEAP total and attendance are NOT available at the overview level
+ * without 513 individual API calls or bulk file processing (see TODO.md).
  */
 
 import Link from "next/link"
 import Image from "next/image"
 import {
-  TopBar, StatCard, DataTable, SourcePill,
-  SectionHeader, AvatarInitials, RankingList,
+  StatCard, DataTable, SourcePill,
+  SectionHeader, AvatarInitials, Badge, ToastTrigger,
 } from "@/components/ui"
 import { CamaraGameCard } from "./CamaraGameCard"
 import { CamaraCharts } from "./CamaraCharts"
-import { getDeputiesList } from "@imposterio/fetchers"
+import {
+  getDeputiesList,
+  getPropositions,
+  getVotingSessions,
+  getDeputyAttendanceBulk,
+} from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
+import type { CamaraProposition, CamaraVotingSession } from "@imposterio/types"
+import { YearSelector } from "@/app/camara/[id]/YearSelector"
+import {
+  aggregateDeputiesByParty,
+  aggregateDeputiesByUF,
+  aggregatePropositionsByType,
+  aggregateVotesByResult,
+  aggregatePropositionsByMonth,
+  aggregateVotingSessionsByMonth,
+  aggregateAttendanceByParty,
+} from "./camara-utils"
 
-// TODO: Expense category ranking — needs aggregated CEAP data (see TODO.md)
-const EXPENSE_RANKING = [
-  { id: "1", name: "Divulgação parlamentar", percentage: 34 },
-  { id: "2", name: "Passagens aéreas", percentage: 22 },
-  { id: "3", name: "Locação de veículos", percentage: 16 },
-  { id: "4", name: "Combustíveis", percentage: 12 },
-  { id: "5", name: "Manutenção de escritório", percentage: 9 },
-]
+/** Proposition/voting data is available from 2019 onward (57th legislature). */
+const FIRST_YEAR = 2019
 
-export default async function CamaraPage() {
-  const deputies = await getDeputiesList()
+interface PageProps {
+  searchParams: Promise<{ ano?: string }>
+}
 
-  // Show top 8 deputies in the overview table (sorted alphabetically for now)
-  // TODO: Sort by CEAP spending once expense aggregation is available
+export default async function CamaraPage({ searchParams }: PageProps) {
+  const query = await searchParams
+  const now = new Date().getFullYear()
+
+  const selectedYear = query.ano
+    ? Math.max(FIRST_YEAR, Math.min(now, Number(query.ano) || now))
+    : now
+
+  const availableYears = Array.from(
+    { length: now - FIRST_YEAR + 1 },
+    (_, i) => now - i,
+  )
+
+  const yearStart = `${selectedYear}-01-01`
+  const yearEnd = `${selectedYear}-12-31`
+
+  const errors: PageError[] = []
+
+  const [deputies, propositions, votingSessions, attendance] = await Promise.all([
+    collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados"),
+    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições"),
+    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações"),
+    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, deputies: [] }), errors, "Presença em eventos"),
+  ])
+
+  // ── Aggregations ──────────────────────────────────────────────────
+
+  const byParty = aggregateDeputiesByParty(deputies)
+  const byUF = aggregateDeputiesByUF(deputies)
+  const propositionsByType = aggregatePropositionsByType(propositions)
+  const votesByResult = aggregateVotesByResult(votingSessions)
+  const propositionsByMonth = aggregatePropositionsByMonth(propositions)
+  const votesByMonth = aggregateVotingSessionsByMonth(votingSessions)
+  const attendanceByParty = aggregateAttendanceByParty(attendance, deputies)
+
+  const totalVotes = votingSessions.length
+  const approvedVotes = votingSessions.filter((v) => v.approved === true).length
+  const approvalRate = totalVotes > 0
+    ? ((approvedVotes / totalVotes) * 100).toFixed(1)
+    : "0"
+
+  const largestParty = byParty[0]
+
+  // Top 8 deputies (alphabetical — CEAP sorting needs bulk data)
   const topDeputies = deputies.slice(0, 8)
 
-  const columns = [
+  // Latest 5 propositions
+  const latestPropositions = [...propositions]
+    .sort((a, b) => new Date(b.presentedDate).getTime() - new Date(a.presentedDate).getTime())
+    .slice(0, 5)
+
+  // Latest 5 voting sessions
+  const latestVotes = [...votingSessions]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+
+  // ── Column definitions ────────────────────────────────────────────
+
+  const deputyColumns = [
     {
       header: "Deputado(a)",
       cell: (row: (typeof deputies)[number]) => (
-        <Link href={`/camara/${row.id}`} className="flex items-center gap-3 hover:opacity-80">
+        <Link href={`/camara/${row.id}?ano=${selectedYear}`} className="flex items-center gap-3 hover:opacity-80">
           {row.photoUrl ? (
             <Image
               src={row.photoUrl}
@@ -70,56 +142,199 @@ export default async function CamaraPage() {
       header: "UF",
       cell: (row: (typeof deputies)[number]) => <span className="text-gray-600">{row.uf}</span>,
     },
-    // TODO: CEAP spending column — needs per-deputy expense aggregation
-    // TODO: Attendance column — needs bulk attendance file parser (Phase 4)
     {
-      header: "Fonte",
+      header: "",
       align: "center" as const,
-      cell: () => <SourcePill url={deputies._source} />,
+      cell: (row: (typeof deputies)[number]) => (
+        <Link
+          href={`/camara/${row.id}?ano=${selectedYear}`}
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Ver perfil →
+        </Link>
+      ),
+    },
+  ]
+
+  const propColumns = [
+    {
+      header: "Proposição",
+      className: "whitespace-nowrap",
+      cell: (row: CamaraProposition) => (
+        <Link
+          href={`/camara/pautas/${row.id}?ano=${selectedYear}`}
+          className="font-semibold text-gray-900 hover:text-accent transition-colors"
+        >
+          {row.typeCode} {row.number}/{row.year}
+        </Link>
+      ),
+    },
+    {
+      header: "Ementa",
+      className: "max-w-xs",
+      cell: (row: CamaraProposition) => (
+        <span className="text-gray-700 line-clamp-1 text-xs">{row.summary}</span>
+      ),
+    },
+    {
+      header: "",
+      align: "center" as const,
+      className: "whitespace-nowrap",
+      cell: (row: CamaraProposition) => (
+        <Link
+          href={`/camara/pautas/${row.id}?ano=${selectedYear}`}
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Detalhes →
+        </Link>
+      ),
+    },
+  ]
+
+  const voteColumns = [
+    {
+      header: "Data",
+      className: "whitespace-nowrap",
+      cell: (row: CamaraVotingSession) => (
+        <span className="text-sm tabular-nums text-gray-900">
+          {new Date(row.date).toLocaleDateString("pt-BR")}
+        </span>
+      ),
+    },
+    {
+      header: "Descrição",
+      className: "max-w-md",
+      cell: (row: CamaraVotingSession) => (
+        <span className="text-gray-700 line-clamp-1 text-xs">{row.description}</span>
+      ),
+    },
+    {
+      header: "Resultado",
+      className: "whitespace-nowrap",
+      cell: (row: CamaraVotingSession) => (
+        row.approved === true
+          ? <Badge variant="green">Aprovada</Badge>
+          : row.approved === false
+            ? <Badge variant="red">Rejeitada</Badge>
+            : <Badge variant="gray">Indefinida</Badge>
+      ),
+    },
+    {
+      header: "",
+      align: "center" as const,
+      className: "whitespace-nowrap",
+      cell: (row: CamaraVotingSession) => (
+        <Link
+          href={`/camara/pautas/votacoes/${row.id}?ano=${selectedYear}`}
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Detalhes →
+        </Link>
+      ),
     },
   ]
 
   return (
     <>
-      <TopBar title="Câmara dos Deputados" defaultPeriod="30d" />
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores da Câmara"
-      >
-        <StatCard label="Deputados em exercício" value={String(deputies.length)} />
-        {/* TODO: Replace static values once expense aggregation is implemented */}
-        <StatCard
-          label="Gasto CEAP total"
-          value="R$ 48,7 mi"
-          badge={{ text: "+5,3% vs mês anterior", variant: "red" }}
-        />
-        <StatCard
-          label="Presença média plenário"
-          value="82,1%"
-          badge={{ text: "+1,4 p.p.", variant: "green" }}
-        />
-        <StatCard label="Votações no período" value="127" />
-      </section>
+      {/* Header */}
+      <header className="mb-6">
+        <div className="flex flex-col gap-2 mb-1 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">Câmara dos Deputados</h1>
+          <YearSelector years={availableYears} selected={selectedYear} />
+        </div>
+        <p className="text-sm text-gray-500">
+          Visão geral da Câmara dos Deputados — {selectedYear}
+        </p>
+        <div className="mt-2">
+          <SourcePill url={deputies._source} />
+        </div>
+      </header>
 
-      <section className="mt-8">
-        <SectionHeader title="Gráficos e comparativos" />
-        <CamaraCharts />
-      </section>
-
-      <section className="mt-8">
-        <SectionHeader title="Deputados" action={{ label: "Ver todos", href: "/camara/deputados" }} />
-        <DataTable columns={columns} data={topDeputies} rowKey={(r) => r.id} />
-      </section>
-
-      <section className="mt-8">
-        <SectionHeader title="Gastos por categoria" />
-        <div className="rounded-lg border border-gray-200/60 bg-white p-5">
-          <RankingList items={EXPENSE_RANKING} />
+      {/* ── 1. Resumo geral ──────────────────────────────────────── */}
+      <section className="mb-10">
+        <div className="mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Resumo geral</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Indicadores da Câmara dos Deputados para o ano de {selectedYear}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Deputados em exercício"
+            value={String(deputies.length)}
+            badge={largestParty ? { text: `Maior bancada: ${largestParty.name} (${largestParty.value})`, variant: "gray" } : undefined}
+          />
+          <StatCard
+            label="Proposições"
+            value={String(propositions.length)}
+            badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
+          />
+          <StatCard
+            label="Votações realizadas"
+            value={String(totalVotes)}
+          />
+          <StatCard
+            label="Taxa de aprovação"
+            value={`${approvalRate}%`}
+            badge={totalVotes > 0 ? {
+              text: `${approvedVotes} de ${totalVotes}`,
+              variant: Number(approvalRate) >= 50 ? "green" : "amber",
+            } : undefined}
+          />
         </div>
       </section>
 
-      <section className="mt-8">
+      {/* ── 2. Charts ────────────────────────────────────────────── */}
+      <section className="mb-10">
+        <SectionHeader title="Gráficos e comparativos" />
+        <CamaraCharts
+          byParty={byParty}
+          byUF={byUF}
+          propositionsByType={propositionsByType}
+          votesByResult={votesByResult}
+          propositionsByMonth={propositionsByMonth}
+          votesByMonth={votesByMonth}
+          attendanceByParty={attendanceByParty}
+          deputiesSourceUrl={deputies._source}
+          propositionsSourceUrl={propositions._source}
+          votesSourceUrl={votingSessions._source}
+          attendanceSourceUrl={attendance._source}
+        />
+      </section>
+
+      {/* ── 3. Deputados ─────────────────────────────────────────── */}
+      <section className="mb-10">
+        <SectionHeader
+          title="Deputados"
+          sourceUrl={deputies._source}
+          action={{ label: "Ver todos", href: "/camara/deputados" }}
+        />
+        <DataTable columns={deputyColumns} data={topDeputies} rowKey={(r) => r.id} />
+      </section>
+
+      {/* ── 4. Pauta legislativa ──────────────────────────────────── */}
+      <section className="mb-10">
+        <SectionHeader
+          title="Últimas proposições"
+          sourceUrl={propositions._source}
+          action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
+        />
+        <DataTable columns={propColumns} data={latestPropositions} rowKey={(r) => r.id} />
+      </section>
+
+      <section className="mb-10">
+        <SectionHeader
+          title="Últimas votações"
+          sourceUrl={votingSessions._source}
+          action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
+        />
+        <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+      </section>
+
+      {/* ── 5. Game ──────────────────────────────────────────────── */}
+      <section className="mb-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/jogo" }}

@@ -14,6 +14,7 @@
 "use client"
 
 import { useState } from "react"
+import { track } from "@/lib/analytics"
 import { Sidebar } from "./Sidebar"
 
 interface AppShellProps {
@@ -41,7 +42,10 @@ export function AppShell({ children }: AppShellProps) {
         {/* Mobile header — visible only on < lg */}
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/60 bg-white px-4 lg:hidden">
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => {
+              track("open_mobile_menu")
+              setSidebarOpen(true)
+            }}
             className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Abrir menu"
           >

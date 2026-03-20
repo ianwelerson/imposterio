@@ -15,6 +15,8 @@ interface InfoField {
   label: string
   /** Field value as a string. */
   value: string
+  /** Optional link URL — makes the value a clickable anchor (e.g. mailto:, tel:). */
+  href?: string
   /** Optional source URL — renders a SourcePill next to the value. */
   sourceUrl?: string
 }
@@ -40,7 +42,7 @@ interface InfoPanelProps {
  */
 export function InfoPanel({ fields }: InfoPanelProps) {
   return (
-    <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+    <div className="rounded-lg border border-gray-200/60 bg-white p-4 sm:p-5">
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {fields.map((field) => (
           <div key={field.label}>
@@ -48,7 +50,13 @@ export function InfoPanel({ fields }: InfoPanelProps) {
               {field.label}
             </dt>
             <dd className="mt-1 flex items-center gap-2 text-sm text-gray-900">
-              {field.value}
+              {field.href ? (
+                <a href={field.href} className="text-accent hover:text-accent-hover transition-colors">
+                  {field.value}
+                </a>
+              ) : (
+                field.value
+              )}
               {field.sourceUrl && <SourcePill url={field.sourceUrl} />}
             </dd>
           </div>

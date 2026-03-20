@@ -16,13 +16,17 @@
  */
 
 import { getDeputiesList } from "@imposterio/fetchers"
+import { ToastTrigger } from "@/components/ui"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { DeputiesSearchList } from "./DeputiesSearchList"
 
 export default async function DeputadosPage() {
-  const deputies = await getDeputiesList()
+  const errors: PageError[] = []
+  const deputies = await collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados")
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
       <header className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Deputados Federais</h1>

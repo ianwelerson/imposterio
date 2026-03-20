@@ -89,9 +89,9 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
     <>
       {/* Header */}
       <header className="mb-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">
               {toSentenceCase(expense.type)}
             </h1>
             <Badge variant="gray">CEAP</Badge>
@@ -104,7 +104,7 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
             ← Voltar para despesas
           </Link>
         </div>
-        <div className="flex items-center gap-2 text-base text-gray-700">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700 sm:text-base">
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="font-medium hover:text-accent transition-colors"
@@ -150,7 +150,7 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
         <section className="mb-8">
           <SectionHeader title="Nota fiscal / Comprovante" />
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-4">
               <a
                 href={expense.documentUrl}
                 target="_blank"
@@ -169,7 +169,7 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
               <iframe
                 src={expense.documentUrl}
                 title="Nota fiscal / Comprovante"
-                className="w-full h-[900px]"
+                className="w-full h-[400px] sm:h-[600px] lg:h-[900px]"
                 loading="lazy"
               />
             </div>

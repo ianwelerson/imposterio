@@ -18,6 +18,7 @@
 
 import type { GameCardType, GameBranch } from "@imposterio/types"
 import { GAME_CARD_TYPE_LABELS, GAME_BRANCH_LABELS } from "@imposterio/types"
+import { track } from "@/lib/analytics"
 
 interface GameCardProps {
   /**
@@ -113,7 +114,10 @@ export function GameCard({
       {/* Vote buttons */}
       <div className="mt-6 flex gap-3">
         <button
-          onClick={() => onVote(true)}
+          onClick={() => {
+            track("game_vote", { fair: true, category, branch })
+            onVote(true)
+          }}
           disabled={disabled}
           className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm
                      font-semibold text-white transition-colors
@@ -124,7 +128,10 @@ export function GameCard({
           Acho justo
         </button>
         <button
-          onClick={() => onVote(false)}
+          onClick={() => {
+            track("game_vote", { fair: false, category, branch })
+            onVote(false)
+          }}
           disabled={disabled}
           className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm
                      font-semibold text-white transition-colors
