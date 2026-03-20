@@ -10,7 +10,7 @@
 
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { SearchableList, DataTable, Badge } from "@/components/ui"
+import { SearchableList, DataTable } from "@/components/ui"
 import type { CamaraProposition } from "@imposterio/types"
 
 interface CamaraPautasListProps {
@@ -34,33 +34,19 @@ export function CamaraPautasList({ propositions, selectedYear, yearSelector }: C
       ),
     },
     {
+      header: "Data",
+      className: "whitespace-nowrap",
+      cell: (row: CamaraProposition) => (
+        <span className="text-gray-600 text-xs tabular-nums">
+          {new Date(row.presentedDate).toLocaleDateString("pt-BR")}
+        </span>
+      ),
+    },
+    {
       header: "Ementa",
       className: "max-w-xs",
       cell: (row: CamaraProposition) => (
         <span className="text-gray-700 line-clamp-2 text-xs leading-relaxed">{row.summary}</span>
-      ),
-    },
-    {
-      header: "Situação",
-      className: "whitespace-nowrap max-w-[160px]",
-      cell: (row: CamaraProposition) => (
-        <span className="text-gray-600 text-xs line-clamp-1">{row.statusDescription || "—"}</span>
-      ),
-    },
-    {
-      header: "Local",
-      className: "whitespace-nowrap",
-      cell: (row: CamaraProposition) => (
-        row.statusOrgan
-          ? <Badge variant="gray">{row.statusOrgan}</Badge>
-          : <span className="text-gray-400 text-xs">—</span>
-      ),
-    },
-    {
-      header: "Regime",
-      className: "whitespace-nowrap",
-      cell: (row: CamaraProposition) => (
-        <span className="text-gray-600 text-xs">{row.regime || "—"}</span>
       ),
     },
     {
@@ -85,8 +71,6 @@ export function CamaraPautasList({ propositions, selectedYear, yearSelector }: C
       placeholder="Buscar por número, ementa ou palavra-chave..."
       filters={[
         { label: "Tipo", accessor: (p) => p.typeCode, allLabel: "Todos os tipos" },
-        { label: "Situação", accessor: (p) => p.statusDescription || "Sem situação", allLabel: "Todas as situações" },
-        { label: "Local", accessor: (p) => p.statusOrgan || "Não informado", allLabel: "Todos os locais" },
       ]}
       extraControls={yearSelector}
       pageSize={20}

@@ -104,26 +104,19 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       ),
     },
     {
+      header: "Data",
+      className: "whitespace-nowrap",
+      cell: (row: CamaraProposition) => (
+        <span className="text-gray-600 text-xs tabular-nums">
+          {new Date(row.presentedDate).toLocaleDateString("pt-BR")}
+        </span>
+      ),
+    },
+    {
       header: "Ementa",
       className: "max-w-xs",
       cell: (row: CamaraProposition) => (
         <span className="text-gray-700 line-clamp-2 text-xs leading-relaxed">{row.summary}</span>
-      ),
-    },
-    {
-      header: "Situação",
-      className: "whitespace-nowrap",
-      cell: (row: CamaraProposition) => (
-        <span className="text-gray-600 text-xs">{row.statusDescription || "—"}</span>
-      ),
-    },
-    {
-      header: "Local",
-      className: "whitespace-nowrap",
-      cell: (row: CamaraProposition) => (
-        row.statusOrgan
-          ? <Badge variant="gray">{row.statusOrgan}</Badge>
-          : <span className="text-gray-400 text-xs">—</span>
       ),
     },
     {
