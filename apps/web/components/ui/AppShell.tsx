@@ -14,8 +14,12 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { track } from "@/lib/analytics"
 import { Sidebar } from "./Sidebar"
+
+/** Routes that are publicly visible without the "Coming soon" overlay. */
+const PUBLIC_PATHS = ["/sobre"]
 
 interface AppShellProps {
   /** Page content rendered in the main scrollable area. */
@@ -32,6 +36,8 @@ interface AppShellProps {
  */
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
 
   return (
     <div className="flex min-h-screen">
@@ -66,8 +72,22 @@ export function AppShell({ children }: AppShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+        <main className="relative min-w-0 flex-1 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
           {children}
+
+          {/* "Coming soon" overlay — covers all non-public pages */}
+          {!isPublic && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+              <div className="text-center">
+                <p className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                  Em breve
+                </p>
+                <p className="mt-3 text-sm text-gray-500 sm:text-base">
+                  Estamos finalizando esta seção.
+                </p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
