@@ -23,7 +23,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
-  StatCard, SectionHeader,
+  Acronym, StatCard, SectionHeader,
   ProfileHeader, InfoPanel, Badge, ToastTrigger,
 } from "@/components/ui"
 import {
@@ -201,24 +201,27 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       <CompareButton deputyId={id} year={selectedYear} />
 
       {/* ── 2. Dados pessoais ──────────────────────────────────────── */}
-      <section>
+      <section className="mb-8">
         <SectionHeader title="Dados pessoais" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* ── Global year selector ───────────────────────────────────── */}
-      <div className="mt-10 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-10 mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Atividade parlamentar</h2>
           <p className="text-sm text-gray-500">
             Dados filtrados por ano. Selecione o período para visualizar.
           </p>
         </div>
-        <YearSelector years={availableYears} selected={selectedYear} />
+        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
+          <YearSelector years={availableYears} selected={selectedYear} />
+        </div>
       </div>
 
       {/* ── 3. Resumo geral ────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
           aria-label="Resumo geral"
@@ -226,6 +229,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           <StatCard
             label="Despesas CEAP"
             value={formatCurrency(totalCeap)}
+            tooltip="Cota para Exercício da Atividade Parlamentar — verba mensal para custear despesas do mandato"
           />
           <StatCard
             label="Discursos"
@@ -251,10 +255,10 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 4. Gastos CEAP ─────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Gastos CEAP</h2>
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Gastos <Acronym title="Cota para Exercício da Atividade Parlamentar">CEAP</Acronym></h2>
             <Link
               href={`/camara/${id}/despesas?ano=${selectedYear}`}
               className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -302,7 +306,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 5. Votações ────────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Votações</h2>
@@ -354,7 +358,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 6. Discursos ───────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Discursos</h2>
@@ -396,7 +400,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 6. Eventos ─────────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Eventos</h2>
@@ -438,7 +442,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 7. Comissões ───────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Comissões</h2>
@@ -482,7 +486,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 8. Frentes parlamentares ───────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Frentes parlamentares</h2>
@@ -509,7 +513,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
 
       {/* ── 9. Carreira política ───────────────────────────────────── */}
       {(previousMandates.length > 0 || history.length > 1) && (
-        <section className="mb-10">
+        <section className="mb-8">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Carreira política</h2>
             <p className="mt-1 text-sm text-gray-500">

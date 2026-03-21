@@ -11,6 +11,7 @@
 
 import Link from "next/link"
 import { getDeputyDetail, getDeputyEvents } from "@imposterio/fetchers"
+import { SourcePill } from "@/components/ui"
 import { YearSelector } from "../YearSelector"
 import { EventsList } from "./EventsList"
 
@@ -46,11 +47,14 @@ export default async function EventsPage({ params, searchParams }: EventsPagePro
 
   return (
     <>
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Eventos — {deputy.name}
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Eventos — {deputy.name}
+            </h1>
+            <SourcePill url={events._source} />
+          </div>
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -58,8 +62,8 @@ export default async function EventsPage({ params, searchParams }: EventsPagePro
             ← Voltar para {deputy.name}
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {events.length} eventos registrados em {selectedYear}
+        <p className="mt-1 text-sm text-gray-500">
+          Sessões plenárias, audiências públicas e reuniões — {selectedYear}
         </p>
       </header>
 

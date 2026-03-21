@@ -8,6 +8,7 @@
  * ```
  */
 
+export { Acronym } from "./Acronym"
 export { AppShell } from "./AppShell"
 export { AvatarInitials } from "./AvatarInitials"
 export { Badge } from "./Badge"

@@ -10,7 +10,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ToastTrigger } from "@/components/ui"
+import { ToastTrigger, SourcePill } from "@/components/ui"
 import { getDeputyDetail, getDeputyExpenses } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "../YearSelector"
@@ -53,11 +53,14 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
   return (
     <>
       {errors.length > 0 && <ToastTrigger errors={errors} />}
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Despesas — {deputy.name}
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Despesas — {deputy.name}
+            </h1>
+            <SourcePill url={expenses._source} />
+          </div>
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -65,8 +68,8 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
             ← Voltar para {deputy.name}
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {expenses.length} registros em {selectedYear} — Total:{" "}
+        <p className="mt-1 text-sm text-gray-500">
+          Total em {selectedYear}:{" "}
           {totalCeap.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
         </p>
       </header>

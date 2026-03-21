@@ -16,7 +16,7 @@
  */
 
 import { getDeputiesList } from "@imposterio/fetchers"
-import { ToastTrigger } from "@/components/ui"
+import { ToastTrigger, SourcePill } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { DeputiesSearchList } from "./DeputiesSearchList"
 
@@ -27,17 +27,20 @@ export default async function DeputadosPage() {
   return (
     <>
       {errors.length > 0 && <ToastTrigger errors={errors} />}
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Deputados Federais</h1>
-          <p className="mt-1 text-sm text-gray-500">Dados da legislatura atual</p>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">Deputados Federais</h1>
+            <SourcePill url={deputies._source} />
+          </div>
+          <a
+            href="/camara"
+            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+          >
+            ← Voltar à Câmara
+          </a>
         </div>
-        <a
-          href="/camara"
-          className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-        >
-          ← Voltar à Câmara
-        </a>
+        <p className="mt-1 text-sm text-gray-500">Dados da legislatura atual</p>
       </header>
 
       <DeputiesSearchList deputies={deputies} />

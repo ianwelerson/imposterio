@@ -68,7 +68,7 @@ export function ExpensesList({ expenses, sourceUrl, deputyId, selectedYear, year
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       cell: (r: DeputyExpense) => (
         <Link
           href={`/camara/${deputyId}/despesas/${r.documentCode}?ano=${selectedYear}`}

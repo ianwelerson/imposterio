@@ -11,6 +11,7 @@
 
 import Link from "next/link"
 import { getDeputyDetail, getDeputySpeeches } from "@imposterio/fetchers"
+import { SourcePill } from "@/components/ui"
 import { YearSelector } from "../YearSelector"
 import { SpeechesList } from "./SpeechesList"
 
@@ -46,11 +47,14 @@ export default async function SpeechesPage({ params, searchParams }: SpeechesPag
 
   return (
     <>
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Discursos — {deputy.name}
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Discursos — {deputy.name}
+            </h1>
+            <SourcePill url={speeches._source} />
+          </div>
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -58,8 +62,8 @@ export default async function SpeechesPage({ params, searchParams }: SpeechesPag
             ← Voltar para {deputy.name}
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {speeches.length} discursos registrados em {selectedYear}
+        <p className="mt-1 text-sm text-gray-500">
+          Pronunciamentos em plenário e comissões — {selectedYear}
         </p>
       </header>
 

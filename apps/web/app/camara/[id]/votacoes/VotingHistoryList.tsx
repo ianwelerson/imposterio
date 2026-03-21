@@ -73,7 +73,7 @@ export function VotingHistoryList({ votes, sourceUrl, selectedYear, yearSelector
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (r: DeputyVotingRecord) => (
         <Link

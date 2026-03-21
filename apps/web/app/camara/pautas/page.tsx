@@ -121,7 +121,7 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraProposition) => (
         <Link
@@ -164,7 +164,7 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraVotingSession) => (
         <Link
@@ -182,26 +182,29 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       {/* Header */}
-      <header className="mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">Pauta Legislativa — Câmara</h1>
-          <div className="flex items-center gap-3">
+      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Pauta Legislativa — Câmara</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Proposições legislativas e votações em plenário
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Link
+            href="/camara"
+            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
+          >
+            ← Voltar à Câmara
+          </Link>
+          <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+            <span className="text-sm font-medium text-gray-600">Ver dados de</span>
             <YearSelector years={availableYears} selected={selectedYear} />
-            <Link
-              href="/camara"
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              ← Voltar à Câmara
-            </Link>
           </div>
         </div>
-        <p className="text-sm text-gray-500">
-          Proposições legislativas e votações em plenário no ano de {selectedYear}
-        </p>
       </header>
 
       {/* Resumo geral */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <h2 className="text-lg font-semibold text-gray-900">Resumo geral</h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -213,6 +216,7 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
             label="Proposições"
             value={String(totalPropositions)}
             badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
+            tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
           />
           <StatCard label="Tipos distintos" value={String(byType.length)} />
           <StatCard label="Votações realizadas" value={String(totalVotes)} />
@@ -228,7 +232,7 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       </section>
 
       {/* Proposições section */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Proposições</h2>
@@ -266,7 +270,7 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       </section>
 
       {/* Votações section */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Votações</h2>

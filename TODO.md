@@ -84,7 +84,7 @@ static mock data or is temporarily removed.
 - [x] **Charts: Voting results** — Pie chart from real voting sessions
 - [x] **Latest propositions table** — 5 most recent from `getPropositions()`
 - [x] **Latest votes table** — 5 most recent from `getVotingSessions()`
-- [x] **Year selector** — URL-driven (?ano=YYYY) for propositions/votes
+- [x] **Year selector** — URL-driven (?ano=YYYY), "Ver dados de" box style, contextual alignment (right-aligned in headers, inline in mid-page dividers)
 - [x] **Chart action links** — "Ver todos os partidos" and "Ver todos os estados" on truncated charts
 - [x] **Error handling** — All fetcher calls wrapped in `collectErrors()` with toast notifications
 

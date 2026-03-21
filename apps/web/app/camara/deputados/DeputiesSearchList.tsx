@@ -13,7 +13,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { SearchableList, DataTable, AvatarInitials } from "@/components/ui"
+import { SearchableList, DataTable, AvatarInitials, Acronym } from "@/components/ui"
 import type { Deputy } from "@imposterio/types"
 
 interface DeputiesSearchListProps {
@@ -49,12 +49,12 @@ export function DeputiesSearchList({ deputies }: DeputiesSearchListProps) {
       cell: (r: Deputy) => <span className="text-gray-600">{r.party}</span>,
     },
     {
-      header: "UF",
+      header: <Acronym title="Unidade Federativa (Estado)">UF</Acronym>,
       cell: (r: Deputy) => <span className="text-gray-600">{r.uf}</span>,
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       cell: (r: Deputy) => (
         <Link
           href={`/camara/${r.id}`}

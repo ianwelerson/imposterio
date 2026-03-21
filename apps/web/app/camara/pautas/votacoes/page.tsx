@@ -10,7 +10,7 @@
 
 import Link from "next/link"
 import { getVotingSessions } from "@imposterio/fetchers"
-import { ToastTrigger } from "@/components/ui"
+import { ToastTrigger, SourcePill } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { VotingSessionsList } from "./VotingSessionsList"
@@ -44,11 +44,14 @@ export default async function VotingSessionsPage({ searchParams }: PageProps) {
   return (
     <>
       {errors.length > 0 && <ToastTrigger errors={errors} />}
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Votações — Câmara ({selectedYear})
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Votações — Câmara ({selectedYear})
+            </h1>
+            <SourcePill url={sessions._source} />
+          </div>
           <Link
             href={`/camara/pautas?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -56,8 +59,8 @@ export default async function VotingSessionsPage({ searchParams }: PageProps) {
             ← Voltar à Pauta
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {sessions.length} votações registradas em {selectedYear}
+        <p className="mt-1 text-sm text-gray-500">
+          Votações nominais em plenário
         </p>
       </header>
 

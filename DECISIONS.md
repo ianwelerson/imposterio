@@ -260,6 +260,36 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 
 ---
 
+## 2026-03-20 — SourcePill removed from page titles on multi-source pages
+
+**Context:** Overview pages like `/camara` and `/camara/pautas` fetch data from multiple APIs (deputies, propositions, voting sessions, attendance). Placing a single SourcePill next to the page title was misleading because it only linked to one of several data sources.
+
+**Decision:** On pages that fetch from multiple data sources, the SourcePill is NOT placed next to the page title. Instead, each section has its own source attribution via `SectionHeader sourceUrl` or `ChartCard sourceUrl`. Single-source pages (e.g., listing pages like `/camara/deputados`) keep the SourcePill inline with the title.
+
+**Consequences:** Every section on multi-source pages must explicitly receive its `sourceUrl` prop. The per-section approach is more accurate since each section links to the exact endpoint that generated its data.
+
+---
+
+## 2026-03-20 — Standardized section spacing across all Câmara pages
+
+**Context:** Section spacing was inconsistent — headers used `mb-4`, `mb-6`, or `pb-6` depending on page type; content sections used `mb-6`, `mb-8`, or `mb-10`. This created a visually uneven rhythm.
+
+**Decision:** Two spacing rules: (1) `<header>` elements use `mb-10` (40px), providing a larger gap from page header to first content; (2) `<section>` elements use `mb-8` (32px), providing uniform spacing between all content sections. Mid-page dividers (e.g., deputy detail year selector) use `mt-10 mb-10`.
+
+**Consequences:** All 17 Câmara pages were updated. New pages must follow this spacing convention.
+
+---
+
+## 2026-03-20 — Year selector redesigned as "Ver dados de" box with contextual alignment
+
+**Context:** The year selector was a bare dropdown with an "Ano:" label crammed into the header row next to back links. The user found this hard to discover and visually unpolished.
+
+**Decision:** The year selector in page headers is now wrapped in a card-like box (`rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5`) with a "Ver dados de" label. Placement depends on context: (1) In page headers, the box sits in the right column of a flex row, below the back link when present — `header flex-col sm:flex-row sm:items-end sm:justify-between`; (2) In mid-page dividers (deputy detail), the box is on the same line as the section title — `flex sm:items-center sm:justify-between`. The inline variant (inside SearchableList filter rows) remains unchanged.
+
+**Consequences:** The year selector is now more discoverable and visually distinct from surrounding text. Pages with back links stack: back link on top, year box below, both right-aligned. The `YearSelector` component itself was not changed — only how it's wrapped and positioned in page layouts.
+
+---
+
 ## 2026-03-18 — Estados section expanded with comprehensive fiscal data
 
 **Context:** The Estados section initially focused only on governors. Using impostometro.org as reference, the user requested expanding it to include state-level fiscal data — tax revenue, ICMS/IPVA/ITCMD breakdown, federal transfers, budget execution, debt indicators, and CAPAG ratings. This aligns with the project's core mission of tax transparency.

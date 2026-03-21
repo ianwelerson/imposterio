@@ -65,39 +65,38 @@ export function ComparisonControls({
   return (
     <>
       {/* Header with year selector */}
-      <header className="mb-6">
-        <div className="flex flex-col gap-2 mb-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">Comparar deputados</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Compare até 3 deputados lado a lado — {selectedYear}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isPending && (
-              <div
-                className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600"
-                role="status"
-                aria-label="Carregando..."
-              />
-            )}
-            <select
-              value={selectedYear}
-              onChange={handleYearChange}
-              disabled={isPending}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm
-                         font-medium text-gray-700 shadow-sm hover:border-gray-400
-                         focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500
-                         disabled:cursor-wait disabled:opacity-60"
-              aria-label="Selecionar ano de referência"
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
+      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Comparar deputados</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Compare até 3 deputados lado a lado
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
+          {isPending && (
+            <div
+              className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600"
+              role="status"
+              aria-label="Carregando..."
+            />
+          )}
+          <select
+            value={selectedYear}
+            onChange={handleYearChange}
+            disabled={isPending}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm
+                       font-medium text-gray-700 shadow-sm hover:border-gray-400
+                       focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500
+                       disabled:cursor-wait disabled:opacity-60"
+            aria-label="Selecionar ano de referência"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </div>
       </header>
 

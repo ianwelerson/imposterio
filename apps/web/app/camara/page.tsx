@@ -24,7 +24,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import {
-  StatCard, DataTable, SourcePill,
+  Acronym, StatCard, DataTable,
   SectionHeader, AvatarInitials, Badge, ToastTrigger,
 } from "@/components/ui"
 import { CamaraGameCard } from "./CamaraGameCard"
@@ -144,7 +144,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       cell: (row: (typeof deputies)[number]) => (
         <Link
           href={`/camara/${row.id}?ano=${selectedYear}`}
@@ -178,7 +178,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraProposition) => (
         <Link
@@ -221,7 +221,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraVotingSession) => (
         <Link
@@ -239,21 +239,21 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       {/* Header */}
-      <header className="mb-6">
-        <div className="flex flex-col gap-2 mb-1 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">Câmara dos Deputados</h1>
-          <YearSelector years={availableYears} selected={selectedYear} />
+      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Câmara dos Deputados</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Visão geral da Câmara dos Deputados
+          </p>
         </div>
-        <p className="text-sm text-gray-500">
-          Visão geral da Câmara dos Deputados — {selectedYear}
-        </p>
-        <div className="mt-2">
-          <SourcePill url={deputies._source} />
+        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
+          <YearSelector years={availableYears} selected={selectedYear} />
         </div>
       </header>
 
       {/* ── 1. Resumo geral ──────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <div className="mb-2">
           <h2 className="text-lg font-semibold text-gray-900">Resumo geral</h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -270,6 +270,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
             label="Proposições"
             value={String(propositions.length)}
             badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
+            tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
           />
           <StatCard
             label="Votações realizadas"
@@ -287,7 +288,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 2. Charts ────────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <SectionHeader title="Gráficos e comparativos" />
         <CamaraCharts
           byParty={byParty}
@@ -305,7 +306,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 3. Deputados ─────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <SectionHeader
           title="Deputados"
           sourceUrl={deputies._source}
@@ -315,7 +316,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 4. Pauta legislativa ──────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <SectionHeader
           title="Últimas proposições"
           sourceUrl={propositions._source}
@@ -324,7 +325,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         <DataTable columns={propColumns} data={latestPropositions} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mb-10">
+      <section className="mb-8">
         <SectionHeader
           title="Últimas votações"
           sourceUrl={votingSessions._source}
@@ -334,7 +335,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 5. Game ──────────────────────────────────────────────── */}
-      <section className="mb-10">
+      <section className="mb-8">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/jogo" }}

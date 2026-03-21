@@ -88,10 +88,10 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       {/* Header */}
-      <header className="mb-6">
+      <header className="mb-10">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">
+            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
               {proposition.typeCode} {proposition.number}/{proposition.year}
             </h1>
             <Badge variant="gray">{proposition.typeCode}</Badge>

@@ -91,7 +91,7 @@ export function VotingSessionsList({ sessions, selectedYear, yearSelector }: Vot
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraVotingSession) => (
         <Link

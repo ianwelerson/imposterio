@@ -10,6 +10,7 @@
 
 import Link from "next/link"
 import { getDeputyDetail, getDeputyVotingHistory } from "@imposterio/fetchers"
+import { SourcePill } from "@/components/ui"
 import { YearSelector } from "../YearSelector"
 import { VotingHistoryList } from "./VotingHistoryList"
 
@@ -45,11 +46,14 @@ export default async function DeputyVotingPage({ params, searchParams }: PagePro
 
   return (
     <>
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Votações — {deputy.name}
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Votações — {deputy.name}
+            </h1>
+            <SourcePill url={votingHistory._source} />
+          </div>
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -57,8 +61,8 @@ export default async function DeputyVotingPage({ params, searchParams }: PagePro
             ← Voltar para {deputy.name}
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {votingHistory.length} votações com participação em {selectedYear}
+        <p className="mt-1 text-sm text-gray-500">
+          Votações nominais em plenário — {selectedYear}
         </p>
       </header>
 

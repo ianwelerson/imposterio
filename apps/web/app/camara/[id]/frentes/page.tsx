@@ -10,6 +10,7 @@
 
 import Link from "next/link"
 import { getDeputyDetail, getDeputyCaucuses } from "@imposterio/fetchers"
+import { SourcePill } from "@/components/ui"
 import { CaucusesList } from "./CaucusesList"
 
 interface CaucusesPageProps {
@@ -29,11 +30,14 @@ export default async function CaucusesPage({ params, searchParams }: CaucusesPag
 
   return (
     <>
-      <header className="pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Frentes parlamentares — {deputy.name}
-          </h1>
+      <header className="mb-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900">
+              Frentes parlamentares — {deputy.name}
+            </h1>
+            <SourcePill url={caucuses._source} />
+          </div>
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
             className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
@@ -41,8 +45,8 @@ export default async function CaucusesPage({ params, searchParams }: CaucusesPag
             ← Voltar para {deputy.name}
           </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          {caucuses.length} frentes parlamentares
+        <p className="mt-1 text-sm text-gray-500">
+          Grupos suprapartidários da legislatura atual
         </p>
       </header>
 

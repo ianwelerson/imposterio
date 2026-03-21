@@ -42,7 +42,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <header className="mb-6">
+      <header className="mb-10">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-semibold text-gray-900">{event.type}</h1>
@@ -60,13 +60,13 @@ export default async function EventDetailPage({ params }: PageProps) {
         </p>
       </header>
 
-      <section className="mb-6">
+      <section className="mb-8">
         <SectionHeader title="Informações gerais" sourceUrl={event._source} />
         <InfoPanel fields={infoFields} />
       </section>
 
       {event.organs.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-8">
           <SectionHeader title="Órgãos organizadores" />
           <div className="space-y-2">
             {event.organs.map((o) => (
@@ -85,7 +85,7 @@ export default async function EventDetailPage({ params }: PageProps) {
       )}
 
       {event.recordingUrl && (
-        <section className="mb-6">
+        <section className="mb-8">
           <SectionHeader title="Gravação" />
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
             <a

@@ -51,7 +51,7 @@ export function CamaraPautasList({ propositions, selectedYear, yearSelector }: C
     },
     {
       header: "",
-      align: "center" as const,
+      align: "right" as const,
       className: "whitespace-nowrap",
       cell: (row: CamaraProposition) => (
         <Link

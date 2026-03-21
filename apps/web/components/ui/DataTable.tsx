@@ -19,8 +19,8 @@ import { Fragment, type ReactNode } from "react"
  * @typeParam T - The type of each row in the data array
  */
 interface Column<T> {
-  /** Column header label displayed in the `<th>`. */
-  header: string
+  /** Column header label displayed in the `<th>`. Can be a string or JSX. */
+  header: ReactNode
   /**
    * Render function that receives a row and returns the cell content.
    * Can return a string, number, or JSX (e.g. a SourcePill).

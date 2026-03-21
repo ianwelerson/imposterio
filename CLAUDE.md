@@ -199,6 +199,7 @@ imposterio/
 │   │       │   ├── SectionHeader.tsx # Section title with optional action link + sourceUrl pill
 │   │       │   ├── SourcePill.tsx  # Clickable link to official data source URL
 │   │       │   ├── Badge.tsx       # Colored label (red, green, amber variants)
+│   │       │   ├── Acronym.tsx    # Inline abbreviation with CSS hover tooltip
 │   │       │   ├── AvatarInitials.tsx # Circular avatar with initials fallback
 │   │       │   ├── ProfileHeader.tsx # Detail page header with photo, name, role, stats
 │   │       │   ├── InfoPanel.tsx   # Key-value breakdown panel
@@ -365,6 +366,13 @@ Expense detail page ([docId]/page.tsx):
 - SectionHeader → sourceUrl prop → same pill pattern
 - DataTable rows → SourcePill in expandable detail or last column
 - ProfileHeader → sourceUrl prop → pill next to name
+
+Multi-source pages (overview pages fetching from multiple APIs):
+  - Do NOT place SourcePill next to the page title
+  - Each section must have its own source attribution via SectionHeader/ChartCard sourceUrl
+
+Single-source pages (listing pages with one API call):
+  - SourcePill inline with the page title is OK
 ```
 
 ### Year selection pattern
@@ -375,6 +383,24 @@ Expense detail page ([docId]/page.tsx):
 - Clamped to valid range: max(FIRST_YEAR, min(currentYear, urlYear))
 - Carries across pages: detail page → expenses page
 - inline prop for matching SearchableList filter styling
+
+Page header placement (box style):
+  - Wrapped in: rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5
+  - Label: "Ver dados de" + <YearSelector>
+  - No back link: header flex-col sm:flex-row sm:items-end sm:justify-between
+    → title/subtitle left, year box right
+  - With back link: right column stacks back link above year box
+    → flex-col items-end gap-2
+  - Mid-page divider: flex sm:items-center sm:justify-between
+    → title/description left, year box right on same line
+```
+
+### Section spacing pattern
+
+```
+- <header>  → mb-10 (larger gap from header to first content)
+- <section> → mb-8  (uniform gap between content sections)
+- Mid-page dividers (e.g. year selector on deputy detail) → mt-10 mb-10
 ```
 
 ---
