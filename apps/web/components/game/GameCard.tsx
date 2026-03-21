@@ -87,7 +87,7 @@ export function GameCard({
   disabled = false,
 }: GameCardProps) {
   return (
-    <article className="rounded-lg border border-gray-200/60 bg-white p-6">
+    <article className="rounded-xl border border-gray-200 bg-white p-6">
       {/* Header: game label + tags */}
       <div className="mb-4 flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">

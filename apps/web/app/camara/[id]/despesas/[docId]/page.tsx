@@ -88,36 +88,42 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
   return (
     <>
       {/* Header */}
-      <header className="mb-10">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
-              {toSentenceCase(expense.type)}
-            </h1>
-            <Badge variant="gray">CEAP</Badge>
-            <SourcePill url={expenses._source} />
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href={`/camara/${id}/despesas?ano=${selectedYear}`}
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar para despesas
+              </Link>
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  {toSentenceCase(expense.type)}
+                </h1>
+                <Badge variant="gray">CEAP</Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-white/70">
+                <Link
+                  href={`/camara/${id}?ano=${selectedYear}`}
+                  className="font-medium text-white/90 hover:text-white transition-colors"
+                >
+                  {deputy.name}
+                </Link>
+                <span className="text-white/40">—</span>
+                <span>{MONTH_NAMES[expense.month]} de {expense.year}</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <SourcePill url={expenses._source} />
+            </div>
           </div>
-          <Link
-            href={`/camara/${id}/despesas?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-          >
-            ← Voltar para despesas
-          </Link>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700 sm:text-base">
-          <Link
-            href={`/camara/${id}?ano=${selectedYear}`}
-            className="font-medium hover:text-accent transition-colors"
-          >
-            {deputy.name}
-          </Link>
-          <span className="text-gray-400">—</span>
-          <span>{MONTH_NAMES[expense.month]} de {expense.year}</span>
         </div>
       </header>
 
       {/* Values */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Valores" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Valor bruto" value={formatCurrency(expense.grossValue)} />
@@ -134,22 +140,22 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
       </section>
 
       {/* General info */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Informações da despesa" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Internal reference */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Referência interna" />
         <InfoPanel fields={internalFields} />
       </section>
 
       {/* Receipt document — last section for maximum visibility */}
       {expense.documentUrl && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Nota fiscal / Comprovante" />
-          <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-4">
               <a
                 href={expense.documentUrl}

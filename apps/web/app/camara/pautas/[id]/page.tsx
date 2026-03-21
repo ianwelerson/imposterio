@@ -88,41 +88,47 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       {/* Header */}
-      <header className="mb-10">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
-              {proposition.typeCode} {proposition.number}/{proposition.year}
-            </h1>
-            <Badge variant="gray">{proposition.typeCode}</Badge>
-            {proposition.statusDescription && (
-              <Badge variant="amber">{proposition.statusDescription}</Badge>
-            )}
-            <SourcePill url={proposition._source} />
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href={`/camara/pautas/lista?ano=${selectedYear}`}
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar à lista
+              </Link>
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  {proposition.typeCode} {proposition.number}/{proposition.year}
+                </h1>
+                <Badge variant="gray">{proposition.typeCode}</Badge>
+                {proposition.statusDescription && (
+                  <Badge variant="amber">{proposition.statusDescription}</Badge>
+                )}
+              </div>
+              <p className="max-w-xl text-sm leading-relaxed text-white/70">
+                {proposition.summary}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <SourcePill url={proposition._source} />
+            </div>
           </div>
-          <Link
-            href={`/camara/pautas/lista?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
-          >
-            ← Voltar à lista
-          </Link>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
-          {proposition.summary}
-        </p>
       </header>
 
       {/* Info panel */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Informações gerais</h2>
+      <section className="mb-12">
+        <SectionHeader title="Informações gerais" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Full summary */}
       {proposition.fullSummary && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Ementa detalhada</h2>
-          <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+        <section className="mb-12">
+          <SectionHeader title="Ementa detalhada" />
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
             <p className="text-sm text-gray-800 leading-relaxed">{proposition.fullSummary}</p>
           </div>
         </section>
@@ -130,9 +136,9 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
 
       {/* Text URL */}
       {proposition.textUrl && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Inteiro teor</h2>
-          <div className="rounded-lg border border-gray-200/60 bg-white p-4">
+        <section className="mb-12">
+          <SectionHeader title="Inteiro teor" />
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
             <a
               href={proposition.textUrl}
               target="_blank"
@@ -147,9 +153,9 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
 
       {/* Authors */}
       {authors.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Autores" sourceUrl={authors._source} />
-          <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
+          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             {authors.map((author, i) => (
               <div key={i} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -168,7 +174,7 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
 
       {/* Themes */}
       {themes.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Temas" sourceUrl={themes._source} />
           <div className="flex flex-wrap gap-2">
             {themes
@@ -187,9 +193,9 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
 
       {/* Legislative progress (tramitações) */}
       {progress.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Tramitação" sourceUrl={progress._source} />
-          <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
             <ol className="relative border-l border-gray-200 ml-3">
               {progress.map((step, i) => (
                 <li key={i} className="mb-6 ml-6 last:mb-0">

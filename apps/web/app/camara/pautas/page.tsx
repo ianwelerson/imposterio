@@ -181,36 +181,33 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
     <>
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
-      {/* Header */}
-      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Pauta Legislativa — Câmara</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Proposições legislativas e votações em plenário
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Link
-            href="/camara"
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
-          >
-            ← Voltar à Câmara
-          </Link>
-          <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
-            <span className="text-sm font-medium text-gray-600">Ver dados de</span>
-            <YearSelector years={availableYears} selected={selectedYear} />
+      {/* Hero header */}
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href="/camara"
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar à Câmara
+              </Link>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Pauta Legislativa</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                Proposições legislativas e votações em plenário da Câmara dos Deputados.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+              <span className="text-sm font-medium text-white/80">Ver dados de</span>
+              <YearSelector years={availableYears} selected={selectedYear} />
+            </div>
           </div>
         </div>
       </header>
 
       {/* Resumo geral */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Resumo geral</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Visão geral da atividade legislativa no período selecionado
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader title="Resumo geral" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Proposições"
@@ -232,22 +229,15 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       </section>
 
       {/* Proposições section */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Proposições</h2>
-            <Link
-              href={`/camara/pautas/lista?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições
-            apresentadas na Câmara dos Deputados
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Proposições"
+          action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições
+          apresentadas na Câmara dos Deputados
+        </p>
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {byType.slice(0, 3).map((item) => (
@@ -270,22 +260,15 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       </section>
 
       {/* Votações section */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Votações</h2>
-            <Link
-              href={`/camara/pautas/votacoes?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Sessões de votação nominal em plenário — inclui resultado, votos individuais
-            e orientações partidárias
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Votações"
+          action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Sessões de votação nominal em plenário — inclui resultado, votos individuais
+          e orientações partidárias
+        </p>
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Votações aprovadas" value={String(approvedVotes)} badge={{ text: `${approvalRate}%`, variant: "green" }} />

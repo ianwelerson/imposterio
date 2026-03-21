@@ -119,46 +119,50 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       {/* Header */}
-      <header className="mb-10">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Votação {id}</h1>
-            {session.approved === true && <Badge variant="green">Aprovada</Badge>}
-            {session.approved === false && <Badge variant="red">Rejeitada</Badge>}
-            {session.approved === null && <Badge variant="gray">Indefinida</Badge>}
-            <SourcePill url={session._source} />
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href={`/camara/pautas/votacoes?ano=${selectedYear}`}
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar à lista
+              </Link>
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Votação {id}</h1>
+                {session.approved === true && <Badge variant="green">Aprovada</Badge>}
+                {session.approved === false && <Badge variant="red">Rejeitada</Badge>}
+                {session.approved === null && <Badge variant="gray">Indefinida</Badge>}
+              </div>
+              <p className="max-w-xl text-sm leading-relaxed text-white/70">
+                {session.description}
+              </p>
+              {session.openingDescription && session.openingDescription !== session.description && (
+                <p className="mt-2 text-sm text-white/50 leading-relaxed max-w-xl">
+                  {session.openingDescription}
+                </p>
+              )}
+              {session.lastPresentation && (
+                <p className="mt-2 text-xs text-white/40 leading-relaxed max-w-xl whitespace-pre-line">
+                  {session.lastPresentation}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <SourcePill url={session._source} />
+            </div>
           </div>
-          <Link
-            href={`/camara/pautas/votacoes?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
-          >
-            ← Voltar à lista
-          </Link>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
-          {session.description}
-        </p>
-        {session.openingDescription && session.openingDescription !== session.description && (
-          <p className="mt-2 text-sm text-gray-500 leading-relaxed max-w-3xl">
-            {session.openingDescription}
-          </p>
-        )}
-        {session.lastPresentation && (
-          <p className="mt-2 text-xs text-gray-400 leading-relaxed max-w-3xl whitespace-pre-line">
-            {session.lastPresentation}
-          </p>
-        )}
       </header>
 
       {/* Vote stats */}
       {totalVotes > 0 && (
-        <section className="mb-8">
-          <div className="mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Resultado</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {totalVotes} votos registrados nesta sessão
-            </p>
-          </div>
+        <section className="mb-12">
+          <SectionHeader title="Resultado" />
+          <p className="mb-4 text-sm text-gray-500">
+            {totalVotes} votos registrados nesta sessão
+          </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard
               label="Sim"
@@ -175,16 +179,16 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
       )}
 
       {/* Info panel */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Informações</h2>
+      <section className="mb-12">
+        <SectionHeader title="Informações" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Affected propositions */}
       {session.propositions.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Proposições afetadas</h2>
-          <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
+        <section className="mb-12">
+          <SectionHeader title="Proposições afetadas" />
+          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             {session.propositions.map((p) => (
               <div key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
@@ -210,9 +214,9 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Voting objects (propositions that could be the object of this vote) */}
       {session.votingObjects.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Objeto da votação</h2>
-          <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
+        <section className="mb-12">
+          <SectionHeader title="Objeto da votação" />
+          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             {session.votingObjects.map((p) => (
               <div key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
@@ -238,13 +242,13 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Party orientations */}
       {validOrientations.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Orientações partidárias" sourceUrl={orientations._source} />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {validOrientations.map((o) => (
               <div
                 key={o.name}
-                className="flex items-center justify-between rounded-lg border border-gray-200/60 bg-white px-3 py-2"
+                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2"
               >
                 <span className="text-sm font-medium text-gray-900">{o.name}</span>
                 <Badge variant={orientationVariant(o.orientation)}>{o.orientation}</Badge>
@@ -256,7 +260,7 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Individual votes */}
       {totalVotes > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Votos individuais" sourceUrl={votes._source} />
           <VotesList votes={votes} />
         </section>

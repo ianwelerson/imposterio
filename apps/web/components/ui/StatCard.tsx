@@ -49,7 +49,7 @@ interface StatCardProps {
  */
 export function StatCard({ label, value, badge, tooltip }: StatCardProps) {
   return (
-    <article className="rounded-lg bg-white border border-gray-200/60 p-4 sm:p-5">
+    <article className="rounded-xl bg-white border border-gray-200 p-4 sm:p-5">
       <p className="flex items-center gap-1.5 text-xs text-gray-500 sm:text-sm">
         {label}
         {tooltip && (

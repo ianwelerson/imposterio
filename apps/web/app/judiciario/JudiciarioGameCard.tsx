@@ -1,25 +1,16 @@
 /**
  * @file JudiciarioGameCard.tsx
- * @description Client-side GameCard wrapper for the Judiciário page.
+ * @description Client-side GameCard wrapper for the Judiciario page.
  *
- * Shows a game card relevant to the judiciary — judge compensation,
- * productivity, or benefits.
+ * Embeds the same interactive game experience as the dedicated /jogo page,
+ * but scoped to the Judiciario context. Reuses JogoGameCard since the API
+ * already returns random cards.
  */
 
 "use client"
 
-import { GameCard } from "@/components/game/GameCard"
+import { JogoGameCard } from "@/app/acha-justo/JogoGameCard"
 
 export function JudiciarioGameCard() {
-  return (
-    <GameCard
-      category="total_compensation"
-      branch="judiciario"
-      value="R$ 46.366,19/mês"
-      context="Teto constitucional + auxílio-moradia + auxílio-alimentação + gratificações"
-      onVote={(fair) => {
-        console.log("Vote cast:", fair ? "fair" : "not fair")
-      }}
-    />
-  )
+  return <JogoGameCard />
 }

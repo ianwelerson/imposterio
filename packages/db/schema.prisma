@@ -15,33 +15,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Card displayed in the "Fair or not?" game.
-/// Each card represents a real data point about a public official:
-/// expenses, absences, attendance, bills authored, total compensation,
-/// staff count, campaign donations, or wealth growth between elections.
+/// Card in the "Fair or not?" game. Stores only a reference to the data
+/// point in the source API — the question text and reveal details are
+/// built dynamically at read time by fetching fresh data from the cache.
+///
+/// This design ensures cards always show up-to-date values: if a deputy's
+/// expense total changes, the question text automatically reflects it.
 model GameCard {
-  id        String     @id @default(cuid())
-  /// Card category — determines what data is shown and how the question is framed.
-  /// Values: 'expense' | 'absence' | 'attendance' | 'bills_per_tenure' |
-  ///         'total_compensation' | 'staff_count' | 'campaign_donations' | 'wealth_growth'
+  id        String     @id @default(uuid())
+  /// Card type determines how the question is built and what data is fetched.
+  /// Current: 'expense_total' | 'expense_category'
+  /// Future: 'attendance' | 'total_compensation' | 'bills_per_tenure' | etc.
   type      String
-  /// ID of the item in the original API (used for deduplication)
-  sourceId  String
-  /// Minimal snapshot for display and rankings.
-  /// Stored fields: name, party, state, branch, value, context, photoUrl, sourceUrl
-  /// Never store the full raw API response here.
-  payload   Json
+  /// Government branch / module this card belongs to.
+  /// Values: 'camara' | 'senado' | 'executivo' | 'judiciario' | 'tse'
+  module    String
+  /// Entity ID in the source API (e.g., Câmara deputy ID "204554").
+  /// Used to fetch fresh data when displaying the card.
+  refId     String
+  /// Additional context needed to build the question (JSON).
+  /// For expense_total: { year: 2025 }
+  /// For expense_category: { year: 2025, category: "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR" }
+  refMeta   Json       @default("{}")
   createdAt DateTime   @default(now())
   votes     GameVote[]
 
+  @@unique([type, module, refId])
   @@index([type])
-  @@index([sourceId])
+  @@index([module])
   @@map("game_cards")
 }
 
 /// A single vote cast by a user in the "Fair or not?" game.
 model GameVote {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   cardId    String
   card      GameCard @relation(fields: [cardId], references: [id])
   /// true = user considers this fair, false = user considers this unfair

@@ -99,7 +99,7 @@ export function DataTable<T>({
   renderExpanded,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200/60 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200/60 bg-gray-50/70">

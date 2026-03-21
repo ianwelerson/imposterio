@@ -108,7 +108,7 @@ export default function EmpresasPage() {
       <section className="mt-8">
         <SectionHeader
           title="Acha Justo?"
-          action={{ label: "Jogar mais", href: "/jogo" }}
+          action={{ label: "Jogar mais", href: "/acha-justo" }}
         />
         <EmpresasGameCard />
       </section>

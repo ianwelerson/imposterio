@@ -84,7 +84,7 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
           </button>
 
           {showVotes && (
-            <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200/60">
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-gray-50">
                   <tr>

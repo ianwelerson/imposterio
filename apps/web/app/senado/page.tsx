@@ -100,7 +100,7 @@ export default function SenadoPage() {
       <section className="mt-8">
         <SectionHeader
           title="Acha Justo?"
-          action={{ label: "Jogar mais", href: "/jogo" }}
+          action={{ label: "Jogar mais", href: "/acha-justo" }}
         />
         <SenadoGameCard />
       </section>

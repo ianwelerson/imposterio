@@ -65,15 +65,17 @@ export function ComparisonControls({
   return (
     <>
       {/* Header with year selector */}
-      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Comparar deputados</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Compare até 3 deputados lado a lado
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
-          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Comparar deputados</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                Compare até 3 deputados lado a lado — despesas, votações e atividade parlamentar.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+          <span className="text-sm font-medium text-white/80">Ver dados de</span>
           {isPending && (
             <div
               className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600"
@@ -97,11 +99,13 @@ export function ComparisonControls({
               </option>
             ))}
           </select>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Deputy picker — receives shared loading + navigate */}
-      <section className="mb-8">
+      <section className="mb-12">
         <DeputyPicker
           allDeputies={allDeputies}
           selectedIds={selectedIds}

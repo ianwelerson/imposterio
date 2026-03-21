@@ -29,7 +29,7 @@ interface ChartCardProps {
  */
 export function ChartCard({ title, subtitle, sourceUrl, action, children }: ChartCardProps) {
   return (
-    <article className="rounded-lg border border-gray-200/60 bg-white p-3 sm:p-5">
+    <article className="rounded-xl border border-gray-200 bg-white p-3 sm:p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>

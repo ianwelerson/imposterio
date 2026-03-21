@@ -182,7 +182,7 @@ export function SearchableList<T>({
       {filtered.length > 0 ? (
         children(paged)
       ) : (
-        <div className="rounded-lg border border-gray-200/60 bg-white p-8 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
           Nenhum resultado encontrado.
         </div>
       )}

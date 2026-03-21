@@ -47,24 +47,26 @@ export default async function EventsPage({ params, searchParams }: EventsPagePro
 
   return (
     <>
-      <header className="mb-10">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">
-              Eventos — {deputy.name}
-            </h1>
-            <SourcePill url={events._source} />
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href={`/camara/${id}?ano=${selectedYear}`}
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar para {deputy.name}
+              </Link>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Eventos</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                Sessões plenárias, audiências públicas e reuniões — {selectedYear}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <SourcePill url={events._source} />
+            </div>
           </div>
-          <Link
-            href={`/camara/${id}?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-          >
-            ← Voltar para {deputy.name}
-          </Link>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
-          Sessões plenárias, audiências públicas e reuniões — {selectedYear}
-        </p>
       </header>
 
       <EventsList

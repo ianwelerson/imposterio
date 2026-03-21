@@ -2,24 +2,15 @@
  * @file ExecutivoGameCard.tsx
  * @description Client-side GameCard wrapper for the Executivo Federal page.
  *
- * Shows a game card relevant to the federal executive — compensation,
- * staff count, or travel expenses for a civil servant.
+ * Embeds the same interactive game experience as the dedicated /jogo page,
+ * but scoped to the Executivo context. Reuses JogoGameCard since the API
+ * already returns random cards.
  */
 
 "use client"
 
-import { GameCard } from "@/components/game/GameCard"
+import { JogoGameCard } from "@/app/acha-justo/JogoGameCard"
 
 export function ExecutivoGameCard() {
-  return (
-    <GameCard
-      category="total_compensation"
-      branch="executivo"
-      value="R$ 35.462,71/mês"
-      context="Salário base + gratificações + auxílios — servidor de carreira"
-      onVote={(fair) => {
-        console.log("Vote cast:", fair ? "fair" : "not fair")
-      }}
-    />
-  )
+  return <JogoGameCard />
 }

@@ -42,37 +42,41 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <header className="mb-10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold text-gray-900">{event.type}</h1>
-            <Badge variant={statusVariant}>{event.status}</Badge>
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link
+                href="/camara"
+                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+              >
+                ← Voltar à Câmara
+              </Link>
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{event.type}</h1>
+                <Badge variant={statusVariant}>{event.status}</Badge>
+              </div>
+              <p className="max-w-xl text-sm leading-relaxed text-white/70">
+                {event.description}
+              </p>
+            </div>
           </div>
-          <Link
-            href="/camara"
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-          >
-            ← Voltar à Câmara
-          </Link>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
-          {event.description}
-        </p>
       </header>
 
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Informações gerais" sourceUrl={event._source} />
         <InfoPanel fields={infoFields} />
       </section>
 
       {event.organs.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Órgãos organizadores" />
           <div className="space-y-2">
             {event.organs.map((o) => (
               <div
                 key={o.id}
-                className="rounded-lg border border-gray-200/60 bg-white p-4 flex items-center gap-3"
+                className="rounded-xl border border-gray-200 bg-white p-4 flex items-center gap-3"
               >
                 <span className="rounded bg-accent-light px-2 py-0.5 text-xs font-bold text-accent">
                   {o.abbreviation}
@@ -85,9 +89,9 @@ export default async function EventDetailPage({ params }: PageProps) {
       )}
 
       {event.recordingUrl && (
-        <section className="mb-8">
+        <section className="mb-12">
           <SectionHeader title="Gravação" />
-          <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
             <a
               href={event.recordingUrl}
               target="_blank"

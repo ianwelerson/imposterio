@@ -211,7 +211,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
       {hasComparison && (
         <>
           {/* Summary comparison table */}
-          <section className="mb-8">
+          <section className="mb-12">
             <SectionHeader title="Resumo comparativo" />
             <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
               {/* Always 4 columns: 1 label + 3 deputy slots, matching the picker grid */}
@@ -326,7 +326,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
           </section>
 
           {/* Charts */}
-          <section className="mb-8">
+          <section className="mb-12">
             <SectionHeader title="Visualizações comparativas" />
             <ComparisonCharts
               metrics={metrics}

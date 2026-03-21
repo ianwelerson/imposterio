@@ -2,24 +2,15 @@
  * @file CamaraGameCard.tsx
  * @description Client-side GameCard wrapper for the Câmara dos Deputados page.
  *
- * Shows a game card relevant to the Chamber of Deputies — expenses,
- * attendance, or staff count for a deputy.
+ * Embeds the same interactive game experience as the dedicated /jogo page,
+ * but scoped to the Câmara context. Reuses JogoGameCard since the API
+ * already returns random cards.
  */
 
 "use client"
 
-import { GameCard } from "@/components/game/GameCard"
+import { JogoGameCard } from "@/app/acha-justo/JogoGameCard"
 
 export function CamaraGameCard() {
-  return (
-    <GameCard
-      category="absence"
-      branch="camara"
-      value="42 faltas"
-      context="De 120 sessões plenárias em 2024 — deputado de 3º mandato"
-      onVote={(fair) => {
-        console.log("Vote cast:", fair ? "fair" : "not fair")
-      }}
-    />
-  )
+  return <JogoGameCard />
 }

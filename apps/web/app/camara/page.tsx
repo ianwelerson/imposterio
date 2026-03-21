@@ -238,28 +238,27 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     <>
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
-      {/* Header */}
-      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Câmara dos Deputados</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Visão geral da Câmara dos Deputados
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
-          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
-          <YearSelector years={availableYears} selected={selectedYear} />
+      {/* Hero header */}
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Câmara dos Deputados</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                Visão geral da Câmara dos Deputados — despesas, votações, proposições e presença parlamentar.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+              <span className="text-sm font-medium text-white/80">Ver dados de</span>
+              <YearSelector years={availableYears} selected={selectedYear} />
+            </div>
+          </div>
         </div>
       </header>
 
       {/* ── 1. Resumo geral ──────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Resumo geral</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Indicadores da Câmara dos Deputados para o ano de {selectedYear}
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader title="Resumo geral" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Deputados em exercício"
@@ -288,7 +287,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 2. Charts ────────────────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Gráficos e comparativos" />
         <CamaraCharts
           byParty={byParty}
@@ -306,7 +305,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 3. Deputados ─────────────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader
           title="Deputados"
           sourceUrl={deputies._source}
@@ -316,7 +315,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 4. Pauta legislativa ──────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader
           title="Últimas proposições"
           sourceUrl={propositions._source}
@@ -325,7 +324,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         <DataTable columns={propColumns} data={latestPropositions} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader
           title="Últimas votações"
           sourceUrl={votingSessions._source}
@@ -335,10 +334,10 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 5. Game ──────────────────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader
           title="Acha Justo?"
-          action={{ label: "Jogar mais", href: "/jogo" }}
+          action={{ label: "Jogar mais", href: "/acha-justo" }}
         />
         <CamaraGameCard />
       </section>

@@ -77,7 +77,7 @@ export function TaxCounter() {
   }, [])
 
   return (
-    <div className="rounded-lg border border-gray-200/60 bg-white p-5 sm:p-6">
+    <div className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">

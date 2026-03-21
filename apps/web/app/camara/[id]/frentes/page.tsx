@@ -10,7 +10,6 @@
 
 import Link from "next/link"
 import { getDeputyDetail, getDeputyCaucuses } from "@imposterio/fetchers"
-import { SourcePill } from "@/components/ui"
 import { CaucusesList } from "./CaucusesList"
 
 interface CaucusesPageProps {
@@ -30,24 +29,19 @@ export default async function CaucusesPage({ params, searchParams }: CaucusesPag
 
   return (
     <>
-      <header className="mb-10">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">
-              Frentes parlamentares — {deputy.name}
-            </h1>
-            <SourcePill url={caucuses._source} />
-          </div>
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
           <Link
             href={`/camara/${id}?ano=${selectedYear}`}
-            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+            className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
           >
             ← Voltar para {deputy.name}
           </Link>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Frentes Parlamentares</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+            Grupos suprapartidários da legislatura atual
+          </p>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
-          Grupos suprapartidários da legislatura atual
-        </p>
       </header>
 
       <CaucusesList

@@ -122,7 +122,7 @@ function FilledSlot({
   loading: boolean
 }) {
   return (
-    <div className={`relative flex items-center gap-3 rounded-lg border border-gray-200/60 bg-white px-4 ${SLOT_HEIGHT}`}>
+    <div className={`relative flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 ${SLOT_HEIGHT}`}>
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />

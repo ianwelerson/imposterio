@@ -6,46 +6,38 @@
  * Each category presents a different kind of fact about a public official
  * for the user to judge anonymously before the reveal.
  *
- * Categories:
- * - `expense`            — CEAP parliamentary expenses (airfare, office, ads, etc.)
- * - `absence`            — number of absences from plenary sessions
+ * Card types determine how the question is dynamically built from fresh API
+ * data. The database stores only references (entity ID + metadata), and
+ * the question text is constructed at read time so values stay up-to-date.
+ *
+ * Current types:
+ * - `expense_total`    — total CEAP parliamentary expenses for a year
+ * - `expense_category` — expenses in a specific CEAP category for a year
+ *
+ * Future types:
  * - `attendance`         — attendance rate in plenary sessions
+ * - `total_compensation` — base salary + all extras
  * - `bills_per_tenure`   — bills authored relative to time in office
- * - `total_compensation` — base salary + all extras (all branches, incl. judiciary)
  * - `staff_count`        — number of aides/advisors employed
  * - `campaign_donations` — total donations received for campaign financing
  * - `wealth_growth`      — patrimony increase between consecutive elections
  */
 
 /**
- * All card categories supported by the game.
- *
- * Each category maps to a different data source and display format.
- * The GameCard component adapts its question framing based on this type.
+ * All card types supported by the game.
+ * Each type maps to a specific data fetching + question building strategy.
  */
 export type GameCardType =
-  | "expense"
-  | "absence"
-  | "attendance"
-  | "bills_per_tenure"
-  | "total_compensation"
-  | "staff_count"
-  | "campaign_donations"
-  | "wealth_growth"
+  | "expense_total"
+  | "expense_category"
 
 /**
- * Human-readable labels for each card category (Brazilian Portuguese).
+ * Human-readable labels for each card type (Brazilian Portuguese).
  * Used in the UI to display the category tag on game cards.
  */
 export const GAME_CARD_TYPE_LABELS: Record<GameCardType, string> = {
-  expense: "Despesa",
-  absence: "Faltas",
-  attendance: "Presença",
-  bills_per_tenure: "Projetos de lei",
-  total_compensation: "Remuneração total",
-  staff_count: "Assessores",
-  campaign_donations: "Doações de campanha",
-  wealth_growth: "Evolução patrimonial",
+  expense_total: "Despesa total",
+  expense_category: "Despesa por categoria",
 }
 
 /**
@@ -73,36 +65,66 @@ export const GAME_BRANCH_LABELS: Record<GameBranch, string> = {
 }
 
 /**
- * Minimal snapshot stored in GameCard.payload for display and rankings.
- *
- * This type is intentionally generic to support all card categories.
- * The `value` field holds the primary metric (monetary amount, count,
- * percentage, etc.), and `context` provides the framing text that
- * makes the number meaningful without revealing the official's identity.
+ * Metadata stored in GameCard.refMeta — varies by card type.
  */
-export interface GameCardPayload {
-  /** Name of the public official (revealed only after voting). */
+export interface ExpenseTotalMeta {
+  year: number
+}
+
+export interface ExpenseCategoryMeta {
+  year: number
+  category: string
+}
+
+export type GameCardMeta = ExpenseTotalMeta | ExpenseCategoryMeta
+
+/**
+ * Shape of the card data returned by `GET /api/game/card`.
+ * The question is built dynamically from fresh API data — not stored in DB.
+ */
+export interface GameCardResponse {
+  /** Database ID of the card (sent back when voting). */
+  id: string
+  /** Card type (expense_total, expense_category, etc.). */
+  type: GameCardType
+  /** Government branch/module (camara, senado, etc.). */
+  module: GameBranch
+  /** The question text, dynamically built from fresh data. */
+  question: string
+}
+
+/**
+ * Shape of the reveal data returned by `POST /api/game/vote`.
+ * Sent after the user votes — reveals the official's identity and vote stats.
+ */
+export interface GameVoteResponse {
+  /** The official's name. */
   name: string
-  /** Political party abbreviation (e.g., "PT", "PL", "PSDB"). */
+  /** Political party abbreviation. */
   party: string
-  /** Brazilian state abbreviation (e.g., "SP", "RJ", "MG"). */
+  /** Brazilian state abbreviation. */
   state: string
-  /** Branch/institution this data point comes from. */
-  branch: GameBranch
-  /** The primary numeric value for this card (raw, unformatted). */
-  value: number
-  /**
-   * Contextual description that frames the value without revealing identity.
-   * Examples:
-   * - "Passagens aéreas — Mar/2024"
-   * - "Faltou a 42 de 120 sessões em 2024"
-   * - "3 projetos em 8 anos de mandato"
-   * - "Salário base + gratificações + extras"
-   * - "Patrimônio declarado cresceu 340% entre 2018 e 2022"
-   */
-  context: string
-  /** URL to the official's photo (revealed only after voting). */
+  /** URL to the official's photo. */
   photoUrl: string
   /** URL to the official government source for this data point. */
   sourceUrl: string
+  /** Total votes cast on this card. */
+  totalVotes: number
+  /** Number of "fair" votes. */
+  fairVotes: number
+  /** Whether this specific user voted "fair". */
+  userVotedFair: boolean
+}
+
+/**
+ * Shape of a scoreboard entry returned by `GET /api/game/scoreboard`.
+ */
+export interface ScoreboardEntry {
+  id: string
+  name: string
+  party: string
+  state: string
+  photoUrl: string
+  totalVotes: number
+  fairPercent: number
 }

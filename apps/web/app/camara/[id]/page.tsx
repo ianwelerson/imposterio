@@ -33,6 +33,7 @@ import {
   getDeputyPreviousMandates, getDeputyHistory, getDeputyProfessions,
   getDeputyVotingHistory,
 } from "@imposterio/fetchers"
+import { getEntityVoteStats, ensureGameCards } from "@imposterio/db/queries/game"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { CompareButton } from "./CompareButton"
 import { DeputyExpenseCharts } from "./DeputyExpenseCharts"
@@ -91,6 +92,10 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     notFound()
   }
 
+  // Fire-and-forget: ensure game cards exist for this deputy.
+  // Runs in background — does not block page rendering.
+  void ensureGameCards("camara", id)
+
   // All other calls degrade gracefully — errors are collected and shown as toasts
   const errors: PageError[] = []
 
@@ -100,6 +105,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     speeches, events,
     previousMandates, history, professions,
     votingHistory,
+    gameStats,
   ] = await Promise.all([
     collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP"),
     collectErrors(() => getDeputyExpenses(id, selectedYear - 1), emptySourced([]), errors, `Despesas CEAP (${selectedYear - 1})`),
@@ -111,6 +117,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     collectErrors(() => getDeputyHistory(id), emptySourced([]), errors, "Histórico de status"),
     collectErrors(() => getDeputyProfessions(id), emptySourced([]), errors, "Profissões"),
     collectErrors(() => getDeputyVotingHistory(id, yearStart, yearEnd), emptySourced([]), errors, "Votações"),
+    getEntityVoteStats("camara", id).catch(() => null),
   ])
 
   // ── Profile data ────────────────────────────────────────────────────
@@ -201,30 +208,30 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       <CompareButton deputyId={id} year={selectedYear} />
 
       {/* ── 2. Dados pessoais ──────────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <SectionHeader title="Dados pessoais" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* ── Global year selector ───────────────────────────────────── */}
-      <div className="mt-10 mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-12 mb-12 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Atividade parlamentar</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Resumo</h2>
+          <p className="mt-1 text-sm text-gray-500">
             Dados filtrados por ano. Selecione o período para visualizar.
           </p>
         </div>
-        <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+        <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-2.5">
           <span className="text-sm font-medium text-gray-600">Ver dados de</span>
           <YearSelector years={availableYears} selected={selectedYear} />
         </div>
       </div>
 
       {/* ── 3. Resumo geral ────────────────────────────────────────── */}
-      <section className="mb-8">
+      <section className="mb-12">
         <div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
-          aria-label="Resumo geral"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          aria-label="Resumo"
         >
           <StatCard
             label="Despesas CEAP"
@@ -251,25 +258,61 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
             label="Frentes"
             value={String(caucuses.length)}
           />
+          {gameStats && (
+            <article className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <p className="flex items-center gap-1.5 text-xs text-gray-500 sm:text-sm">
+                  Acha Justo?
+                  <span className="group relative">
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-500 cursor-help">
+                      ?
+                    </span>
+                    <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      No jogo &quot;Acha Justo?&quot;, usuários avaliam dados reais de agentes públicos sem saber a identidade. Este é o resultado dos votos sobre este deputado.
+                    </span>
+                  </span>
+                </p>
+                <Link
+                  href="/acha-justo/placar"
+                  className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                >
+                  Ver placar →
+                </Link>
+              </div>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-xl font-semibold tracking-tight text-emerald-600 sm:text-2xl">
+                  {gameStats.fairVotes}
+                </span>
+                <span className="text-xs text-gray-400">justo</span>
+                <span className="text-xl font-semibold tracking-tight text-red-600 sm:text-2xl">
+                  {gameStats.totalVotes - gameStats.fairVotes}
+                </span>
+                <span className="text-xs text-gray-400">injusto</span>
+              </div>
+              <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="bg-emerald-500"
+                  style={{ width: `${gameStats.fairPercent}%` }}
+                />
+                <div
+                  className="bg-red-500"
+                  style={{ width: `${100 - gameStats.fairPercent}%` }}
+                />
+              </div>
+            </article>
+          )}
         </div>
       </section>
 
       {/* ── 4. Gastos CEAP ─────────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Gastos <Acronym title="Cota para Exercício da Atividade Parlamentar">CEAP</Acronym></h2>
-            <Link
-              href={`/camara/${id}/despesas?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas as despesas →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            A Cota para Exercício da Atividade Parlamentar (CEAP) é a verba mensal que cada deputado recebe para custear despesas relacionadas ao mandato — passagens, combustível, hospedagem, alimentação, impressão, entre outros.
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Gastos CEAP"
+          action={{ label: "Ver todas as despesas", href: `/camara/${id}/despesas?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          A <Acronym title="Cota para Exercício da Atividade Parlamentar">CEAP</Acronym> é a verba mensal que cada deputado recebe para custear despesas relacionadas ao mandato — passagens, combustível, hospedagem, alimentação, impressão, entre outros.
+        </p>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
@@ -306,21 +349,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 5. Votações ────────────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Votações</h2>
-            <Link
-              href={`/camara/${id}/votacoes?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas as votações →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Participação em votações nominais em plenário. Indica como o deputado votou em cada sessão e se acompanhou o resultado final.
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Votações"
+          action={{ label: "Ver todas as votações", href: `/camara/${id}/votacoes?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Participação em votações nominais em plenário. Indica como o deputado votou em cada sessão e se acompanhou o resultado final.
+        </p>
 
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard
@@ -358,21 +394,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 6. Discursos ───────────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Discursos</h2>
-            <Link
-              href={`/camara/${id}/discursos?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todos os discursos →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Pronunciamentos realizados em plenário, comissões e outros eventos legislativos. Inclui discursos pela ordem, breves comunicações, grande expediente e outros tipos de manifestação.
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Discursos"
+          action={{ label: "Ver todos os discursos", href: `/camara/${id}/discursos?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Pronunciamentos realizados em plenário, comissões e outros eventos legislativos. Inclui discursos pela ordem, breves comunicações, grande expediente e outros tipos de manifestação.
+        </p>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
@@ -400,21 +429,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 6. Eventos ─────────────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Eventos</h2>
-            <Link
-              href={`/camara/${id}/eventos?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todos os eventos →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Sessões plenárias, audiências públicas e reuniões de comissões em que o deputado participou ou está convocado. Cada evento inclui os órgãos organizadores e o link para a gravação quando disponível.
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Eventos"
+          action={{ label: "Ver todos os eventos", href: `/camara/${id}/eventos?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Sessões plenárias, audiências públicas e reuniões de comissões em que o deputado participou ou está convocado. Cada evento inclui os órgãos organizadores e o link para a gravação quando disponível.
+        </p>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
@@ -442,21 +464,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 7. Comissões ───────────────────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Comissões</h2>
-            <Link
-              href={`/camara/${id}/comissoes?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas as comissões →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Órgãos colegiados onde proposições são analisadas antes da votação em plenário. Deputados atuam como titulares, suplentes ou em cargos de liderança (presidente, relator).
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Comissões"
+          action={{ label: "Ver todas as comissões", href: `/camara/${id}/comissoes?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Órgãos colegiados onde proposições são analisadas antes da votação em plenário. Deputados atuam como titulares, suplentes ou em cargos de liderança (presidente, relator).
+        </p>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
@@ -486,21 +501,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       </section>
 
       {/* ── 8. Frentes parlamentares ───────────────────────────────── */}
-      <section className="mb-8">
-        <div className="mb-2">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Frentes parlamentares</h2>
-            <Link
-              href={`/camara/${id}/frentes?ano=${selectedYear}`}
-              className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver todas as frentes →
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Grupos suprapartidários formados em torno de interesses comuns — agropecuária, direitos humanos, tecnologia, entre outros. Não possuem poder legislativo mas coordenam esforços e eventos.
-          </p>
-        </div>
+      <section className="mb-12">
+        <SectionHeader
+          title="Frentes parlamentares"
+          action={{ label: "Ver todas as frentes", href: `/camara/${id}/frentes?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Grupos suprapartidários formados em torno de interesses comuns — agropecuária, direitos humanos, tecnologia, entre outros. Não possuem poder legislativo mas coordenam esforços e eventos.
+        </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard
@@ -513,19 +521,17 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
 
       {/* ── 9. Carreira política ───────────────────────────────────── */}
       {(previousMandates.length > 0 || history.length > 1) && (
-        <section className="mb-8">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Carreira política</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Histórico de mandatos eletivos anteriores (dados do TSE) e mudanças de status parlamentar na legislatura atual — trocas de partido, licenças e afastamentos.
-            </p>
-          </div>
+        <section className="mb-12">
+          <SectionHeader title="Carreira política" />
+          <p className="mb-4 text-sm text-gray-500">
+            Histórico de mandatos eletivos anteriores (dados do TSE) e mudanças de status parlamentar na legislatura atual — trocas de partido, licenças e afastamentos.
+          </p>
 
           {/* Previous mandates */}
           {previousMandates.length > 0 && (
             <div className="mb-6">
               <h3 className="mb-3 text-sm font-semibold text-gray-700">Mandatos anteriores</h3>
-              <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
+              <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
                 {previousMandates.map((m) => (
                   <div
                     key={`${m.office}-${m.startYear}`}
@@ -555,7 +561,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           {history.length > 1 && (
             <div>
               <h3 className="mb-3 text-sm font-semibold text-gray-700">Histórico de status</h3>
-              <div className="rounded-lg border border-gray-200/60 bg-white p-5">
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
                 <ol className="relative border-l border-gray-200 ml-3">
                   {history.map((entry, i) => (
                     <li key={`${entry.date}-${i}`} className="mb-6 ml-6 last:mb-0">
