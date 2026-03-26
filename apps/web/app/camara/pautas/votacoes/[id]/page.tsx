@@ -13,7 +13,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { StatCard, Badge, InfoPanel, SectionHeader, SourcePill, ToastTrigger } from "@/components/ui"
+import { StatCard, Badge, InfoPanel, SectionHeader, SourcePill, ToastTrigger, DataFetchError } from "@/components/ui"
 import {
   getVotingSessionDetail,
   getVotingSessionVotes,
@@ -40,10 +40,11 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
   }
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const [votes, orientations] = await Promise.all([
-    collectErrors(() => getVotingSessionVotes(id), emptySourced([]), errors, "Votos individuais"),
-    collectErrors(() => getVotingSessionOrientations(id), emptySourced([]), errors, "Orientações partidárias"),
+    collectErrors(() => getVotingSessionVotes(id), emptySourced([]), errors, "Votos individuais", failed),
+    collectErrors(() => getVotingSessionOrientations(id), emptySourced([]), errors, "Orientações partidárias", failed),
   ])
 
   // Compute vote tallies from individual votes
@@ -241,7 +242,12 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
       )}
 
       {/* Party orientations */}
-      {validOrientations.length > 0 && (
+      {failed.has("Orientações partidárias") ? (
+        <section className="mb-12">
+          <SectionHeader title="Orientações partidárias" />
+          <DataFetchError label="as orientações partidárias" />
+        </section>
+      ) : validOrientations.length > 0 && (
         <section className="mb-12">
           <SectionHeader title="Orientações partidárias" sourceUrl={orientations._source} />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -259,7 +265,12 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
       )}
 
       {/* Individual votes */}
-      {totalVotes > 0 && (
+      {failed.has("Votos individuais") ? (
+        <section className="mb-12">
+          <SectionHeader title="Votos individuais" />
+          <DataFetchError label="os votos individuais" />
+        </section>
+      ) : totalVotes > 0 && (
         <section className="mb-12">
           <SectionHeader title="Votos individuais" sourceUrl={votes._source} />
           <VotesList votes={votes} />

@@ -16,7 +16,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { SectionHeader, InfoPanel, Badge, SourcePill, ToastTrigger } from "@/components/ui"
+import { SectionHeader, InfoPanel, Badge, SourcePill, ToastTrigger, DataFetchError } from "@/components/ui"
 import { getStaffBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { StaffBulkSummary } from "@imposterio/types"
@@ -49,11 +49,13 @@ export default async function StaffDetailPage({ params }: PageProps) {
   const { id } = await params
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
   const staff = await collectErrors(
     () => getStaffBulk(),
     emptySourced(EMPTY_SUMMARY),
     errors,
     "Funcionários",
+    failed,
   )
 
   // Find the member by their ID (ponto code)
@@ -128,36 +130,42 @@ export default async function StaffDetailPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Deputy link — shown when staff member is associated with a deputy */}
-      {deputyId && (
-        <section className="mb-12">
-          <SectionHeader title="Vínculo parlamentar" sourceUrl={staff._source} />
-          <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  Gabinete: {member.department}
-                </p>
-                <p className="mt-1 text-sm text-gray-600">
-                  Este funcionário está lotado no gabinete de um(a) deputado(a) federal.
-                </p>
+      {failed.has("Funcionários") ? (
+        <DataFetchError label="os dados do funcionário" />
+      ) : (
+        <>
+          {/* Deputy link — shown when staff member is associated with a deputy */}
+          {deputyId && (
+            <section className="mb-12">
+              <SectionHeader title="Vínculo parlamentar" sourceUrl={staff._source} />
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      Gabinete: {member.department}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Este funcionário está lotado no gabinete de um(a) deputado(a) federal.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/camara/${deputyId}`}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
+                  >
+                    Ver perfil do deputado →
+                  </Link>
+                </div>
               </div>
-              <Link
-                href={`/camara/${deputyId}`}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
-              >
-                Ver perfil do deputado →
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+            </section>
+          )}
 
-      {/* Staff details */}
-      <section className="mb-12">
-        <SectionHeader title="Dados do funcionário" sourceUrl={staff._source} />
-        <InfoPanel fields={infoFields} />
-      </section>
+          {/* Staff details */}
+          <section className="mb-12">
+            <SectionHeader title="Dados do funcionário" sourceUrl={staff._source} />
+            <InfoPanel fields={infoFields} />
+          </section>
+        </>
+      )}
     </>
   )
 }

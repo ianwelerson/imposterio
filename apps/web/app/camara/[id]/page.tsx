@@ -25,7 +25,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
   Acronym, StatCard, SectionHeader,
-  ProfileHeader, InfoPanel, Badge, ToastTrigger,
+  ProfileHeader, InfoPanel, Badge, ToastTrigger, DataFetchError,
 } from "@/components/ui"
 import {
   getDeputyDetail, getDeputyExpenses,
@@ -110,6 +110,7 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
 
   // All other calls degrade gracefully — errors are collected and shown as toasts
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const [
     expenses, prevYearExpenses,
@@ -122,19 +123,19 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     staffCount,
     gameStats,
   ] = await Promise.all([
-    collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP"),
-    collectErrors(() => getDeputyExpenses(id, selectedYear - 1), emptySourced([]), errors, `Despesas CEAP (${selectedYear - 1})`),
-    collectErrors(() => getDeputyCommittees(id), emptySourced([]), errors, "Comissões"),
-    collectErrors(() => getDeputyCaucuses(id), emptySourced([]), errors, "Frentes parlamentares"),
-    collectErrors(() => getDeputySpeeches(id, yearStart, yearEnd), emptySourced([]), errors, "Discursos"),
-    collectErrors(() => getDeputyEvents(id, yearStart, yearEnd), emptySourced([]), errors, "Eventos"),
-    collectErrors(() => getDeputyPreviousMandates(id), emptySourced([]), errors, "Mandatos anteriores"),
-    collectErrors(() => getDeputyHistory(id), emptySourced([]), errors, "Histórico de status"),
-    collectErrors(() => getDeputyProfessions(id), emptySourced([]), errors, "Profissões"),
-    collectErrors(() => getDeputyVotingHistory(id, yearStart, yearEnd), emptySourced([]), errors, "Votações"),
-    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença"),
-    collectErrors(() => getDeputyAttendanceDetail(id, selectedYear), emptySourced([]), errors, "Presença detalhada"),
-    collectErrors(() => getDeputyStaffCount(id), emptySourced({ count: 0, members: [] }), errors, "Funcionários"),
+    collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP", failed),
+    collectErrors(() => getDeputyExpenses(id, selectedYear - 1), emptySourced([]), errors, `Despesas CEAP (${selectedYear - 1})`, failed),
+    collectErrors(() => getDeputyCommittees(id), emptySourced([]), errors, "Comissões", failed),
+    collectErrors(() => getDeputyCaucuses(id), emptySourced([]), errors, "Frentes parlamentares", failed),
+    collectErrors(() => getDeputySpeeches(id, yearStart, yearEnd), emptySourced([]), errors, "Discursos", failed),
+    collectErrors(() => getDeputyEvents(id, yearStart, yearEnd), emptySourced([]), errors, "Eventos", failed),
+    collectErrors(() => getDeputyPreviousMandates(id), emptySourced([]), errors, "Mandatos anteriores", failed),
+    collectErrors(() => getDeputyHistory(id), emptySourced([]), errors, "Histórico de status", failed),
+    collectErrors(() => getDeputyProfessions(id), emptySourced([]), errors, "Profissões", failed),
+    collectErrors(() => getDeputyVotingHistory(id, yearStart, yearEnd), emptySourced([]), errors, "Votações", failed),
+    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença", failed),
+    collectErrors(() => getDeputyAttendanceDetail(id, selectedYear), emptySourced([]), errors, "Presença detalhada", failed),
+    collectErrors(() => getDeputyStaffCount(id), emptySourced({ count: 0, members: [] }), errors, "Funcionários", failed),
     getEntityVoteStats("camara", id).catch(() => null),
   ])
 
@@ -367,27 +368,31 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Verba mensal que cada deputado recebe para custear despesas relacionadas ao mandato — passagens, combustível, hospedagem, alimentação, impressão, entre outros.
         </p>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Total"
-            value={formatCurrency(totalCeap)}
-            badge={ceapVariation !== null ? {
-              text: `${ceapVariation > 0 ? "+" : ""}${ceapVariation.toFixed(1)}% vs ${selectedYear - 1}`,
-              variant: ceapVariation > 5 ? "red" : ceapVariation < -5 ? "green" : "amber",
-            } : undefined}
-          />
-          <StatCard
-            label={`Total (${selectedYear - 1})`}
-            value={formatCurrency(prevYearTotal)}
-          />
-          <StatCard
-            label="Registros"
-            value={String(expenses.length)}
-          />
-        </div>
+        {failed.has("Despesas CEAP") ? (
+          <DataFetchError label="as despesas CEAP" />
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Total"
+                value={formatCurrency(totalCeap)}
+                badge={ceapVariation !== null ? {
+                  text: `${ceapVariation > 0 ? "+" : ""}${ceapVariation.toFixed(1)}% vs ${selectedYear - 1}`,
+                  variant: ceapVariation > 5 ? "red" : ceapVariation < -5 ? "green" : "amber",
+                } : undefined}
+              />
+              <StatCard
+                label={`Total (${selectedYear - 1})`}
+                value={formatCurrency(prevYearTotal)}
+              />
+              <StatCard
+                label="Registros"
+                value={String(expenses.length)}
+              />
+            </div>
 
-        {(expenses.length > 0 || prevYearExpenses.length > 0) && (
-          <DeputyExpenseCharts
+            {(expenses.length > 0 || prevYearExpenses.length > 0) && (
+              <DeputyExpenseCharts
             selectedYearMonthly={currentMonthly}
             prevYearMonthly={prevYearMonthly}
             year={selectedYear}
@@ -398,6 +403,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
             categoryBySupplier={categoryBySupplier}
             sourceUrl={expenses._source}
           />
+        )}
+          </>
         )}
       </section>
 
@@ -411,38 +418,44 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Participação em votações nominais em plenário. Indica como o deputado votou em cada sessão e se acompanhou o resultado final.
         </p>
 
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard
-            label="Votações"
-            value={String(votingHistory.length)}
-          />
-          <StatCard
-            label="Sim"
-            value={String(simCount)}
-          />
-          <StatCard
-            label="Não"
-            value={String(naoCount)}
-          />
-          <StatCard
-            label="Abstenção"
-            value={String(abstCount)}
-          />
-          <StatCard
-            label="Alinhamento"
-            value={`${voteAlignment}%`}
-            badge={{ text: "com resultado", variant: voteAlignment >= 70 ? "green" : voteAlignment >= 40 ? "amber" : "red" }}
-            tooltip="Frequência com que o deputado votou no lado vencedor — 'Sim' em aprovadas e 'Não' em rejeitadas. Abstenções e obstruções não são consideradas."
-          />
-        </div>
+        {failed.has("Votações") ? (
+          <DataFetchError label="as votações" />
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <StatCard
+                label="Votações"
+                value={String(votingHistory.length)}
+              />
+              <StatCard
+                label="Sim"
+                value={String(simCount)}
+              />
+              <StatCard
+                label="Não"
+                value={String(naoCount)}
+              />
+              <StatCard
+                label="Abstenção"
+                value={String(abstCount)}
+              />
+              <StatCard
+                label="Alinhamento"
+                value={`${voteAlignment}%`}
+                badge={{ text: "com resultado", variant: voteAlignment >= 70 ? "green" : voteAlignment >= 40 ? "amber" : "red" }}
+                tooltip="Frequência com que o deputado votou no lado vencedor — 'Sim' em aprovadas e 'Não' em rejeitadas. Abstenções e obstruções não são consideradas."
+              />
+            </div>
 
-        {votingHistory.length > 0 && (
-          <VotingCharts
-            byType={votesByType}
-            byMonth={votesByMonth}
-            year={selectedYear}
-            sourceUrl={votingHistory._source}
-          />
+            {votingHistory.length > 0 && (
+              <VotingCharts
+                byType={votesByType}
+                byMonth={votesByMonth}
+                year={selectedYear}
+                sourceUrl={votingHistory._source}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -456,41 +469,45 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Presença do deputado em todos os tipos de evento da Câmara no ano selecionado: sessões plenárias, comissões, audiências públicas, seminários, reuniões e outros. Os dados combinam o registro oficial de frequência com a lista de eventos.
         </p>
 
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatCard
-            label="Dias com atividade"
-            value={String(activeDays)}
-            tooltip={`O deputado esteve presente em eventos da Câmara em ${activeDays} dias diferentes durante o ano.`}
-          />
-          <StatCard
-            label="Total de eventos"
-            value={String(events.length)}
-            tooltip="Quantidade total de eventos em que o deputado participou ou está convocado no ano selecionado."
-          />
-          <StatCard
-            label="Sessões plenárias"
-            value={String(eventsPlenaryCount)}
-            tooltip="Sessões Deliberativas, Solenes, Não Deliberativas e Preparatórias em que o deputado participou."
-          />
-          <StatCard
-            label="Presença plenária"
-            value={plenaryRate !== null ? `${plenaryRate}%` : "—"}
-            tooltip={`Presente em ${plenaryAttended} das ${totalPlenarySessions} sessões plenárias realizadas na Câmara no ano.`}
-          />
-          <StatCard
-            label="Encerrados"
-            value={String(eventsFinished)}
-            tooltip="Eventos que já foram realizados e encerrados."
-          />
-          <StatCard
-            label="Previstos/em andamento"
-            value={String(eventsUpcoming)}
-            tooltip="Eventos futuros para os quais o deputado está convocado ou que estão em andamento."
-          />
-        </div>
+        {failed.has("Presença detalhada") || failed.has("Eventos") ? (
+          <DataFetchError label="os dados de presença" />
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <StatCard
+                label="Dias com atividade"
+                value={String(activeDays)}
+                tooltip={`O deputado esteve presente em eventos da Câmara em ${activeDays} dias diferentes durante o ano.`}
+              />
+              <StatCard
+                label="Total de eventos"
+                value={String(events.length)}
+                tooltip="Quantidade total de eventos em que o deputado participou ou está convocado no ano selecionado."
+              />
+              <StatCard
+                label="Sessões plenárias"
+                value={String(eventsPlenaryCount)}
+                tooltip="Sessões Deliberativas, Solenes, Não Deliberativas e Preparatórias em que o deputado participou."
+              />
+              <StatCard
+                label="Presença plenária"
+                value={plenaryRate !== null ? `${plenaryRate}%` : "—"}
+                tooltip={`Presente em ${plenaryAttended} das ${totalPlenarySessions} sessões plenárias realizadas na Câmara no ano.`}
+              />
+              <StatCard
+                label="Encerrados"
+                value={String(eventsFinished)}
+                tooltip="Eventos que já foram realizados e encerrados."
+              />
+              <StatCard
+                label="Previstos/em andamento"
+                value={String(eventsUpcoming)}
+                tooltip="Eventos futuros para os quais o deputado está convocado ou que estão em andamento."
+              />
+            </div>
 
-        {(attendanceDetail.length > 0 || events.length > 0) && (
-          <AttendanceOverviewCharts
+            {(attendanceDetail.length > 0 || events.length > 0) && (
+              <AttendanceOverviewCharts
             allByDay={allByDay}
             plenaryByDay={plenaryByDay}
             nonPlenaryByDay={nonPlenaryByDay}
@@ -501,6 +518,8 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
             sourceUrl={attendanceDetail._source}
             eventsSourceUrl={events._source}
           />
+        )}
+          </>
         )}
       </section>
 
@@ -514,28 +533,34 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Pronunciamentos realizados em plenário, comissões e outros eventos legislativos. Inclui discursos pela ordem, breves comunicações, grande expediente e outros tipos de manifestação.
         </p>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Total"
-            value={String(speeches.length)}
-          />
-          <StatCard
-            label="Tipo mais frequente"
-            value={speechesByType[0]?.name ?? "—"}
-          />
-          <StatCard
-            label="Mês mais ativo"
-            value={getMostActiveMonth(speechesByMonth)}
-          />
-        </div>
+        {failed.has("Discursos") ? (
+          <DataFetchError label="os discursos" />
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Total"
+                value={String(speeches.length)}
+              />
+              <StatCard
+                label="Tipo mais frequente"
+                value={speechesByType[0]?.name ?? "—"}
+              />
+              <StatCard
+                label="Mês mais ativo"
+                value={getMostActiveMonth(speechesByMonth)}
+              />
+            </div>
 
-        {speeches.length > 0 && (
-          <SpeechCharts
-            byType={speechesByType}
-            byMonth={speechesByMonth}
-            year={selectedYear}
-            sourceUrl={speeches._source}
-          />
+            {speeches.length > 0 && (
+              <SpeechCharts
+                byType={speechesByType}
+                byMonth={speechesByMonth}
+                year={selectedYear}
+                sourceUrl={speeches._source}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -549,30 +574,36 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Órgãos colegiados onde proposições são analisadas antes da votação em plenário. Deputados atuam como titulares, suplentes ou em cargos de liderança (presidente, relator).
         </p>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Ativas"
-            value={String(activeCommittees.length)}
-            badge={{ text: `de ${committees.length} total`, variant: "gray" }}
-          />
-          <StatCard
-            label="Titular em"
-            value={String(activeCommittees.filter((c) => c.role === "Titular").length)}
-            badge={{ text: "comissões", variant: "green" }}
-          />
-          <StatCard
-            label="Suplente em"
-            value={String(activeCommittees.filter((c) => c.role === "Suplente").length)}
-            badge={{ text: "comissões", variant: "gray" }}
-          />
-        </div>
+        {failed.has("Comissões") ? (
+          <DataFetchError label="as comissões" />
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Ativas"
+                value={String(activeCommittees.length)}
+                badge={{ text: `de ${committees.length} total`, variant: "gray" }}
+              />
+              <StatCard
+                label="Titular em"
+                value={String(activeCommittees.filter((c) => c.role === "Titular").length)}
+                badge={{ text: "comissões", variant: "green" }}
+              />
+              <StatCard
+                label="Suplente em"
+                value={String(activeCommittees.filter((c) => c.role === "Suplente").length)}
+                badge={{ text: "comissões", variant: "gray" }}
+              />
+            </div>
 
-        {activeCommittees.length > 0 && (
-          <CommitteeCharts
-            byRole={committeesByRole}
-            byType={committeesByType}
-            sourceUrl={committees._source}
-          />
+            {activeCommittees.length > 0 && (
+              <CommitteeCharts
+                byRole={committeesByRole}
+                byType={committeesByType}
+                sourceUrl={committees._source}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -586,13 +617,17 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           Grupos suprapartidários formados em torno de interesses comuns — agropecuária, direitos humanos, tecnologia, entre outros. Não possuem poder legislativo mas coordenam esforços e eventos.
         </p>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatCard
-            label="Frentes"
-            value={String(caucuses.length)}
-            badge={{ text: `${deputy.legislature}ª Legislatura`, variant: "gray" }}
-          />
-        </div>
+        {failed.has("Frentes parlamentares") ? (
+          <DataFetchError label="as frentes parlamentares" />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatCard
+              label="Frentes"
+              value={String(caucuses.length)}
+              badge={{ text: `${deputy.legislature}ª Legislatura`, variant: "gray" }}
+            />
+          </div>
+        )}
       </section>
 
       {/* ── 9. Carreira política ───────────────────────────────────── */}

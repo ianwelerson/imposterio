@@ -25,7 +25,7 @@ import Link from "next/link"
 import Image from "next/image"
 import {
   Acronym, StatCard, DataTable,
-  SectionHeader, AvatarInitials, Badge, ToastTrigger,
+  SectionHeader, AvatarInitials, Badge, ToastTrigger, DataFetchError,
 } from "@/components/ui"
 import { CamaraGameCard } from "./CamaraGameCard"
 import { CamaraCharts } from "./CamaraCharts"
@@ -72,12 +72,13 @@ export default async function CamaraPage({ searchParams }: PageProps) {
   const yearEnd = `${selectedYear}-12-31`
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const [deputies, propositions, votingSessions, attendance] = await Promise.all([
-    collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados"),
-    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições"),
-    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações"),
-    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença em eventos"),
+    collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados", failed),
+    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições", failed),
+    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações", failed),
+    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença em eventos", failed),
   ])
 
   // ── Aggregations ──────────────────────────────────────────────────
@@ -259,6 +260,11 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       {/* ── 1. Resumo geral ──────────────────────────────────────── */}
       <section className="mb-12">
         <SectionHeader title="Resumo geral" />
+        {failed.size > 0 && (
+          <div className="mb-4">
+            <DataFetchError label="alguns dados do resumo" />
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Deputados em exercício"
@@ -311,7 +317,11 @@ export default async function CamaraPage({ searchParams }: PageProps) {
           sourceUrl={deputies._source}
           action={{ label: "Ver todos", href: "/camara/deputados" }}
         />
-        <DataTable columns={deputyColumns} data={topDeputies} rowKey={(r) => r.id} />
+        {failed.has("Deputados") ? (
+          <DataFetchError label="a lista de deputados" />
+        ) : (
+          <DataTable columns={deputyColumns} data={topDeputies} rowKey={(r) => r.id} />
+        )}
       </section>
 
       {/* ── 4. Quick links to subsections ──────────────────────────── */}
@@ -356,7 +366,11 @@ export default async function CamaraPage({ searchParams }: PageProps) {
           sourceUrl={propositions._source}
           action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
         />
-        <DataTable columns={propColumns} data={latestPropositions} rowKey={(r) => r.id} />
+        {failed.has("Proposições") ? (
+          <DataFetchError label="as proposições" />
+        ) : (
+          <DataTable columns={propColumns} data={latestPropositions} rowKey={(r) => r.id} />
+        )}
       </section>
 
       <section className="mb-12">
@@ -365,7 +379,11 @@ export default async function CamaraPage({ searchParams }: PageProps) {
           sourceUrl={votingSessions._source}
           action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
         />
-        <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+        {failed.has("Votações") ? (
+          <DataFetchError label="as votações" />
+        ) : (
+          <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+        )}
       </section>
 
       {/* ── 5. Game ──────────────────────────────────────────────── */}

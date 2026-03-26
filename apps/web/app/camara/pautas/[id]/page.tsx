@@ -16,7 +16,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Badge, InfoPanel, SourcePill, SectionHeader, ToastTrigger } from "@/components/ui"
+import { Badge, InfoPanel, SourcePill, SectionHeader, ToastTrigger, DataFetchError } from "@/components/ui"
 import {
   getPropositionDetail,
   getPropositionAuthors,
@@ -43,11 +43,12 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
   }
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const [authors, themes, progress] = await Promise.all([
-    collectErrors(() => getPropositionAuthors(id), emptySourced([]), errors, "Autores"),
-    collectErrors(() => getPropositionThemes(id), emptySourced([]), errors, "Temas"),
-    collectErrors(() => getPropositionProgress(id), emptySourced([]), errors, "Tramitação"),
+    collectErrors(() => getPropositionAuthors(id), emptySourced([]), errors, "Autores", failed),
+    collectErrors(() => getPropositionThemes(id), emptySourced([]), errors, "Temas", failed),
+    collectErrors(() => getPropositionProgress(id), emptySourced([]), errors, "Tramitação", failed),
   ])
 
   const leadAuthor = authors.find((a) => a.isLead) ?? authors[0]
@@ -152,7 +153,12 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
       )}
 
       {/* Authors */}
-      {authors.length > 0 && (
+      {failed.has("Autores") ? (
+        <section className="mb-12">
+          <SectionHeader title="Autores" />
+          <DataFetchError label="os autores" />
+        </section>
+      ) : authors.length > 0 && (
         <section className="mb-12">
           <SectionHeader title="Autores" sourceUrl={authors._source} />
           <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
@@ -173,7 +179,12 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
       )}
 
       {/* Themes */}
-      {themes.length > 0 && (
+      {failed.has("Temas") ? (
+        <section className="mb-12">
+          <SectionHeader title="Temas" />
+          <DataFetchError label="os temas" />
+        </section>
+      ) : themes.length > 0 && (
         <section className="mb-12">
           <SectionHeader title="Temas" sourceUrl={themes._source} />
           <div className="flex flex-wrap gap-2">
@@ -192,7 +203,12 @@ export default async function PropositionDetailPage({ params, searchParams }: Pa
       )}
 
       {/* Legislative progress (tramitações) */}
-      {progress.length > 0 && (
+      {failed.has("Tramitação") ? (
+        <section className="mb-12">
+          <SectionHeader title="Tramitação" />
+          <DataFetchError label="a tramitação" />
+        </section>
+      ) : progress.length > 0 && (
         <section className="mb-12">
           <SectionHeader title="Tramitação" sourceUrl={progress._source} />
           <div className="rounded-xl border border-gray-200 bg-white p-5">

@@ -16,13 +16,14 @@
  */
 
 import { getDeputiesList } from "@imposterio/fetchers"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { DeputiesSearchList } from "./DeputiesSearchList"
 
 export default async function DeputadosPage() {
   const errors: PageError[] = []
-  const deputies = await collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados")
+  const failed = new Set<string>()
+  const deputies = await collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados", failed)
 
   return (
     <>
@@ -42,7 +43,11 @@ export default async function DeputadosPage() {
         </div>
       </header>
 
-      <DeputiesSearchList deputies={deputies} />
+      {failed.has("Deputados") ? (
+        <DataFetchError label="a lista de deputados" />
+      ) : (
+        <DeputiesSearchList deputies={deputies} />
+      )}
     </>
   )
 }

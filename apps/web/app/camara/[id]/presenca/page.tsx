@@ -16,7 +16,7 @@ import {
   getDeputyDetail,
   getDeputyAttendanceDetail,
 } from "@imposterio/fetchers"
-import { SourcePill, ToastTrigger } from "@/components/ui"
+import { DataFetchError, SourcePill, ToastTrigger } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "../YearSelector"
 import { AttendanceList } from "./AttendanceList"
@@ -48,12 +48,14 @@ export default async function DeputyAttendancePage({ params, searchParams }: Pag
 
   // Attendance calls degrade gracefully
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const attendanceEvents = await collectErrors(
     () => getDeputyAttendanceDetail(id, selectedYear),
     emptySourced([]),
     errors,
     "Presença detalhada",
+    failed,
   )
 
   return (
@@ -84,16 +86,20 @@ export default async function DeputyAttendancePage({ params, searchParams }: Pag
 
       {/* ── Full listing ───────────────────────────────────────────────── */}
       <section className="mb-12">
-        <AttendanceList
-          events={attendanceEvents}
-          sourceUrl={attendanceEvents._source}
-          yearSelector={
-            <div className="w-full sm:w-auto sm:min-w-[100px]">
-              <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
-              <YearSelector years={availableYears} selected={selectedYear} inline />
-            </div>
-          }
-        />
+        {failed.has("Presença detalhada") ? (
+          <DataFetchError label="os dados de presença" />
+        ) : (
+          <AttendanceList
+            events={attendanceEvents}
+            sourceUrl={attendanceEvents._source}
+            yearSelector={
+              <div className="w-full sm:w-auto sm:min-w-[100px]">
+                <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
+                <YearSelector years={availableYears} selected={selectedYear} inline />
+              </div>
+            }
+          />
+        )}
       </section>
     </>
   )

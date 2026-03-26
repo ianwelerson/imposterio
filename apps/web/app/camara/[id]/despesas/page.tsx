@@ -10,7 +10,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { getDeputyDetail, getDeputyExpenses } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "../YearSelector"
@@ -46,7 +46,8 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
   }
 
   const errors: PageError[] = []
-  const expenses = await collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP")
+  const failed = new Set<string>()
+  const expenses = await collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP", failed)
 
   const totalCeap = expenses.reduce((sum, e) => sum + e.value, 0)
 
@@ -64,10 +65,12 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
                 ← Voltar para {deputy.name}
               </Link>
               <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Despesas CEAP</h1>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
-                Total em {selectedYear}:{" "}
-                {totalCeap.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
+              {!failed.has("Despesas CEAP") && (
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                  Total em {selectedYear}:{" "}
+                  {totalCeap.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               <SourcePill url={expenses._source} />
@@ -76,18 +79,22 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
         </div>
       </header>
 
-      <ExpensesList
-        expenses={expenses}
-        sourceUrl={expenses._source}
-        deputyId={id}
-        selectedYear={selectedYear}
-        yearSelector={
-          <div className="w-full sm:w-auto sm:min-w-[100px]">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
-            <YearSelector years={availableYears} selected={selectedYear} inline />
-          </div>
-        }
-      />
+      {failed.has("Despesas CEAP") ? (
+        <DataFetchError label="as despesas" />
+      ) : (
+        <ExpensesList
+          expenses={expenses}
+          sourceUrl={expenses._source}
+          deputyId={id}
+          selectedYear={selectedYear}
+          yearSelector={
+            <div className="w-full sm:w-auto sm:min-w-[100px]">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
+              <YearSelector years={availableYears} selected={selectedYear} inline />
+            </div>
+          }
+        />
+      )}
     </>
   )
 }

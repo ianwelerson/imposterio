@@ -11,7 +11,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Badge, InfoPanel, SectionHeader, ToastTrigger } from "@/components/ui"
+import { Badge, InfoPanel, SectionHeader, ToastTrigger, DataFetchError } from "@/components/ui"
 import { getEventDetail, getEventAttendees } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { AttendeesList } from "./AttendeesList"
@@ -32,11 +32,13 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   // Attendees degrade gracefully — errors shown as toasts
   const errors: PageError[] = []
+  const failed = new Set<string>()
   const attendees = await collectErrors(
     () => getEventAttendees(id),
     emptySourced([]),
     errors,
     "Lista de presença",
+    failed,
   )
 
   const statusVariant = event.status === "Encerrada" ? "gray"
@@ -120,7 +122,9 @@ export default async function EventDetailPage({ params }: PageProps) {
       {/* ── Lista de presença ──────────────────────────────────────── */}
       <section className="mb-12">
         <SectionHeader title="Lista de presença" sourceUrl={attendees._source} />
-        {attendees.length > 0 ? (
+        {failed.has("Lista de presença") ? (
+          <DataFetchError label="a lista de presença" />
+        ) : attendees.length > 0 ? (
           <>
             <p className="mb-4 text-sm text-gray-500">
               {attendees.length} {attendees.length === 1 ? "deputado presente" : "deputados presentes"}

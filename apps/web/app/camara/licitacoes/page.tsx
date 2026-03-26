@@ -16,7 +16,7 @@
  */
 
 import Link from "next/link"
-import { StatCard, SectionHeader, Badge, DataTable, ToastTrigger } from "@/components/ui"
+import { StatCard, SectionHeader, Badge, DataTable, ToastTrigger, DataFetchError } from "@/components/ui"
 import { getProcurementBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { CamaraProcurement } from "@imposterio/types"
@@ -45,6 +45,7 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
   )
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const summary = await collectErrors(
     () => getProcurementBulk(selectedYear),
@@ -63,6 +64,7 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
     }),
     errors,
     "Licitações",
+    failed,
   )
 
   // Savings rate: how much was saved between estimated and contracted values
@@ -204,70 +206,76 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
         </div>
       </header>
 
-      {/* Resumo geral */}
-      <section className="mb-12">
-        <SectionHeader title="Resumo geral" sourceUrl={summary._source} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Licitações"
-            value={String(summary.totalProcurements)}
-            tooltip="Quantidade de processos licitatórios registrados no período selecionado."
-          />
-          <StatCard
-            label="Valor contratado"
-            value={formatCurrency(summary.totalContractedValue)}
-            tooltip="Soma dos valores acordados em contratos firmados nas licitações. Representa o compromisso financeiro total assumido pela Câmara."
-          />
-          <StatCard
-            label="Valor pago"
-            value={formatCurrency(summary.totalPaidValue)}
-            tooltip="Soma dos valores efetivamente desembolsados até o momento. Contratos podem ter vigência de anos, por isso o valor pago costuma ser menor que o contratado no mesmo período."
-          />
-          <StatCard
-            label="Economia estimada"
-            value={`${savingsRate}%`}
-            badge={Number(savingsRate) > 0
-              ? { text: "economia", variant: "green" as const }
-              : Number(savingsRate) < 0
-                ? { text: "acima do estimado", variant: "red" as const }
-                : undefined
-            }
-            tooltip="Percentual de economia entre o valor estimado e o valor efetivamente contratado"
-          />
-        </div>
-      </section>
+      {failed.has("Licitações") ? (
+        <DataFetchError label="as licitações" />
+      ) : (
+        <>
+          {/* Resumo geral */}
+          <section className="mb-12">
+            <SectionHeader title="Resumo geral" sourceUrl={summary._source} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Licitações"
+                value={String(summary.totalProcurements)}
+                tooltip="Quantidade de processos licitatórios registrados no período selecionado."
+              />
+              <StatCard
+                label="Valor contratado"
+                value={formatCurrency(summary.totalContractedValue)}
+                tooltip="Soma dos valores acordados em contratos firmados nas licitações. Representa o compromisso financeiro total assumido pela Câmara."
+              />
+              <StatCard
+                label="Valor pago"
+                value={formatCurrency(summary.totalPaidValue)}
+                tooltip="Soma dos valores efetivamente desembolsados até o momento. Contratos podem ter vigência de anos, por isso o valor pago costuma ser menor que o contratado no mesmo período."
+              />
+              <StatCard
+                label="Economia estimada"
+                value={`${savingsRate}%`}
+                badge={Number(savingsRate) > 0
+                  ? { text: "economia", variant: "green" as const }
+                  : Number(savingsRate) < 0
+                    ? { text: "acima do estimado", variant: "red" as const }
+                    : undefined
+                }
+                tooltip="Percentual de economia entre o valor estimado e o valor efetivamente contratado"
+              />
+            </div>
+          </section>
 
-      {/* Charts */}
-      <section className="mb-12">
-        <SectionHeader title="Visualizações" sourceUrl={summary._source} />
-        <LicitacoesCharts
-          byModality={summary.byModality}
-          byStatus={summary.byStatus}
-          contractsByMonth={contractsByMonth}
-          sourceUrl={summary._source}
-        />
-      </section>
+          {/* Charts */}
+          <section className="mb-12">
+            <SectionHeader title="Visualizações" sourceUrl={summary._source} />
+            <LicitacoesCharts
+              byModality={summary.byModality}
+              byStatus={summary.byStatus}
+              contractsByMonth={contractsByMonth}
+              sourceUrl={summary._source}
+            />
+          </section>
 
-      {/* Latest procurements */}
-      <section className="mb-12">
-        <SectionHeader
-          title={`Últimas licitações (${selectedYear})`}
-          sourceUrl={summary._source}
-          action={{ label: "Ver todas", href: `/camara/licitacoes/lista?ano=${selectedYear}` }}
-        />
-        <DataTable columns={procurementColumns} data={latest5} rowKey={(r) => r.id} />
-      </section>
+          {/* Latest procurements */}
+          <section className="mb-12">
+            <SectionHeader
+              title={`Últimas licitações (${selectedYear})`}
+              sourceUrl={summary._source}
+              action={{ label: "Ver todas", href: `/camara/licitacoes/lista?ano=${selectedYear}` }}
+            />
+            <DataTable columns={procurementColumns} data={latest5} rowKey={(r) => r.id} />
+          </section>
 
-      {/* Top suppliers */}
-      {top5Suppliers.length > 0 && (
-        <section className="mb-12">
-          <SectionHeader title="Maiores fornecedores" sourceUrl={summary._source} />
-          <DataTable
-            columns={supplierColumns}
-            data={top5Suppliers}
-            rowKey={(r) => r.document}
-          />
-        </section>
+          {/* Top suppliers */}
+          {top5Suppliers.length > 0 && (
+            <section className="mb-12">
+              <SectionHeader title="Maiores fornecedores" sourceUrl={summary._source} />
+              <DataTable
+                columns={supplierColumns}
+                data={top5Suppliers}
+                rowKey={(r) => r.document}
+              />
+            </section>
+          )}
+        </>
       )}
     </>
   )

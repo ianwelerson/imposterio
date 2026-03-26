@@ -15,7 +15,7 @@
  */
 
 import Link from "next/link"
-import { StatCard, SectionHeader, Badge, DataTable, SourcePill, ToastTrigger } from "@/components/ui"
+import { StatCard, SectionHeader, Badge, DataTable, SourcePill, ToastTrigger, DataFetchError } from "@/components/ui"
 import { getStaffBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { CamaraStaffMember, StaffBulkSummary } from "@imposterio/types"
@@ -34,12 +34,14 @@ const EMPTY_SUMMARY: StaffBulkSummary = {
 
 export default async function CamaraFuncionariosPage() {
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const staff = await collectErrors(
     () => getStaffBulk(),
     emptySourced(EMPTY_SUMMARY),
     errors,
     "Funcionários",
+    failed,
   )
 
   const { totalStaff, byGroup, byDepartment, byPosition, byRole, members } = staff
@@ -145,38 +147,44 @@ export default async function CamaraFuncionariosPage() {
         </div>
       </header>
 
-      {/* Summary stats */}
-      <section className="mb-12">
-        <SectionHeader title="Resumo geral" sourceUrl={staff._source} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total de funcionários" value={totalStaff.toLocaleString("pt-BR")} tooltip="Total de pessoas registradas no quadro funcional da Câmara, incluindo servidores efetivos, secretários parlamentares, cargos especiais e os próprios parlamentares." />
-          {topGroups.map((g) => (
-            <StatCard key={g.name} label={g.name} value={g.count.toLocaleString("pt-BR")} tooltip={groupTooltip(g.name)} />
-          ))}
-        </div>
-      </section>
+      {failed.has("Funcionários") ? (
+        <DataFetchError label="os funcionários" />
+      ) : (
+        <>
+          {/* Summary stats */}
+          <section className="mb-12">
+            <SectionHeader title="Resumo geral" sourceUrl={staff._source} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard label="Total de funcionários" value={totalStaff.toLocaleString("pt-BR")} tooltip="Total de pessoas registradas no quadro funcional da Câmara, incluindo servidores efetivos, secretários parlamentares, cargos especiais e os próprios parlamentares." />
+              {topGroups.map((g) => (
+                <StatCard key={g.name} label={g.name} value={g.count.toLocaleString("pt-BR")} tooltip={groupTooltip(g.name)} />
+              ))}
+            </div>
+          </section>
 
-      {/* Charts */}
-      <section className="mb-12">
-        <SectionHeader title="Distribuição" sourceUrl={staff._source} />
-        <StaffCharts
-          byGroup={byGroup}
-          byDepartment={byDepartment.slice(0, 15)}
-          byPosition={byPosition.slice(0, 15)}
-          byRole={byRole.slice(0, 15)}
-          sourceUrl={staff._source}
-        />
-      </section>
+          {/* Charts */}
+          <section className="mb-12">
+            <SectionHeader title="Distribuição" sourceUrl={staff._source} />
+            <StaffCharts
+              byGroup={byGroup}
+              byDepartment={byDepartment.slice(0, 15)}
+              byPosition={byPosition.slice(0, 15)}
+              byRole={byRole.slice(0, 15)}
+              sourceUrl={staff._source}
+            />
+          </section>
 
-      {/* Latest records table */}
-      <section className="mb-12">
-        <SectionHeader
-          title="Últimos registros"
-          sourceUrl={staff._source}
-          action={{ label: "Ver todos", href: "/camara/funcionarios/lista" }}
-        />
-        <DataTable columns={columns} data={latest8} rowKey={(r) => r.id} />
-      </section>
+          {/* Latest records table */}
+          <section className="mb-12">
+            <SectionHeader
+              title="Últimos registros"
+              sourceUrl={staff._source}
+              action={{ label: "Ver todos", href: "/camara/funcionarios/lista" }}
+            />
+            <DataTable columns={columns} data={latest8} rowKey={(r) => r.id} />
+          </section>
+        </>
+      )}
     </>
   )
 }

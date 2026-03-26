@@ -10,7 +10,7 @@
 
 import Link from "next/link"
 import { getVotingSessions } from "@imposterio/fetchers"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { VotingSessionsList } from "./VotingSessionsList"
@@ -39,7 +39,8 @@ export default async function VotingSessionsPage({ searchParams }: PageProps) {
   const yearEnd = `${selectedYear}-12-31`
 
   const errors: PageError[] = []
-  const sessions = await collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações")
+  const failed = new Set<string>()
+  const sessions = await collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações", failed)
 
   return (
     <>
@@ -66,16 +67,20 @@ export default async function VotingSessionsPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <VotingSessionsList
-        sessions={sessions}
-        selectedYear={selectedYear}
-        yearSelector={
-          <div className="w-full sm:w-auto sm:min-w-[100px]">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
-            <YearSelector years={availableYears} selected={selectedYear} inline />
-          </div>
-        }
-      />
+      {failed.has("Votações") ? (
+        <DataFetchError label="as votações" />
+      ) : (
+        <VotingSessionsList
+          sessions={sessions}
+          selectedYear={selectedYear}
+          yearSelector={
+            <div className="w-full sm:w-auto sm:min-w-[100px]">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
+              <YearSelector years={availableYears} selected={selectedYear} inline />
+            </div>
+          }
+        />
+      )}
     </>
   )
 }

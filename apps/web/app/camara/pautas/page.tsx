@@ -18,7 +18,7 @@
  */
 
 import Link from "next/link"
-import { StatCard, SectionHeader, Badge, DataTable, ToastTrigger } from "@/components/ui"
+import { StatCard, SectionHeader, Badge, DataTable, ToastTrigger, DataFetchError } from "@/components/ui"
 import { getPropositions, getVotingSessions } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { CamaraProposition, CamaraVotingSession } from "@imposterio/types"
@@ -57,10 +57,11 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
   // Fetch main proposition types only (PL, PEC, PLP, MP, PDL).
   // The Câmara has thousands of propositions per year including REQs and amendments.
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const [propositions, votingSessions] = await Promise.all([
-    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições"),
-    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações"),
+    collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições", failed),
+    collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações", failed),
   ])
 
   // Proposition stats
@@ -234,29 +235,35 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
           title="Proposições"
           action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
         />
-        <p className="mb-4 text-sm text-gray-500">
-          Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições
-          apresentadas na Câmara dos Deputados
-        </p>
+        {failed.has("Proposições") ? (
+          <DataFetchError label="as proposições" />
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-gray-500">
+              Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições
+              apresentadas na Câmara dos Deputados
+            </p>
 
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {byType.slice(0, 3).map((item) => (
-            <StatCard key={item.name} label={item.name} value={String(item.value)} />
-          ))}
-        </div>
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {byType.slice(0, 3).map((item) => (
+                <StatCard key={item.name} label={item.name} value={String(item.value)} />
+              ))}
+            </div>
 
-        <PautasCharts
-          byType={byType}
-          byMonth={byMonth}
-          sourceUrl={propositions._source}
-        />
+            <PautasCharts
+              byType={byType}
+              byMonth={byMonth}
+              sourceUrl={propositions._source}
+            />
 
-        <SectionHeader
-          title={`Últimas proposições (${selectedYear})`}
-          sourceUrl={propositions._source}
-          action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
-        />
-        <DataTable columns={propColumns} data={latest5} rowKey={(r) => r.id} />
+            <SectionHeader
+              title={`Últimas proposições (${selectedYear})`}
+              sourceUrl={propositions._source}
+              action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
+            />
+            <DataTable columns={propColumns} data={latest5} rowKey={(r) => r.id} />
+          </>
+        )}
       </section>
 
       {/* Votações section */}
@@ -265,29 +272,35 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
           title="Votações"
           action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
         />
-        <p className="mb-4 text-sm text-gray-500">
-          Sessões de votação nominal em plenário — inclui resultado, votos individuais
-          e orientações partidárias
-        </p>
+        {failed.has("Votações") ? (
+          <DataFetchError label="as votações" />
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-gray-500">
+              Sessões de votação nominal em plenário — inclui resultado, votos individuais
+              e orientações partidárias
+            </p>
 
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Votações aprovadas" value={String(approvedVotes)} badge={{ text: `${approvalRate}%`, variant: "green" }} />
-          <StatCard label="Votações rejeitadas" value={String(rejectedVotes)} />
-          <StatCard label="Total de votações" value={String(totalVotes)} />
-        </div>
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard label="Votações aprovadas" value={String(approvedVotes)} badge={{ text: `${approvalRate}%`, variant: "green" }} />
+              <StatCard label="Votações rejeitadas" value={String(rejectedVotes)} />
+              <StatCard label="Total de votações" value={String(totalVotes)} />
+            </div>
 
-        <PautasCharts
-          votesByMonth={votesByMonth}
-          votesByResult={votesByResult}
-          sourceUrl={votingSessions._source}
-        />
+            <PautasCharts
+              votesByMonth={votesByMonth}
+              votesByResult={votesByResult}
+              sourceUrl={votingSessions._source}
+            />
 
-        <SectionHeader
-          title={`Últimas votações (${selectedYear})`}
-          sourceUrl={votingSessions._source}
-          action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
-        />
-        <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+            <SectionHeader
+              title={`Últimas votações (${selectedYear})`}
+              sourceUrl={votingSessions._source}
+              action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
+            />
+            <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+          </>
+        )}
       </section>
     </>
   )

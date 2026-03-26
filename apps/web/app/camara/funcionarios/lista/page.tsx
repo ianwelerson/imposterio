@@ -10,7 +10,7 @@
  */
 
 import Link from "next/link"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { getStaffBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { StaffBulkSummary } from "@imposterio/types"
@@ -29,12 +29,14 @@ const EMPTY_SUMMARY: StaffBulkSummary = {
 
 export default async function FuncionariosListaPage() {
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const staff = await collectErrors(
     () => getStaffBulk(),
     emptySourced(EMPTY_SUMMARY),
     errors,
     "Funcionários",
+    failed,
   )
 
   return (
@@ -67,7 +69,11 @@ export default async function FuncionariosListaPage() {
         </div>
       </header>
 
-      <StaffSearchList members={staff.members} />
+      {failed.has("Funcionários") ? (
+        <DataFetchError label="os funcionários" />
+      ) : (
+        <StaffSearchList members={staff.members} />
+      )}
     </>
   )
 }

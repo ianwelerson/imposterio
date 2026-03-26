@@ -21,7 +21,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import {
-  StatCard, SectionHeader, Badge, SourcePill, ToastTrigger,
+  StatCard, SectionHeader, Badge, SourcePill, ToastTrigger, DataFetchError,
 } from "@/components/ui"
 import {
   getDeputiesList,
@@ -77,6 +77,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
     .slice(0, 3)
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   // Always fetch the full deputies list for the picker autocomplete
   const allDeputies = await collectErrors(
@@ -84,6 +85,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
     emptySourced([]),
     errors,
     "Lista de deputados",
+    failed,
   )
 
   // Picker-friendly list (minimal fields)
@@ -107,53 +109,62 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
       }
 
       const localErrors: PageError[] = []
+      const localFailed = new Set<string>()
       const [expenses, votes, caucuses, committees, events, staffCount, attendanceDetail] = await Promise.all([
         collectErrors(
           () => getDeputyExpenses(id, selectedYear),
           emptySourced([]),
           localErrors,
           `Despesas (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyVotingHistory(id, yearStart, yearEnd),
           emptySourced([]),
           localErrors,
           `Votações (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyCaucuses(id),
           emptySourced([]),
           localErrors,
           `Frentes (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyCommittees(id),
           emptySourced([]),
           localErrors,
           `Comissões (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyEvents(id, yearStart, yearEnd),
           emptySourced([]),
           localErrors,
           `Eventos (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyStaffCount(id),
           emptySourced({ count: 0, members: [] }),
           localErrors,
           `Funcionários (${detail.name})`,
+          localFailed,
         ),
         collectErrors(
           () => getDeputyAttendanceDetail(id, selectedYear),
           emptySourced([]),
           localErrors,
           `Presença (${detail.name})`,
+          localFailed,
         ),
       ])
 
-      // Collect sub-errors into main array
+      // Collect sub-errors and failed labels into main sets
       errors.push(...localErrors)
+      for (const l of localFailed) failed.add(l)
 
       return { detail, expenses, votes, caucuses, committees, events, staffCount, attendanceDetail }
     }),
@@ -226,8 +237,18 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
         selectedYear={selectedYear}
       />
 
+      {/* Inline error when the deputies list failed to load */}
+      {failed.has("Lista de deputados") && (
+        <DataFetchError label="a lista de deputados" />
+      )}
+
+      {/* Inline error when any per-deputy fetch failed */}
+      {!failed.has("Lista de deputados") && failed.size > 0 && (
+        <DataFetchError label="os dados de um ou mais deputados selecionados" />
+      )}
+
       {/* Comparison content — only shown with 2+ deputies */}
-      {hasComparison && (
+      {hasComparison && !failed.has("Lista de deputados") && (
         <>
           {/* Summary comparison table */}
           <section className="mb-12">

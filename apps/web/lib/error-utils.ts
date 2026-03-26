@@ -31,20 +31,27 @@ export interface PageError {
  * On success, returns the fetcher result. On failure, pushes a user-friendly
  * message into the `errors` array and returns the provided `fallback`.
  *
- * @param fn       - Async function to execute (typically a fetcher call)
- * @param fallback - Value to return when the fetcher fails
- * @param errors   - Mutable array where error messages are collected
- * @param label    - Human-readable label for the data section (used in the toast)
+ * When a `failedLabels` set is provided, the label is added to it on failure,
+ * allowing pages to show inline warnings where the data would normally appear.
+ *
+ * @param fn           - Async function to execute (typically a fetcher call)
+ * @param fallback     - Value to return when the fetcher fails
+ * @param errors       - Mutable array where error messages are collected
+ * @param label        - Human-readable label for the data section (used in the toast)
+ * @param failedLabels - Optional mutable set where failed labels are tracked
  *
  * @example
  * ```typescript
  * const errors: PageError[] = []
+ * const failed = new Set<string>()
  * const expenses = await collectErrors(
  *   () => getDeputyExpenses(id, year),
  *   [],
  *   errors,
- *   "despesas CEAP",
+ *   "Despesas CEAP",
+ *   failed,
  * )
+ * // failed.has("Despesas CEAP") === true when the fetch failed
  * ```
  */
 export async function collectErrors<T>(
@@ -52,10 +59,12 @@ export async function collectErrors<T>(
   fallback: T,
   errors: PageError[],
   label: string,
+  failedLabels?: Set<string>,
 ): Promise<T> {
   try {
     return await fn()
   } catch (err) {
+    failedLabels?.add(label)
     if (err instanceof ApiError) {
       errors.push({
         message: `${label}: ${err.userMessage}`,

@@ -10,7 +10,7 @@
 
 import Link from "next/link"
 import { getPropositions } from "@imposterio/fetchers"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
 import { CamaraPautasList } from "./CamaraPautasList"
@@ -36,7 +36,8 @@ export default async function CamaraPautasListaPage({ searchParams }: PageProps)
   )
 
   const errors: PageError[] = []
-  const propositions = await collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições")
+  const failed = new Set<string>()
+  const propositions = await collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições", failed)
 
   return (
     <>
@@ -63,16 +64,20 @@ export default async function CamaraPautasListaPage({ searchParams }: PageProps)
         </div>
       </header>
 
-      <CamaraPautasList
-        propositions={propositions}
-        selectedYear={selectedYear}
-        yearSelector={
-          <div className="w-full sm:w-auto sm:min-w-[100px]">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
-            <YearSelector years={availableYears} selected={selectedYear} inline />
-          </div>
-        }
-      />
+      {failed.has("Proposições") ? (
+        <DataFetchError label="as proposições" />
+      ) : (
+        <CamaraPautasList
+          propositions={propositions}
+          selectedYear={selectedYear}
+          yearSelector={
+            <div className="w-full sm:w-auto sm:min-w-[100px]">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
+              <YearSelector years={availableYears} selected={selectedYear} inline />
+            </div>
+          }
+        />
+      )}
     </>
   )
 }

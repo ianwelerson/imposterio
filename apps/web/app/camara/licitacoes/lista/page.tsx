@@ -9,7 +9,7 @@
  */
 
 import Link from "next/link"
-import { ToastTrigger, SourcePill } from "@/components/ui"
+import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { getProcurementBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
@@ -36,6 +36,7 @@ export default async function CamaraLicitacoesListaPage({ searchParams }: PagePr
   )
 
   const errors: PageError[] = []
+  const failed = new Set<string>()
 
   const summary = await collectErrors(
     () => getProcurementBulk(selectedYear),
@@ -54,6 +55,7 @@ export default async function CamaraLicitacoesListaPage({ searchParams }: PagePr
     }),
     errors,
     "Licitações",
+    failed,
   )
 
   return (
@@ -82,16 +84,20 @@ export default async function CamaraLicitacoesListaPage({ searchParams }: PagePr
         </div>
       </header>
 
-      <LicitacoesSearchList
-        procurements={summary.procurements}
-        selectedYear={selectedYear}
-        yearSelector={
-          <div className="w-full sm:w-auto sm:min-w-[100px]">
-            <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
-            <YearSelector years={availableYears} selected={selectedYear} inline />
-          </div>
-        }
-      />
+      {failed.has("Licitações") ? (
+        <DataFetchError label="as licitações" />
+      ) : (
+        <LicitacoesSearchList
+          procurements={summary.procurements}
+          selectedYear={selectedYear}
+          yearSelector={
+            <div className="w-full sm:w-auto sm:min-w-[100px]">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>
+              <YearSelector years={availableYears} selected={selectedYear} inline />
+            </div>
+          }
+        />
+      )}
     </>
   )
 }
