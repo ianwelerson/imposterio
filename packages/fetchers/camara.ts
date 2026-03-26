@@ -1035,13 +1035,33 @@ export async function getVotingSessions(
   endDate: string,
 ): Promise<WithSource<CamaraVotingSession[]>> {
   const base = ENDPOINTS.CAMARA_VOTING_SESSIONS
+  const sourceUrl = `${base}?dataInicio=${startDate}&dataFim=${endDate}`
 
-  // The Câmara API limits date ranges to 3 months max.
-  // Split the full range into quarterly chunks and fetch all in parallel.
+  // Combined-result cache: the Câmara API limits ranges to 3 months, so a
+  // full-year query requires 4 quarterly fetches with pagination. This key
+  // collapses all of them into a single Redis GET on repeat requests.
+  const year = startDate.slice(0, 4)
+  const combinedKey = `cam:sessions:${year}`
+
+  if (redis) {
+    try {
+      const cached = await redis.get(combinedKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (Array.isArray(parsed)) {
+          return Object.assign(parsed as CamaraVotingSession[], { _source: sourceUrl })
+        }
+        await redis.del(combinedKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(combinedKey).catch(() => {})
+    }
+  }
+
+  // Cache miss — split into quarterly chunks and fetch all pages
   const chunks = splitDateRangeIntoQuarters(startDate, endDate)
 
   const allRaw: CamaraVotingSessionRaw[] = []
-  let sourceUrl = ""
 
   for (const chunk of chunks) {
     const qs = new URLSearchParams({
@@ -1054,7 +1074,6 @@ export async function getVotingSessions(
 
     const firstPageUrl = `${base}?${qs.toString()}`
     const firstPage = await cachedFetch<CamaraListResponse<CamaraVotingSessionRaw>>(firstPageUrl, TTL.CAMARA_VOTING_SESSIONS)
-    if (!sourceUrl) sourceUrl = firstPage._source
     allRaw.push(...firstPage.dados)
 
     const lastPageNum = extractLastPage(firstPage.links)
@@ -1071,6 +1090,16 @@ export async function getVotingSessions(
   }
 
   const sessions: CamaraVotingSession[] = allRaw.map(mapRawToVotingSession)
+
+  // Store the combined result so subsequent requests skip quarterly pagination
+  if (redis && sessions.length > 0) {
+    try {
+      await redis.set(combinedKey, JSON.stringify(sessions), { ex: TTL.CAMARA_VOTING_SESSIONS })
+    } catch {
+      // Cache write failure is non-fatal
+    }
+  }
+
   return Object.assign(sessions, { _source: sourceUrl })
 }
 
@@ -1174,6 +1203,31 @@ export async function getDeputyVotingHistory(
   endDate: string,
   maxSessions = 50,
 ): Promise<WithSource<DeputyVotingRecord[]>> {
+  // The source URL shown to the user (voting sessions endpoint for the date range)
+  const sourceUrl = `${ENDPOINTS.CAMARA_VOTING_SESSIONS}?dataInicio=${startDate}&dataFim=${endDate}`
+
+  // Combined-result cache: stores the final deputy voting record array under a
+  // single key, avoiding 50+ per-session Redis lookups on subsequent requests.
+  // A deputy with 50 sessions goes from ~55 Redis GETs to 1.
+  const year = startDate.slice(0, 4)
+  const combinedKey = `cam:votes:${deputyId}:${year}`
+
+  if (redis) {
+    try {
+      const cached = await redis.get(combinedKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (Array.isArray(parsed)) {
+          return Object.assign(parsed as DeputyVotingRecord[], { _source: sourceUrl })
+        }
+        await redis.del(combinedKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(combinedKey).catch(() => {})
+    }
+  }
+
+  // Cache miss — fetch sessions and individual votes
   const sessions = await getVotingSessions(startDate, endDate)
 
   // Limit sessions to avoid excessive API calls
@@ -1214,7 +1268,16 @@ export async function getDeputyVotingHistory(
   // Sort by date descending (most recent first)
   records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  return Object.assign(records, { _source: sessions._source })
+  // Store the combined result so subsequent requests skip all per-session lookups
+  if (redis && records.length > 0) {
+    try {
+      await redis.set(combinedKey, JSON.stringify(records), { ex: TTL.CAMARA_DEPUTY_VOTES })
+    } catch {
+      // Cache write failure is non-fatal
+    }
+  }
+
+  return Object.assign(records, { _source: sourceUrl })
 }
 
 // ── Pagination helpers (internal) ─────────────────────────────────────
