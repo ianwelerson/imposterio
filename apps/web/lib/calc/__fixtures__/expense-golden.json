@@ -1,0 +1,40 @@
+{
+  "description": "Golden file for expense aggregation pipeline. If this test fails, a calculation changed — verify the new output is correct before updating.",
+  "input": [
+    { "date": "2024-01-15T12:00:00", "type": "PASSAGENS AÉREAS", "supplierName": "GOL LINHAS AÉREAS", "value": 1234.56 },
+    { "date": "2024-01-20T12:00:00", "type": "PASSAGENS AÉREAS", "supplierName": "LATAM AIRLINES", "value": 2345.67 },
+    { "date": "2024-01-20T12:00:00", "type": "COMBUSTÍVEIS", "supplierName": "POSTO BR", "value": 500.00 },
+    { "date": "2024-02-10T12:00:00", "type": "PASSAGENS AÉREAS", "supplierName": "GOL LINHAS AÉREAS", "value": 1100.00 },
+    { "date": "2024-02-15T12:00:00", "type": "ALIMENTAÇÃO", "supplierName": "RESTAURANTE PLANALTO", "value": 350.00 },
+    { "date": "2024-03-05T12:00:00", "type": "COMBUSTÍVEIS", "supplierName": "POSTO SHELL", "value": 450.00 },
+    { "date": "2024-03-15T12:00:00", "type": "PASSAGENS AÉREAS", "supplierName": "LATAM AIRLINES", "value": 1800.00 },
+    { "date": "2024-06-10T12:00:00", "type": "TELEFONIA", "supplierName": "VIVO TELECOMUNICAÇÕES", "value": 199.90 },
+    { "date": "2024-06-10T12:00:00", "type": "PASSAGENS AÉREAS", "supplierName": "GOL LINHAS AÉREAS", "value": 980.00 },
+    { "date": "2024-12-20T12:00:00", "type": "ALIMENTAÇÃO", "supplierName": "RESTAURANTE PLANALTO", "value": 280.00 }
+  ],
+  "expected": {
+    "byMonth": [
+      { "month": 1, "total": 4080.23 },
+      { "month": 2, "total": 1450 },
+      { "month": 3, "total": 2250 },
+      { "month": 6, "total": 1179.9 },
+      { "month": 12, "total": 280 }
+    ],
+    "byCategory": [
+      { "name": "PASSAGENS AÉREAS", "value": 7460.23 },
+      { "name": "COMBUSTÍVEIS", "value": 950 },
+      { "name": "ALIMENTAÇÃO", "value": 630 },
+      { "name": "TELEFONIA", "value": 199.9 }
+    ],
+    "bySupplier": [
+      { "label": "LATAM AIRLINES", "value": 4145.67 },
+      { "label": "GOL LINHAS AÉREAS", "value": 3314.56 },
+      { "label": "RESTAURANTE PLANALTO", "value": 630 },
+      { "label": "POSTO BR", "value": 500 },
+      { "label": "POSTO SHELL", "value": 450 },
+      { "label": "VIVO TELECOMUNICAÇÕES", "value": 199.9 }
+    ],
+    "grandTotal": 9240.13,
+    "totalItemCount": 10
+  }
+}

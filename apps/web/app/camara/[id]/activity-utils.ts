@@ -6,6 +6,7 @@
  */
 
 import type { DeputySpeech, DeputyEvent, DeputyCommittee, DeputyVotingRecord } from "@imposterio/types"
+import { assertValidPercent, assertTwelveMonths } from "@/lib/calc"
 
 export interface CountItem {
   name: string
@@ -40,10 +41,12 @@ export function aggregateSpeechesByMonth(speeches: DeputySpeech[]): MonthlyCount
     const month = new Date(s.startTime).getMonth()
     byMonth.set(month, (byMonth.get(month) ?? 0) + 1)
   }
-  return MONTH_LABELS.map((label, i) => ({
+  const result = MONTH_LABELS.map((label, i) => ({
     label,
     value: byMonth.get(i) ?? 0,
   }))
+  assertTwelveMonths(result, "speeches by month")
+  return result
 }
 
 /** Aggregate events by type (e.g. "Sessão Deliberativa", "Audiência Pública") for a pie chart. */
@@ -64,10 +67,12 @@ export function aggregateEventsByMonth(events: DeputyEvent[]): MonthlyCount[] {
     const month = new Date(e.startTime).getMonth()
     byMonth.set(month, (byMonth.get(month) ?? 0) + 1)
   }
-  return MONTH_LABELS.map((label, i) => ({
+  const result = MONTH_LABELS.map((label, i) => ({
     label,
     value: byMonth.get(i) ?? 0,
   }))
+  assertTwelveMonths(result, "events by month")
+  return result
 }
 
 /** Aggregate committees by deputy's role (Titular, Suplente, etc.) for a pie chart. */
@@ -112,10 +117,12 @@ export function aggregateVotesByMonth(votes: DeputyVotingRecord[]): MonthlyCount
     const month = new Date(v.date).getMonth()
     byMonth.set(month, (byMonth.get(month) ?? 0) + 1)
   }
-  return MONTH_LABELS.map((label, i) => ({
+  const result = MONTH_LABELS.map((label, i) => ({
     label,
     value: byMonth.get(i) ?? 0,
   }))
+  assertTwelveMonths(result, "votes by month")
+  return result
 }
 
 /**
@@ -133,5 +140,6 @@ export function computeVoteAlignment(votes: DeputyVotingRecord[]): number {
     return false
   })
 
-  return Math.round((aligned.length / decided.length) * 100)
+  const result = Math.round((aligned.length / decided.length) * 100)
+  return assertValidPercent(result, "vote alignment")
 }

@@ -1,4 +1,19 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; echo \"$f\" | grep -qE '(lib/calc/|expense-utils|activity-utils|camara-utils|comparison-utils|licitacoes-utils|pautas-utils|attendance-utils|card-content)' && cd /Users/ianwelerson/Workspace/imposterio/apps/web && npx vitest run lib/calc/ --reporter=dot 2>&1; } || true",
+            "timeout": 30,
+            "statusMessage": "Running calculation integrity tests..."
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(pnpm install)",

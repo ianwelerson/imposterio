@@ -14,15 +14,7 @@
 
 import { getDeputyDetail, getDeputyExpenses } from "@imposterio/fetchers"
 import type { ExpenseTotalMeta, ExpenseCategoryMeta } from "@imposterio/types"
-
-/** Formats a number as Brazilian Real currency */
-function formatBRL(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-  })
-}
+import { formatBRL } from "@/lib/calc"
 
 /** Formats year reference: "em 2025" for past years, "até o momento em 2026" for current year. */
 function yearLabel(year: number): string {

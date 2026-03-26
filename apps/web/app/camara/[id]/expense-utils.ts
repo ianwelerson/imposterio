@@ -2,7 +2,13 @@
  * @file expense-utils.ts
  * @description Pure utility functions for processing deputy expense data.
  * Not a client component — safe to import from server components.
+ *
+ * All numeric computations delegate to or are validated by the shared
+ * calc library (@/lib/calc). Runtime guards catch regressions before
+ * data reaches the UI.
  */
+
+import { assertNonNegative, assertSubtotalsMatch, assertTwelveMonths } from "@/lib/calc"
 
 export interface MonthlyExpense {
   month: number
@@ -32,9 +38,11 @@ export function aggregateByMonth(
     const month = new Date(e.date).getMonth() + 1
     byMonth.set(month, (byMonth.get(month) ?? 0) + e.value)
   }
-  return Array.from(byMonth.entries())
+  const result = Array.from(byMonth.entries())
     .map(([month, total]) => ({ month, total }))
     .sort((a, b) => a.month - b.month)
+  assertNonNegative(result.map((r) => r.total), "expense aggregateByMonth")
+  return result
 }
 
 /**
@@ -48,9 +56,11 @@ export function aggregateByCategory(
   for (const e of expenses) {
     byType.set(e.type, (byType.get(e.type) ?? 0) + e.value)
   }
-  return Array.from(byType.entries())
+  const result = Array.from(byType.entries())
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
+  assertNonNegative(result.map((r) => r.value), "expense aggregateByCategory")
+  return result
 }
 
 /**

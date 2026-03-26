@@ -28,19 +28,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-
-/**
- * Formats a number as Brazilian Real currency with animated precision.
- * Uses full decimal display for the rolling effect.
- */
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
+import { formatBRL, formatBRLCompact } from "@/lib/calc"
 
 /**
  * Estimated annual tax collection for 2026 (all levels of government).
@@ -92,9 +80,9 @@ export function TaxCounter() {
           <p
             className="font-mono text-2xl font-bold tracking-tight text-accent sm:text-3xl lg:text-4xl"
             aria-live="polite"
-            aria-label={`Impostos arrecadados: ${formatCurrency(value)}`}
+            aria-label={`Impostos arrecadados: ${formatBRL(value)}`}
           >
-            {formatCurrency(value)}
+            {formatBRL(value)}
           </p>
           <p className="mt-1 text-xs text-gray-400">
             Federal + Estadual + Municipal — margem de erro: 2–3,5%

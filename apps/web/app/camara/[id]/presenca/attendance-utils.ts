@@ -16,6 +16,7 @@
 
 import type { DeputyAttendanceEvent } from "@imposterio/fetchers"
 import type { DeputyEvent } from "@imposterio/types"
+import { assertNonNegative } from "@/lib/calc"
 
 /** Daily count entry for CalendarHeatmap. */
 export interface DailyAttendance {
@@ -160,12 +161,14 @@ export function aggregateHoursPerWeek(
     weekMap.set(weekNum, (weekMap.get(weekNum) ?? 0) + hours)
   }
 
-  return Array.from(weekMap.entries())
+  const result = Array.from(weekMap.entries())
     .sort(([a], [b]) => a - b)
     .map(([week, hours]) => ({
       label: `Sem. ${week}`,
       value: Math.round(hours * 10) / 10,
     }))
+  assertNonNegative(result.map((r) => r.value), "weekly hours")
+  return result
 }
 
 /**

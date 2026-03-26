@@ -18,6 +18,7 @@ import {
   ChartCard, LineChart, BarChart,
   TreemapChart, CalendarHeatmap, StackedBarChart,
 } from "@/components/charts"
+import { formatBRL } from "@/lib/calc"
 import type {
   MonthlyExpense,
   CategoryExpense,
@@ -51,9 +52,6 @@ const MONTH_LABELS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
   "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 ]
-
-const formatBRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
 export function DeputyExpenseCharts({
   selectedYearMonthly,

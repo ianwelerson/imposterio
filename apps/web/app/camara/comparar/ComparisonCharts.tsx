@@ -9,6 +9,7 @@
 "use client"
 
 import { ChartCard, LineChart, BarChart, StackedBarChart } from "@/components/charts"
+import { formatBRL, formatPercent } from "@/lib/calc"
 import type { DeputyMetrics, CategoryComparison } from "./comparison-utils"
 
 /** High-contrast colors for up to 3 deputies. */
@@ -88,7 +89,7 @@ export function ComparisonCharts({
           data={monthlyExpenses}
           series={expenseSeries}
           height={300}
-          formatValue={(v) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          formatValue={formatBRL}
         />
       </ChartCard>
 
@@ -116,7 +117,7 @@ export function ComparisonCharts({
               categoryKey="category"
               series={categorySeries}
               height={320}
-              formatValue={(v) => `R$ ${v.toLocaleString("pt-BR")}`}
+              formatValue={formatBRL}
             />
           </ChartCard>
         </div>
@@ -130,7 +131,7 @@ export function ComparisonCharts({
         <BarChart
           data={ceapBars}
           height={220}
-          formatValue={(v) => `R$ ${v.toLocaleString("pt-BR")}`}
+          formatValue={formatBRL}
         />
       </ChartCard>
 
@@ -154,7 +155,7 @@ export function ComparisonCharts({
           data={alignmentBars}
           height={220}
           color="#10b981"
-          formatValue={(v) => `${v}%`}
+          formatValue={formatPercent}
         />
       </ChartCard>
     </div>

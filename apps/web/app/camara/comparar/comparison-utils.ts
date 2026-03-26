@@ -10,6 +10,7 @@ import type {
   DeputyExpense, DeputyVotingRecord,
   DeputyCaucus, DeputyCommittee, DeputyEvent,
 } from "@imposterio/types"
+import { assertValidPercent, assertNonNegative } from "@/lib/calc"
 
 const MONTH_LABELS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -86,7 +87,10 @@ export function computeDeputyMetrics(
       return false
     })
     alignment = Math.round((aligned.length / decided.length) * 100)
+    assertValidPercent(alignment, "deputy comparison alignment")
   }
+
+  assertNonNegative([totalCeap], "deputy comparison totalCeap")
 
   const activeCommittees = committees.filter((c) => !c.endDate)
 

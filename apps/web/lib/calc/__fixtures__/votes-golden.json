@@ -1,0 +1,37 @@
+{
+  "description": "Golden file for vote aggregation pipeline. Verifies percentage calculations and alignment logic.",
+  "input": [
+    { "vote": "Sim", "date": "2024-01-10T12:00:00", "approved": true },
+    { "vote": "Sim", "date": "2024-01-15T12:00:00", "approved": true },
+    { "vote": "Não", "date": "2024-01-20T12:00:00", "approved": false },
+    { "vote": "Sim", "date": "2024-02-05T12:00:00", "approved": false },
+    { "vote": "Não", "date": "2024-02-10T12:00:00", "approved": true },
+    { "vote": "Abstenção", "date": "2024-03-15T12:00:00", "approved": true },
+    { "vote": "Sim", "date": "2024-03-20T12:00:00", "approved": null },
+    { "vote": "Não", "date": "2024-06-20T12:00:00", "approved": false },
+    { "vote": "Sim", "date": "2024-06-25T12:00:00", "approved": true },
+    { "vote": "Não", "date": "2024-12-15T12:00:00", "approved": null }
+  ],
+  "expected": {
+    "byType": [
+      { "name": "Sim", "value": 5 },
+      { "name": "Não", "value": 4 },
+      { "name": "Abstenção", "value": 1 }
+    ],
+    "byMonth": {
+      "description": "12 months, indexed 0-11, with counts per month",
+      "jan": 3,
+      "feb": 2,
+      "mar": 2,
+      "jun": 2,
+      "dec": 1,
+      "allOthers": 0
+    },
+    "alignment": {
+      "description": "Only votes where approved !== null are considered (8 of 10). Aligned = Sim+approved or Não+rejected.",
+      "decidedCount": 8,
+      "alignedCount": 5,
+      "alignmentPercent": 63
+    }
+  }
+}

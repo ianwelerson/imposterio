@@ -10,6 +10,7 @@
 import type { Deputy } from "@imposterio/types"
 import type { CamaraProposition, CamaraVotingSession } from "@imposterio/types"
 import type { AttendanceBulkSummary } from "@imposterio/fetchers"
+import { assertValidPercent, assertNonNegative, assertTwelveMonths } from "@/lib/calc"
 
 /** Simple name→value pair for chart data. */
 export interface CountItem {
@@ -77,7 +78,9 @@ export function aggregatePropositionsByMonth(propositions: CamaraProposition[]):
     const month = new Date(p.presentedDate).getMonth()
     if (month >= 0 && month < 12) counts[month]++
   }
-  return MONTH_LABELS.map((label, i) => ({ label, value: counts[i] }))
+  const result = MONTH_LABELS.map((label, i) => ({ label, value: counts[i] }))
+  assertTwelveMonths(result, "propositions by month")
+  return result
 }
 
 /**
@@ -90,7 +93,9 @@ export function aggregateVotingSessionsByMonth(sessions: CamaraVotingSession[]):
     const month = new Date(s.date).getMonth()
     if (month >= 0 && month < 12) counts[month]++
   }
-  return MONTH_LABELS.map((label, i) => ({ label, value: counts[i] }))
+  const result = MONTH_LABELS.map((label, i) => ({ label, value: counts[i] }))
+  assertTwelveMonths(result, "voting sessions by month")
+  return result
 }
 
 /**
@@ -140,6 +145,7 @@ export function aggregateAttendanceByParty(
       0,
     )
     const avgRate = Math.round((totalAttended / members.length / summary.totalEvents) * 100)
+    assertValidPercent(avgRate, `attendance rate for party ${party}`)
     result.push({ name: party, value: avgRate })
   }
 

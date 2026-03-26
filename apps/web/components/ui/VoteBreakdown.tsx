@@ -11,6 +11,7 @@
 
 import { useState } from "react"
 import type { VoteTally, PropositionVote } from "@imposterio/types"
+import { safePercentLabel } from "@/lib/calc"
 import { SourcePill } from "./SourcePill"
 
 interface VoteBreakdownProps {
@@ -42,7 +43,7 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
 
   if (total === 0) return null
 
-  const pct = (n: number) => `${((n / total) * 100).toFixed(1)}%`
+  const pct = (n: number) => safePercentLabel(n, total)
 
   return (
     <div className="space-y-3">

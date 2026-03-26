@@ -7,6 +7,10 @@
  */
 
 import type { CamaraProcurementContract } from "@imposterio/types"
+import { assertNonNegative, assertTwelveMonths } from "@/lib/calc"
+// NOTE: formatCurrency below is kept for backwards compatibility with existing
+// imports. New code should import formatBRL from "@/lib/calc" instead.
+export { formatBRL as formatCurrency } from "@/lib/calc"
 
 /** Monthly aggregated value for bar chart display. */
 export interface MonthlyContractValue {
@@ -44,26 +48,13 @@ export function aggregateContractsByMonth(
     }
   }
 
-  return MONTH_LABELS.map((label, i) => ({
+  assertNonNegative(buckets, "contract monthly totals")
+
+  const result = MONTH_LABELS.map((label, i) => ({
     label,
     value: buckets[i],
   }))
+  assertTwelveMonths(result, "contract monthly totals")
+  return result
 }
 
-/**
- * Formats a numeric value as Brazilian Real (BRL) currency string.
- *
- * Uses the pt-BR locale for proper thousands separators and decimal commas.
- * Example: 1234567.89 → "R$ 1.234.567,89"
- *
- * @param value - Numeric value in BRL
- * @returns Formatted currency string with "R$" prefix
- */
-export function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
