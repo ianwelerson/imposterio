@@ -3,8 +3,8 @@ const path = require("path")
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@imposterio/fetchers", "@imposterio/db", "@imposterio/types"],
-  outputFileTracingRoot: path.join(__dirname, "../../"),
   experimental: {
+    outputFileTracingRoot: path.join(__dirname, "../../"),
     outputFileTracingIncludes: {
       "/api/**": ["./node_modules/.prisma/client/**"],
     },
