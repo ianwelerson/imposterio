@@ -77,7 +77,7 @@ export function AppShell({ children }: AppShellProps) {
 
           {/* "Coming soon" overlay — covers all non-public pages */}
           {!isPublic && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="absolute inset-0 z-30 flex items-start justify-center bg-white/80 pt-24 backdrop-blur-sm sm:pt-32">
               <div className="text-center">
                 <p className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
                   Em breve

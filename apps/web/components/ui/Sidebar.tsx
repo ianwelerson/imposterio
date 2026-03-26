@@ -38,6 +38,9 @@ interface NavSection {
   items: NavItem[]
 }
 
+/** Routes that are publicly visible without the "Coming soon" overlay. */
+const PUBLIC_PATHS = ["/sobre", "/camara", "/acha-justo"]
+
 const NAV_SECTIONS: NavSection[] = [
   {
     title: "Início",
@@ -239,6 +242,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       : pathname === item.href
     const isExpanded = expanded.has(item.href)
     const hasChildren = item.children && item.children.length > 0
+    const isComingSoon = !PUBLIC_PATHS.some((p) => item.href === p || item.href.startsWith(p + "/"))
 
     return (
       <li key={item.href}>
@@ -265,6 +269,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               <path fillRule="evenodd" d={item.icon} clipRule="evenodd" />
             </svg>
             <span className="truncate text-sm font-medium">{item.label}</span>
+            {isComingSoon && (
+              <span className="ml-auto shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+                Em breve
+              </span>
+            )}
           </Link>
 
           {/* Chevron toggle — sits inside the same row, always right-aligned */}
