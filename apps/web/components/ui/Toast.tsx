@@ -102,7 +102,7 @@ function ToastItem({
   toast: Toast
   onDismiss: (id: string) => void
 }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     timerRef.current = setTimeout(() => onDismiss(toast.id), AUTO_DISMISS_MS)

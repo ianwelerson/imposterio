@@ -70,7 +70,7 @@ export function SearchableList<T>({
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
-  const searchDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const resetPage = () => setPage(1)
 
