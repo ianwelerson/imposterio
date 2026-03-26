@@ -75,6 +75,16 @@ export const ENDPOINTS = {
   CAMARA_BULK_STAFF: `${BASE_URLS.CAMARA_BULK}/funcionarios/json/funcionarios.json`,
   CAMARA_BULK_EXPENSES: (year: number) =>
     `http://www.camara.leg.br/cotas/Ano-${year}.json.zip`,
+  CAMARA_BULK_EVENTS: (year: number) =>
+    `${BASE_URLS.CAMARA_BULK}/eventos/json/eventos-${year}.json`,
+  CAMARA_BULK_PROCUREMENT: (year: number) =>
+    `${BASE_URLS.CAMARA_BULK}/licitacoes/json/licitacoes-${year}.json`,
+  CAMARA_BULK_PROCUREMENT_CONTRACTS: (year: number) =>
+    `${BASE_URLS.CAMARA_BULK}/licitacoesContratos/json/licitacoesContratos-${year}.json`,
+  CAMARA_BULK_PROCUREMENT_ITEMS: (year: number) =>
+    `${BASE_URLS.CAMARA_BULK}/licitacoesItens/json/licitacoesItens-${year}.json`,
+  CAMARA_BULK_PROCUREMENT_REQUESTS: (year: number) =>
+    `${BASE_URLS.CAMARA_BULK}/licitacoesPedidos/json/licitacoesPedidos-${year}.json`,
 
   // ── Senado Federal ──────────────────────────────────────────────────
   SENADO_SENATORS: `${BASE_URLS.SENADO}/senador/lista/atual.json`,

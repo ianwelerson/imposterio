@@ -31,6 +31,8 @@ import {
   getDeputyCaucuses,
   getDeputyCommittees,
   getDeputyEvents,
+  getDeputyStaffCount,
+  getDeputyAttendanceDetail,
 } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { ComparisonControls } from "./ComparisonControls"
@@ -42,6 +44,7 @@ import {
   mergeExpenseCategories,
   type DeputyMetrics,
 } from "./comparison-utils"
+import { filterPlenarySessions } from "@/app/camara/[id]/presenca/attendance-utils"
 
 /** CEAP data is available from 2008 onward. */
 const FIRST_CEAP_YEAR = 2008
@@ -104,7 +107,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
       }
 
       const localErrors: PageError[] = []
-      const [expenses, votes, caucuses, committees, events] = await Promise.all([
+      const [expenses, votes, caucuses, committees, events, staffCount, attendanceDetail] = await Promise.all([
         collectErrors(
           () => getDeputyExpenses(id, selectedYear),
           emptySourced([]),
@@ -135,12 +138,24 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
           localErrors,
           `Eventos (${detail.name})`,
         ),
+        collectErrors(
+          () => getDeputyStaffCount(id),
+          emptySourced({ count: 0, members: [] }),
+          localErrors,
+          `Funcionários (${detail.name})`,
+        ),
+        collectErrors(
+          () => getDeputyAttendanceDetail(id, selectedYear),
+          emptySourced([]),
+          localErrors,
+          `Presença (${detail.name})`,
+        ),
       ])
 
       // Collect sub-errors into main array
       errors.push(...localErrors)
 
-      return { detail, expenses, votes, caucuses, committees, events }
+      return { detail, expenses, votes, caucuses, committees, events, staffCount, attendanceDetail }
     }),
   )
 
@@ -152,6 +167,8 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
     caucuses: Awaited<ReturnType<typeof getDeputyCaucuses>>
     committees: Awaited<ReturnType<typeof getDeputyCommittees>>
     events: Awaited<ReturnType<typeof getDeputyEvents>>
+    staffCount: Awaited<ReturnType<typeof getDeputyStaffCount>>
+    attendanceDetail: Awaited<ReturnType<typeof getDeputyAttendanceDetail>>
   }>
 
   const validIds = validDeputies.map((d) => d.detail.id)
@@ -170,6 +187,8 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
       d.caucuses,
       d.committees,
       d.events,
+      d.staffCount.count,
+      filterPlenarySessions(d.attendanceDetail).length,
     ),
   )
 
@@ -268,6 +287,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => fmt(m.totalCeap))}
                     highlight="lowest"
                     rawValues={metrics.map((m) => m.totalCeap)}
+                    tooltip="Cota para Exercício da Atividade Parlamentar — total gasto no ano. Menor valor é destacado."
                     totalSlots={3}
                   />
                   <ComparisonRow
@@ -275,21 +295,25 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => String(m.voteCount))}
                     highlight="highest"
                     rawValues={metrics.map((m) => m.voteCount)}
+                    tooltip="Sessões de votação nominal em que o deputado registrou voto no ano."
                     totalSlots={3}
                   />
                   <ComparisonRow
                     label="Votos Sim"
                     values={metrics.map((m) => String(m.simCount))}
+                    tooltip="Quantidade de votos favoráveis registrados nas votações nominais."
                     totalSlots={3}
                   />
                   <ComparisonRow
                     label="Votos Não"
                     values={metrics.map((m) => String(m.naoCount))}
+                    tooltip="Quantidade de votos contrários registrados nas votações nominais."
                     totalSlots={3}
                   />
                   <ComparisonRow
                     label="Abstenções"
                     values={metrics.map((m) => String(m.abstCount))}
+                    tooltip="Quantidade de abstenções registradas nas votações nominais."
                     totalSlots={3}
                   />
                   <ComparisonRow
@@ -297,6 +321,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => `${m.alignment}%`)}
                     highlight="highest"
                     rawValues={metrics.map((m) => m.alignment)}
+                    tooltip="Frequência com que o deputado votou no lado vencedor — 'Sim' em aprovadas e 'Não' em rejeitadas."
                     totalSlots={3}
                   />
                   <ComparisonRow
@@ -304,6 +329,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => String(m.caucusCount))}
                     highlight="highest"
                     rawValues={metrics.map((m) => m.caucusCount)}
+                    tooltip="Grupos suprapartidários em torno de interesses comuns (agropecuária, direitos humanos, etc)."
                     totalSlots={3}
                   />
                   <ComparisonRow
@@ -311,6 +337,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => String(m.committeeCount))}
                     highlight="highest"
                     rawValues={metrics.map((m) => m.committeeCount)}
+                    tooltip="Comissões em que o deputado atua como titular ou suplente atualmente."
                     totalSlots={3}
                   />
                   <ComparisonRow
@@ -318,6 +345,21 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                     values={metrics.map((m) => String(m.eventCount))}
                     highlight="highest"
                     rawValues={metrics.map((m) => m.eventCount)}
+                    tooltip="Sessões, audiências e reuniões em que o deputado participou ou está convocado no ano."
+                    totalSlots={3}
+                  />
+                  <ComparisonRow
+                    label="Sessões plenárias"
+                    values={metrics.map((m) => String(m.plenaryCount))}
+                    highlight="highest"
+                    rawValues={metrics.map((m) => m.plenaryCount)}
+                    tooltip="Sessões Deliberativas, Solenes e Preparatórias em que o deputado registrou presença."
+                    totalSlots={3}
+                  />
+                  <ComparisonRow
+                    label="Funcionários"
+                    values={metrics.map((m) => String(m.staffCount))}
+                    tooltip="Secretários parlamentares e demais funcionários vinculados ao gabinete."
                     totalSlots={3}
                   />
                 </tbody>
@@ -352,36 +394,51 @@ function ComparisonRow({
   values,
   highlight,
   rawValues,
+  tooltip,
   totalSlots = 3,
 }: {
   label: string
   values: string[]
   highlight?: "highest" | "lowest"
   rawValues?: number[]
+  /** Tooltip explaining the metric. */
+  tooltip?: string
   /** Always render this many value columns to keep alignment with the picker grid. */
   totalSlots?: number
 }) {
-  let bestIndex = -1
+  // Determine which indices have the best value (supports ties)
+  const bestIndices = new Set<number>()
   if (highlight && rawValues && rawValues.length > 0) {
-    if (highlight === "highest") {
-      bestIndex = rawValues.indexOf(Math.max(...rawValues))
-    } else {
-      bestIndex = rawValues.indexOf(Math.min(...rawValues))
+    const bestValue = highlight === "highest"
+      ? Math.max(...rawValues)
+      : Math.min(...rawValues)
+    for (let i = 0; i < rawValues.length; i++) {
+      if (rawValues[i] === bestValue) bestIndices.add(i)
     }
   }
 
   return (
     <tr>
-      <td className="py-3 pr-4 text-sm font-medium text-gray-600">{label}</td>
+      <td className="py-3 pr-4 text-sm font-medium text-gray-600">
+        {tooltip ? (
+          <span className="group relative inline-flex items-center gap-1">
+            {label}
+            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gray-200 text-[9px] font-bold text-gray-500 cursor-help">?</span>
+            <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-1.5 w-56 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+              {tooltip}
+            </span>
+          </span>
+        ) : label}
+      </td>
       {values.map((v, i) => (
         <td
           key={i}
           className={`py-3 px-4 text-center text-sm font-semibold ${
-            i === bestIndex ? "text-emerald-600" : "text-gray-900"
+            bestIndices.has(i) ? "text-emerald-600" : "text-gray-900"
           }`}
         >
           {v}
-          {i === bestIndex && (
+          {bestIndices.has(i) && (
             <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
           )}
         </td>

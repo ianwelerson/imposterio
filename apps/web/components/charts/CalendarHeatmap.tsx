@@ -21,6 +21,8 @@ interface CalendarHeatmapProps {
   year: number
   height?: number
   formatValue?: (value: number) => string
+  /** Label shown in tooltip when the day has zero value. Defaults to "Sem gastos". */
+  emptyLabel?: string
 }
 
 /** 5-level color scale from gray (no spend) to deep indigo (max spend). */
@@ -54,6 +56,7 @@ export function CalendarHeatmap({
   data,
   year,
   formatValue,
+  emptyLabel = "Sem gastos",
 }: CalendarHeatmapProps) {
   const [tooltip, setTooltip] = useState<{
     x: number
@@ -221,7 +224,7 @@ export function CalendarHeatmap({
           </p>
           <p className="text-gray-600">
             {tooltip.value === 0
-              ? "Sem gastos"
+              ? emptyLabel
               : formatValue
                 ? formatValue(tooltip.value)
                 : tooltip.value.toLocaleString("pt-BR")}

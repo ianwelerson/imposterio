@@ -77,7 +77,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados"),
     collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições"),
     collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações"),
-    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, deputies: [] }), errors, "Presença em eventos"),
+    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença em eventos"),
   ])
 
   // ── Aggregations ──────────────────────────────────────────────────
@@ -314,7 +314,42 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         <DataTable columns={deputyColumns} data={topDeputies} rowKey={(r) => r.id} />
       </section>
 
-      {/* ── 4. Pauta legislativa ──────────────────────────────────── */}
+      {/* ── 4. Quick links to subsections ──────────────────────────── */}
+      <section className="mb-12">
+        <SectionHeader title="Explorar" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href={`/camara/pautas?ano=${selectedYear}`}
+            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
+          >
+            <span className="text-sm font-semibold text-gray-900">Pauta Legislativa</span>
+            <p className="mt-1 text-xs text-gray-500">Proposições e votações</p>
+          </Link>
+          <Link
+            href={`/camara/licitacoes?ano=${selectedYear}`}
+            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
+          >
+            <span className="text-sm font-semibold text-gray-900">Licitações</span>
+            <p className="mt-1 text-xs text-gray-500">Compras, contratos e fornecedores</p>
+          </Link>
+          <Link
+            href="/camara/funcionarios"
+            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
+          >
+            <span className="text-sm font-semibold text-gray-900">Funcionários</span>
+            <p className="mt-1 text-xs text-gray-500">Servidores e secretários parlamentares</p>
+          </Link>
+          <Link
+            href="/camara/comparar"
+            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
+          >
+            <span className="text-sm font-semibold text-gray-900">Comparar Deputados</span>
+            <p className="mt-1 text-xs text-gray-500">Até 3 deputados lado a lado</p>
+          </Link>
+        </div>
+      </section>
+
+      {/* ── 5. Pauta legislativa ──────────────────────────────────── */}
       <section className="mb-12">
         <SectionHeader
           title="Últimas proposições"

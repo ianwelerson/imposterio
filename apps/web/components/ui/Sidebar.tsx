@@ -64,6 +64,8 @@ const NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Deputados", href: "/camara/deputados" },
           { label: "Pauta Legislativa", href: "/camara/pautas" },
+          { label: "Licitações", href: "/camara/licitacoes" },
+          { label: "Funcionários", href: "/camara/funcionarios" },
           { label: "Comparar", href: "/camara/comparar" },
         ],
       },

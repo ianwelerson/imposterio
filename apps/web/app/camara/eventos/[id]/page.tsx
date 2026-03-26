@@ -11,8 +11,10 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Badge, InfoPanel, SectionHeader } from "@/components/ui"
-import { getEventDetail } from "@imposterio/fetchers"
+import { Badge, InfoPanel, SectionHeader, ToastTrigger } from "@/components/ui"
+import { getEventDetail, getEventAttendees } from "@imposterio/fetchers"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
+import { AttendeesList } from "./AttendeesList"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -28,6 +30,15 @@ export default async function EventDetailPage({ params }: PageProps) {
     notFound()
   }
 
+  // Attendees degrade gracefully — errors shown as toasts
+  const errors: PageError[] = []
+  const attendees = await collectErrors(
+    () => getEventAttendees(id),
+    emptySourced([]),
+    errors,
+    "Lista de presença",
+  )
+
   const statusVariant = event.status === "Encerrada" ? "gray"
     : event.status === "Em andamento" ? "green"
     : "amber"
@@ -42,6 +53,8 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+
       <header className="mb-12">
         <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -103,6 +116,23 @@ export default async function EventDetailPage({ params }: PageProps) {
           </div>
         </section>
       )}
+
+      {/* ── Lista de presença ──────────────────────────────────────── */}
+      <section className="mb-12">
+        <SectionHeader title="Lista de presença" sourceUrl={attendees._source} />
+        {attendees.length > 0 ? (
+          <>
+            <p className="mb-4 text-sm text-gray-500">
+              {attendees.length} {attendees.length === 1 ? "deputado presente" : "deputados presentes"}
+            </p>
+            <AttendeesList attendees={attendees} sourceUrl={attendees._source} />
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Nenhum registro de presença disponível para este evento.
+          </p>
+        )}
+      </section>
     </>
   )
 }

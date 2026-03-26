@@ -40,6 +40,16 @@ export const TTL = {
   CAMARA_DEPUTY_ATTENDANCE: 60 * 60 * 6,
   /** Chamber staff/aides list — 24h */
   CAMARA_STAFF: 60 * 60 * 24,
+  /** Bulk attendance for past years — 30d (historical, effectively static) */
+  CAMARA_ATTENDANCE_HISTORY: 60 * 60 * 24 * 30,
+  /** Procurement bulk data for current year — 24h (updated daily) */
+  CAMARA_PROCUREMENT_BULK: 60 * 60 * 24,
+  /** Procurement bulk data for past years — 30d (historical, static) */
+  CAMARA_PROCUREMENT_BULK_HISTORY: 60 * 60 * 24 * 30,
+  /** Bulk events file — 6h for current year */
+  CAMARA_EVENTS_BULK: 60 * 60 * 6,
+  /** Bulk events for past years — 30d (historical) */
+  CAMARA_EVENTS_BULK_HISTORY: 60 * 60 * 24 * 30,
   /** Propositions list (filtered by year/type) — 3h (updated during sessions) */
   CAMARA_PROPOSITIONS: 60 * 60 * 3,
   /** Individual proposition detail — 6h */

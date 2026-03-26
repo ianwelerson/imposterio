@@ -19,12 +19,14 @@ process.env.UPSTASH_REDIS_REST_TOKEN = "fake-token"
 // connection. This isolates the fetcher logic.
 const mockRedisGet = vi.fn().mockResolvedValue(null)
 const mockRedisSet = vi.fn().mockResolvedValue("OK")
+const mockRedisDel = vi.fn().mockResolvedValue(0)
 
 vi.mock("@upstash/redis", () => ({
-  Redis: vi.fn().mockImplementation(() => ({
-    get: mockRedisGet,
-    set: mockRedisSet,
-  })),
+  Redis: class MockRedis {
+    get = mockRedisGet
+    set = mockRedisSet
+    del = mockRedisDel
+  },
 }))
 
 // Import after mocks are set up
@@ -34,8 +36,10 @@ describe("getDeputiesList", () => {
   beforeEach(() => {
     mockRedisGet.mockReset()
     mockRedisSet.mockReset()
+    mockRedisDel.mockReset()
     mockRedisGet.mockResolvedValue(null)
     mockRedisSet.mockResolvedValue("OK")
+    mockRedisDel.mockResolvedValue(0)
   })
 
   it("returns all deputies from the API with normalized fields", async () => {
@@ -110,8 +114,10 @@ describe("getDeputyDetail", () => {
   beforeEach(() => {
     mockRedisGet.mockReset()
     mockRedisSet.mockReset()
+    mockRedisDel.mockReset()
     mockRedisGet.mockResolvedValue(null)
     mockRedisSet.mockResolvedValue("OK")
+    mockRedisDel.mockResolvedValue(0)
   })
 
   it("returns a detailed deputy profile with normalized fields", async () => {
@@ -195,8 +201,10 @@ describe("getDeputyExpenses", () => {
   beforeEach(() => {
     mockRedisGet.mockReset()
     mockRedisSet.mockReset()
+    mockRedisDel.mockReset()
     mockRedisGet.mockResolvedValue(null)
     mockRedisSet.mockResolvedValue("OK")
+    mockRedisDel.mockResolvedValue(0)
   })
 
   it("returns expenses with normalized fields", async () => {

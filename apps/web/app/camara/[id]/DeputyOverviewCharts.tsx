@@ -37,7 +37,7 @@ export function SpeechCharts({ byType, byMonth, year, sourceUrl }: SpeechChartsP
       {byMonth.some((m) => m.value > 0) && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Discursos por mês (${year})`}
+          title="Discursos por mês"
           subtitle="Volume de pronunciamentos ao longo do ano"
         >
           <BarChart data={byMonth} height={280} />
@@ -72,7 +72,7 @@ export function EventCharts({ byType, byMonth, year, sourceUrl }: EventChartsPro
       {byMonth.some((m) => m.value > 0) && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Eventos por mês (${year})`}
+          title="Eventos por mês"
           subtitle="Participação em eventos ao longo do ano"
         >
           <BarChart data={byMonth} height={280} />
@@ -107,7 +107,7 @@ export function VotingCharts({ byType, byMonth, year, sourceUrl }: VotingChartsP
       {byMonth.some((m) => m.value > 0) && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Votações por mês (${year})`}
+          title="Votações por mês"
           subtitle="Participação em votações nominais ao longo do ano"
         >
           <BarChart data={byMonth} height={280} />

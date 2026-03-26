@@ -60,8 +60,12 @@ const redisEnabled =
   !!process.env.UPSTASH_REDIS_REST_TOKEN
 
 /**
- * Upstash Redis client, initialized from environment variables.
+ * Shared Upstash Redis client singleton, initialized from environment variables.
  * `null` when env vars are missing (local dev without Redis).
+ *
+ * Exported so that bulk fetchers can read/write cache directly without
+ * creating additional Redis instances (each instance adds connection overhead
+ * and command count on Upstash's metered free tier).
  *
  * Required env vars:
  * - `UPSTASH_REDIS_REST_URL` — the REST endpoint for your Upstash database
@@ -69,7 +73,7 @@ const redisEnabled =
  *
  * These are set in `apps/web/.env.local` (see `.env.example` at the repo root).
  */
-const redis = redisEnabled
+export const redis = redisEnabled
   ? new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -168,10 +172,25 @@ export async function cachedFetch<T>(
 
   // Try Redis cache first (skipped when Redis is not configured)
   if (redis) {
-    const cached = await redis.get<string>(key)
-    if (cached) {
-      const parsed = typeof cached === "string" ? JSON.parse(cached) : cached
-      return { ...parsed, _source: url }
+    try {
+      const cached = await redis.get(key)
+      if (cached !== null && cached !== undefined) {
+        // Upstash auto-deserializes JSON; handle both parsed and raw strings
+        const parsed = typeof cached === "string" ? JSON.parse(cached) : cached
+        // Only return if the cached value is a valid object/array — reject
+        // primitives, nulls, or error markers that may have been stored by
+        // a previous buggy write or a corrupt partial store.
+        if (parsed && typeof parsed === "object") {
+          return { ...parsed, _source: url }
+        }
+        // Invalid entry (primitive, null, or error shape) — evict it
+        await redis.del(key).catch(() => {})
+      }
+    } catch {
+      // Corrupt or unparseable cache entry, or Redis network error.
+      // Treat as a cache miss and evict the bad key so subsequent
+      // requests don't hit the same error repeatedly.
+      await redis.del(key).catch(() => {})
     }
   }
 
@@ -182,9 +201,15 @@ export async function cachedFetch<T>(
 
   const data = (await res.json()) as T
 
-  // Store in Redis if available
-  if (redis) {
-    await redis.set(key, JSON.stringify(data), { ex: ttl })
+  // Only cache successful, non-null responses that are objects or arrays.
+  // This guards against storing error-shaped 200 responses (some government
+  // APIs return 200 with { "erro": "..." } bodies) or null payloads.
+  if (redis && data != null && typeof data === "object") {
+    try {
+      await redis.set(key, JSON.stringify(data), { ex: ttl })
+    } catch {
+      // Cache write failure is non-fatal — data is still returned
+    }
   }
 
   return { ...data, _source: url }

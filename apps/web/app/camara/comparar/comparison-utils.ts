@@ -48,6 +48,10 @@ export interface DeputyMetrics {
   committeeCount: number
   /** Number of events attended in the year. */
   eventCount: number
+  /** Number of staff members linked to the deputy. */
+  staffCount: number
+  /** Number of plenary sessions attended. */
+  plenaryCount: number
 }
 
 /**
@@ -65,6 +69,8 @@ export function computeDeputyMetrics(
   caucuses: DeputyCaucus[],
   committees: DeputyCommittee[],
   events: DeputyEvent[],
+  staffCount: number,
+  plenaryCount: number,
 ): DeputyMetrics {
   const totalCeap = expenses.reduce((sum, e) => sum + e.value, 0)
   const simCount = votes.filter((v) => v.vote === "Sim").length
@@ -100,6 +106,8 @@ export function computeDeputyMetrics(
     caucusCount: caucuses.length,
     committeeCount: activeCommittees.length,
     eventCount: events.length,
+    staffCount,
+    plenaryCount,
   }
 }
 

@@ -125,7 +125,7 @@ export function DeputyExpenseCharts({
       {monthlyBarData.length > 0 && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Despesas mensais (${year})`}
+          title="Despesas mensais"
           subtitle="Gasto total por mês"
         >
           <BarChart
@@ -141,7 +141,7 @@ export function DeputyExpenseCharts({
         <div className="lg:col-span-2">
           <ChartCard
             sourceUrl={sourceUrl}
-            title={`Gastos diários (${year})`}
+            title="Gastos diários"
             subtitle="Intensidade de gastos por dia — quanto mais escuro, maior o valor"
           >
             <CalendarHeatmap
@@ -157,7 +157,7 @@ export function DeputyExpenseCharts({
       {treemapData.length > 0 && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Despesas por categoria (${year})`}
+          title="Despesas por categoria"
           subtitle="Área proporcional ao valor gasto — categorias maiores são mais visíveis"
         >
           <TreemapChart
@@ -171,7 +171,7 @@ export function DeputyExpenseCharts({
       {bySupplier.length > 0 && (
         <ChartCard
           sourceUrl={sourceUrl}
-          title={`Maiores fornecedores (${year})`}
+          title="Maiores fornecedores"
           subtitle="Top 10 fornecedores por valor total"
         >
           <BarChart
@@ -188,7 +188,7 @@ export function DeputyExpenseCharts({
         <div className="lg:col-span-2">
           <ChartCard
             sourceUrl={sourceUrl}
-            title={`Categoria × Fornecedor (${year})`}
+            title="Categoria × Fornecedor"
             subtitle="Quais fornecedores dominam cada categoria de gasto"
           >
             <StackedBarChart

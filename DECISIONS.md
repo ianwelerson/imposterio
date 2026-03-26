@@ -297,3 +297,19 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 **Decision:** The Estados section was restructured into a fiscal-first section with its own sidebar category (separate from "Outros"). Three page types: (1) overview page with fiscal StatCards, charts (tax ranking, composition pie, per capita, transfers trend), and a states table with fiscal columns; (2) `/estados/arrecadacao` listing page with full tax breakdown for all 27 states; (3) `/estados/[uf]` detail page with tax breakdown table, budget execution by category (with constitutional minimums), federal transfers table, and fiscal health indicators panel. Primary data sources: SICONFI API (RREO Anexo 03 for ICMS/IPVA/ITCMD, Anexo 08 for budget, RGF for debt/personnel), IBGE (population, GDP), Tesouro Transparente (CAPAG, federal transfers, debt data).
 
 **Consequences:** The estados section is now the most data-dense section in the app. When real API integration happens, SICONFI RREO endpoints will be the primary fetcher — they provide bimestral data for all 27 states plus DF. The CAPAG rating (A/B/C/D) is color-coded using the same Badge component variant system (green/amber/red) used elsewhere. Constitutional minimums (e.g. 25% education, 12% health, 60% personnel cap) are displayed alongside actual percentages to enable citizens to verify compliance.
+
+---
+
+## 2026-03-25 — Redis optimization: singleton, cache validation, and combined-result caching
+
+**Context:** Upstash Redis free tier was hitting limits (~10 MB storage, ~29k commands in 2 days). Three root causes: (1) five bulk fetchers each created `new Redis()` instances on every call, inflating connection and command counts; (2) paginated fetchers like `getDeputyExpenses` made N Redis GETs per request (one per page); (3) failed or error-shaped API responses were being cached, causing persistent tooltip errors until TTL expiry.
+
+**Decision:** Three changes to `packages/fetchers/lib/cache.ts` and `packages/fetchers/camara.ts`:
+
+1. **Shared Redis singleton** — `cache.ts` now exports the `redis` client instance. All five bulk fetchers (`getDeputyAttendanceBulk`, `getDeputyAttendanceDetail`, `getStaffBulk`, `getProcurementBulk`, `getProcurementDetail`) were refactored to import and use this singleton instead of creating `new Redis()` per call. Bulk fetcher cache reads were changed from `cachedFetch` (which would re-fetch the raw 5MB file on summary key miss) to direct `redis.get` on the summary key.
+
+2. **Cache validation** — `cachedFetch()` now validates data before writing (rejects null, primitives, error-shaped responses) and on read (rejects non-object values, evicts corrupt entries via `redis.del()`). Both read and write are wrapped in try-catch — cache failures are non-fatal.
+
+3. **Combined-result caching for expenses** — `getDeputyExpenses` stores the final merged+sorted expense array under a short key (`cam:exp:{id}:{year}` or `cam:exp:{id}:{year}:{month}`). On cache hit, returns in 1 Redis GET instead of N per-page lookups. Individual pages are still cached by `cachedFetch` for granular invalidation.
+
+**Consequences:** Redis command count drops significantly for repeat page views (1 GET vs N for expenses, 1 connection vs 5+ for bulk fetchers). Storage is slightly reduced by avoiding raw 5MB files cached under summary keys. Error responses no longer persist in cache. The `redis` singleton is now an architectural constraint — `new Redis()` must never be used in fetcher code. The combined-result caching pattern (`cam:` prefix keys) should be extended to other paginated fetchers (speeches, events, voting sessions) as needed.

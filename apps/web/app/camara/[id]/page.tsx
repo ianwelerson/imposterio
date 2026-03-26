@@ -11,11 +11,12 @@
  * 2. Dados pessoais — biographical info panel (incl. professions)
  * 3. Resumo geral — overview StatCards across all data types
  * 4. Gastos CEAP — expense charts + link to full expenses listing
- * 5. Discursos — speech charts + link to speeches listing
- * 6. Eventos — event charts + link to events listing
- * 7. Comissões — committee charts + link to committees listing
- * 8. Frentes parlamentares — caucus count + link to listing
- * 9. Carreira política — previous mandates + status history timeline
+ * 5. Votações — voting history charts + alignment stats
+ * 6. Presença — unified attendance: events, plenary, daily activity, hours/week
+ * 7. Discursos — speech charts + link to speeches listing
+ * 8. Comissões — committee charts + link to committees listing
+ * 9. Frentes parlamentares — caucus count + link to listing
+ * 10. Carreira política — previous mandates + status history timeline
  *
  * Data sources: 10 parallel API calls to the Câmara dos Deputados API.
  */
@@ -32,12 +33,16 @@ import {
   getDeputySpeeches, getDeputyEvents,
   getDeputyPreviousMandates, getDeputyHistory, getDeputyProfessions,
   getDeputyVotingHistory,
+  getDeputyAttendanceBulk,
+  getDeputyAttendanceDetail,
+  getDeputyStaffCount,
 } from "@imposterio/fetchers"
 import { getEntityVoteStats, ensureGameCards } from "@imposterio/db/queries/game"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { CompareButton } from "./CompareButton"
 import { DeputyExpenseCharts } from "./DeputyExpenseCharts"
-import { SpeechCharts, EventCharts, CommitteeCharts, VotingCharts } from "./DeputyOverviewCharts"
+import { SpeechCharts, CommitteeCharts, VotingCharts } from "./DeputyOverviewCharts"
+import { AttendanceOverviewCharts } from "./AttendanceOverviewCharts"
 import { YearSelector } from "./YearSelector"
 import {
   aggregateByMonth,
@@ -50,7 +55,6 @@ import {
 import {
   aggregateSpeechesByType,
   aggregateSpeechesByMonth,
-  aggregateEventsByType,
   aggregateEventsByMonth,
   aggregateCommitteesByRole,
   aggregateCommitteesByType,
@@ -58,6 +62,14 @@ import {
   aggregateVotesByMonth,
   computeVoteAlignment,
 } from "./activity-utils"
+import {
+  filterPlenarySessions,
+  isPlenarySession,
+  aggregateByDay as aggregateAttendanceByDay,
+  aggregateByEventType,
+  countActiveDays,
+  aggregateHoursPerWeek,
+} from "./presenca/attendance-utils"
 
 /** CEAP data is available from 2008 onward. */
 const FIRST_CEAP_YEAR = 2008
@@ -105,6 +117,9 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     speeches, events,
     previousMandates, history, professions,
     votingHistory,
+    attendance,
+    attendanceDetail,
+    staffCount,
     gameStats,
   ] = await Promise.all([
     collectErrors(() => getDeputyExpenses(id, selectedYear), emptySourced([]), errors, "Despesas CEAP"),
@@ -117,6 +132,9 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     collectErrors(() => getDeputyHistory(id), emptySourced([]), errors, "Histórico de status"),
     collectErrors(() => getDeputyProfessions(id), emptySourced([]), errors, "Profissões"),
     collectErrors(() => getDeputyVotingHistory(id, yearStart, yearEnd), emptySourced([]), errors, "Votações"),
+    collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença"),
+    collectErrors(() => getDeputyAttendanceDetail(id, selectedYear), emptySourced([]), errors, "Presença detalhada"),
+    collectErrors(() => getDeputyStaffCount(id), emptySourced({ count: 0, members: [] }), errors, "Funcionários"),
     getEntityVoteStats("camara", id).catch(() => null),
   ])
 
@@ -172,7 +190,6 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
 
   const speechesByType = aggregateSpeechesByType(speeches)
   const speechesByMonth = aggregateSpeechesByMonth(speeches)
-  const eventsByType = aggregateEventsByType(events)
   const eventsByMonth = aggregateEventsByMonth(events)
 
   const activeCommittees = committees.filter((c) => !c.endDate)
@@ -187,9 +204,34 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
   const naoCount = votingHistory.filter((v) => v.vote === "Não").length
   const abstCount = votingHistory.filter((v) => v.vote === "Abstenção").length
 
-  // Count events by status
+  // ── Attendance aggregations (unified Presença section) ────────────
+  const totalPlenarySessions = attendance.totalPlenarySessions ?? 0
+  const totalNonPlenarySessions = attendance.totalEvents - totalPlenarySessions
+
+  // Plenary sessions this deputy attended (from detailed attendance data)
+  const plenaryEvents = filterPlenarySessions(attendanceDetail)
+  const plenaryAttended = plenaryEvents.length
+  const nonPlenaryAttended = attendanceDetail.length - plenaryAttended
+  const plenaryRate = totalPlenarySessions > 0
+    ? ((plenaryAttended / totalPlenarySessions) * 100).toFixed(1)
+    : null
+  const nonPlenaryRate = totalNonPlenarySessions > 0
+    ? ((nonPlenaryAttended / totalNonPlenarySessions) * 100).toFixed(1)
+    : null
+
+  // Event counts by status and type (for stat cards)
   const eventsFinished = events.filter((e) => e.status === "Encerrada").length
   const eventsUpcoming = events.filter((e) => e.status !== "Encerrada").length
+  const eventsPlenaryCount = events.filter((e) => isPlenarySession(e.type)).length
+
+  // Chart data for unified Presença section
+  const allByDay = aggregateAttendanceByDay(attendanceDetail)
+  const plenaryByDay = aggregateAttendanceByDay(plenaryEvents)
+  const nonPlenaryDetailEvents = attendanceDetail.filter((e) => !isPlenarySession(e.eventType))
+  const nonPlenaryByDay = aggregateAttendanceByDay(nonPlenaryDetailEvents)
+  const attendanceByType = aggregateByEventType(attendanceDetail)
+  const activeDays = countActiveDays(attendanceDetail)
+  const hoursPerWeek = aggregateHoursPerWeek(events, selectedYear)
 
   return (
     <>
@@ -202,10 +244,16 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         tags={tags}
         sourceUrl={deputy._source}
         photoUrl={deputy.photoUrl}
+        actions={
+          <>
+            <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-2.5">
+              <span className="text-sm font-medium text-gray-600">Ver dados de</span>
+              <YearSelector years={availableYears} selected={selectedYear} />
+            </div>
+            <CompareButton deputyId={id} year={selectedYear} />
+          </>
+        }
       />
-
-      {/* Compare button */}
-      <CompareButton deputyId={id} year={selectedYear} />
 
       {/* ── 2. Dados pessoais ──────────────────────────────────────── */}
       <section className="mb-12">
@@ -213,22 +261,12 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         <InfoPanel fields={infoFields} />
       </section>
 
-      {/* ── Global year selector ───────────────────────────────────── */}
-      <div className="mt-12 mb-12 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Resumo</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Dados filtrados por ano. Selecione o período para visualizar.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-2.5">
-          <span className="text-sm font-medium text-gray-600">Ver dados de</span>
-          <YearSelector years={availableYears} selected={selectedYear} />
-        </div>
-      </div>
-
       {/* ── 3. Resumo geral ────────────────────────────────────────── */}
       <section className="mb-12">
+        <SectionHeader title="Resumo geral" />
+        <p className="mb-4 text-sm text-gray-500">
+          Principais indicadores de atividade parlamentar no ano selecionado.
+        </p>
         <div
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
           aria-label="Resumo"
@@ -236,27 +274,42 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
           <StatCard
             label="Despesas CEAP"
             value={formatCurrency(totalCeap)}
-            tooltip="Cota para Exercício da Atividade Parlamentar — verba mensal para custear despesas do mandato"
+            tooltip="Cota para Exercício da Atividade Parlamentar — verba mensal para custear despesas do mandato."
           />
           <StatCard
             label="Discursos"
             value={String(speeches.length)}
-          />
-          <StatCard
-            label="Eventos"
-            value={String(events.length)}
-          />
-          <StatCard
-            label="Comissões ativas"
-            value={String(activeCommittees.length)}
+            tooltip="Pronunciamentos realizados em plenário, comissões e outros eventos legislativos no ano selecionado."
           />
           <StatCard
             label="Votações"
             value={String(votingHistory.length)}
+            tooltip="Sessões de votação nominal em que o deputado registrou voto no ano selecionado."
+          />
+          <StatCard
+            label="Comissões ativas"
+            value={String(activeCommittees.length)}
+            tooltip="Comissões em que o deputado atua como titular ou suplente atualmente."
           />
           <StatCard
             label="Frentes"
             value={String(caucuses.length)}
+            tooltip="Frentes parlamentares — grupos suprapartidários em torno de interesses comuns."
+          />
+          <StatCard
+            label="Funcionários"
+            value={String(staffCount.count)}
+            tooltip="Secretários parlamentares e demais funcionários vinculados ao gabinete deste deputado."
+          />
+          <StatCard
+            label="Dias com atividade"
+            value={String(activeDays)}
+            tooltip={`O deputado esteve presente em eventos da Câmara em ${activeDays} dias diferentes durante o ano.`}
+          />
+          <StatCard
+            label="Presença plenária"
+            value={plenaryRate !== null ? `${plenaryRate}%` : "—"}
+            tooltip={`Presente em ${plenaryAttended} das ${totalPlenarySessions} sessões plenárias realizadas na Câmara no ano.`}
           />
           {gameStats && (
             <article className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
@@ -307,11 +360,11 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
       {/* ── 4. Gastos CEAP ─────────────────────────────────────────── */}
       <section className="mb-12">
         <SectionHeader
-          title="Gastos CEAP"
+          title={<>Gastos <Acronym title="Cota para Exercício da Atividade Parlamentar">CEAP</Acronym></>}
           action={{ label: "Ver todas as despesas", href: `/camara/${id}/despesas?ano=${selectedYear}` }}
         />
         <p className="mb-4 text-sm text-gray-500">
-          A <Acronym title="Cota para Exercício da Atividade Parlamentar">CEAP</Acronym> é a verba mensal que cada deputado recebe para custear despesas relacionadas ao mandato — passagens, combustível, hospedagem, alimentação, impressão, entre outros.
+          Verba mensal que cada deputado recebe para custear despesas relacionadas ao mandato — passagens, combustível, hospedagem, alimentação, impressão, entre outros.
         </p>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -393,6 +446,64 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         )}
       </section>
 
+      {/* ── 5b. Presença ────────────────────────────────────────────── */}
+      <section className="mb-12">
+        <SectionHeader
+          title="Presença"
+          action={{ label: "Ver lista completa", href: `/camara/${id}/presenca?ano=${selectedYear}` }}
+        />
+        <p className="mb-4 text-sm text-gray-500">
+          Presença do deputado em todos os tipos de evento da Câmara no ano selecionado: sessões plenárias, comissões, audiências públicas, seminários, reuniões e outros. Os dados combinam o registro oficial de frequência com a lista de eventos.
+        </p>
+
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatCard
+            label="Dias com atividade"
+            value={String(activeDays)}
+            tooltip={`O deputado esteve presente em eventos da Câmara em ${activeDays} dias diferentes durante o ano.`}
+          />
+          <StatCard
+            label="Total de eventos"
+            value={String(events.length)}
+            tooltip="Quantidade total de eventos em que o deputado participou ou está convocado no ano selecionado."
+          />
+          <StatCard
+            label="Sessões plenárias"
+            value={String(eventsPlenaryCount)}
+            tooltip="Sessões Deliberativas, Solenes, Não Deliberativas e Preparatórias em que o deputado participou."
+          />
+          <StatCard
+            label="Presença plenária"
+            value={plenaryRate !== null ? `${plenaryRate}%` : "—"}
+            tooltip={`Presente em ${plenaryAttended} das ${totalPlenarySessions} sessões plenárias realizadas na Câmara no ano.`}
+          />
+          <StatCard
+            label="Encerrados"
+            value={String(eventsFinished)}
+            tooltip="Eventos que já foram realizados e encerrados."
+          />
+          <StatCard
+            label="Previstos/em andamento"
+            value={String(eventsUpcoming)}
+            tooltip="Eventos futuros para os quais o deputado está convocado ou que estão em andamento."
+          />
+        </div>
+
+        {(attendanceDetail.length > 0 || events.length > 0) && (
+          <AttendanceOverviewCharts
+            allByDay={allByDay}
+            plenaryByDay={plenaryByDay}
+            nonPlenaryByDay={nonPlenaryByDay}
+            hoursPerWeek={hoursPerWeek}
+            byType={attendanceByType}
+            byMonth={eventsByMonth}
+            year={selectedYear}
+            sourceUrl={attendanceDetail._source}
+            eventsSourceUrl={events._source}
+          />
+        )}
+      </section>
+
       {/* ── 6. Discursos ───────────────────────────────────────────── */}
       <section className="mb-12">
         <SectionHeader
@@ -424,41 +535,6 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
             byMonth={speechesByMonth}
             year={selectedYear}
             sourceUrl={speeches._source}
-          />
-        )}
-      </section>
-
-      {/* ── 6. Eventos ─────────────────────────────────────────────── */}
-      <section className="mb-12">
-        <SectionHeader
-          title="Eventos"
-          action={{ label: "Ver todos os eventos", href: `/camara/${id}/eventos?ano=${selectedYear}` }}
-        />
-        <p className="mb-4 text-sm text-gray-500">
-          Sessões plenárias, audiências públicas e reuniões de comissões em que o deputado participou ou está convocado. Cada evento inclui os órgãos organizadores e o link para a gravação quando disponível.
-        </p>
-
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Total"
-            value={String(events.length)}
-          />
-          <StatCard
-            label="Encerrados"
-            value={String(eventsFinished)}
-          />
-          <StatCard
-            label="Previstos/em andamento"
-            value={String(eventsUpcoming)}
-          />
-        </div>
-
-        {events.length > 0 && (
-          <EventCharts
-            byType={eventsByType}
-            byMonth={eventsByMonth}
-            year={selectedYear}
-            sourceUrl={events._source}
           />
         )}
       </section>

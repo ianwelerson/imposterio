@@ -8,10 +8,11 @@
  */
 
 import Link from "next/link"
+import type { ReactNode } from "react"
 
 interface SectionHeaderProps {
-  /** Section title text. */
-  title: string
+  /** Section title — plain text or inline elements (e.g. Acronym). */
+  title: ReactNode
   /** Optional source URL displayed as a small pill next to the title. */
   sourceUrl?: string
   /** Optional action link displayed on the right side. */

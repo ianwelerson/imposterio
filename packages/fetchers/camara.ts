@@ -34,7 +34,7 @@
  * - Detail: `nomeCivil` → `fullName`, `dataNascimento` → `birthDate`, etc.
  */
 
-import { cachedFetch, ApiError } from "./lib/cache"
+import { cachedFetch, ApiError, redis } from "./lib/cache"
 import { ENDPOINTS } from "./lib/endpoints"
 import { TTL } from "./lib/ttl"
 import type {
@@ -44,6 +44,9 @@ import type {
   CamaraProposition, CamaraPropositionAuthor, CamaraPropositionTheme,
   CamaraPropositionProgress, CamaraVotingSession, CamaraIndividualVote,
   CamaraVoteOrientation, VoteTally,
+  CamaraStaffMember, StaffBulkSummary,
+  CamaraProcurement, CamaraProcurementContract, CamaraProcurementItem,
+  CamaraProcurementRequest, ProcurementBulkSummary, ProcurementDetail,
 } from "@imposterio/types"
 import type { WithSource } from "@imposterio/types"
 
@@ -497,7 +500,36 @@ export async function getDeputyExpenses(
   const params = new URLSearchParams({ ano: String(year), itens: "100" })
   if (month) params.set("mes", String(month))
 
-  // Fetch page 1 to get the data and discover total pages from `links`
+  // The source URL shown to the user (page 1 URL without itens/pagina noise)
+  const sourceUrl = `${base}?${new URLSearchParams(
+    month ? { ano: String(year), mes: String(month) } : { ano: String(year) },
+  ).toString()}`
+
+  // Combined-result cache: stores the final merged+sorted expense array under
+  // a single key, avoiding N per-page Redis lookups on subsequent requests.
+  // This is the primary optimization for multi-page expense data — a deputy
+  // with 5 pages of expenses goes from 5 Redis GETs to 1.
+  const combinedKey = month
+    ? `cam:exp:${id}:${year}:${month}`
+    : `cam:exp:${id}:${year}`
+
+  if (redis) {
+    try {
+      const cached = await redis.get(combinedKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (Array.isArray(parsed)) {
+          return Object.assign(parsed as DeputyExpense[], { _source: sourceUrl })
+        }
+        await redis.del(combinedKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(combinedKey).catch(() => {})
+    }
+  }
+
+  // Cache miss — fetch all pages from the API (each page individually cached
+  // by cachedFetch for use by other callers that may request single pages).
   const firstPageUrl = `${base}?${params.toString()}`
   const firstPage = await cachedFetch<CamaraListResponse<CamaraExpenseRaw>>(
     firstPageUrl,
@@ -530,7 +562,16 @@ export async function getDeputyExpenses(
     .map(mapRawToExpense)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  return Object.assign(expenses, { _source: firstPage._source })
+  // Store the combined result so subsequent requests skip all per-page lookups
+  if (redis && expenses.length > 0) {
+    try {
+      await redis.set(combinedKey, JSON.stringify(expenses), { ex: TTL.CAMARA_DEPUTY_EXPENSES })
+    } catch {
+      // Cache write failure is non-fatal
+    }
+  }
+
+  return Object.assign(expenses, { _source: sourceUrl })
 }
 
 /**
@@ -628,12 +669,33 @@ export async function getDeputySpeeches(
   if (startDate) params.set("dataInicio", startDate)
   if (endDate) params.set("dataFim", endDate)
 
-  const url = `${base}?${params.toString()}`
-  const response = await cachedFetch<CamaraListResponse<CamaraSpeechRaw>>(url, TTL.CAMARA_DEPUTY_SPEECHES)
+  // Fetch page 1 to get the data and discover total pages from `links`
+  const firstPageUrl = `${base}?${params.toString()}`
+  const firstPage = await cachedFetch<CamaraListResponse<CamaraSpeechRaw>>(firstPageUrl, TTL.CAMARA_DEPUTY_SPEECHES)
 
-  const speeches: DeputySpeech[] = response.dados.map(mapRawToSpeech)
+  const allRaw: CamaraSpeechRaw[] = [...firstPage.dados]
 
-  return Object.assign(speeches, { _source: response._source })
+  const lastPageNum = extractLastPage(firstPage.links)
+
+  if (lastPageNum > 1) {
+    const pagePromises: Promise<CamaraListResponse<CamaraSpeechRaw> & { _source: string }>[] = []
+    for (let p = 2; p <= lastPageNum; p++) {
+      const pageParams = new URLSearchParams(params)
+      pageParams.set("pagina", String(p))
+      const pageUrl = `${base}?${pageParams.toString()}`
+      pagePromises.push(
+        cachedFetch<CamaraListResponse<CamaraSpeechRaw>>(pageUrl, TTL.CAMARA_DEPUTY_SPEECHES),
+      )
+    }
+    const pages = await Promise.all(pagePromises)
+    for (const page of pages) {
+      allRaw.push(...page.dados)
+    }
+  }
+
+  const speeches: DeputySpeech[] = allRaw.map(mapRawToSpeech)
+
+  return Object.assign(speeches, { _source: firstPage._source })
 }
 
 /**
@@ -660,12 +722,33 @@ export async function getDeputyEvents(
   if (startDate) params.set("dataInicio", startDate)
   if (endDate) params.set("dataFim", endDate)
 
-  const url = `${base}?${params.toString()}`
-  const response = await cachedFetch<CamaraListResponse<CamaraEventRaw>>(url, TTL.CAMARA_DEPUTY_EVENTS)
+  // Fetch page 1 to get the data and discover total pages from `links`
+  const firstPageUrl = `${base}?${params.toString()}`
+  const firstPage = await cachedFetch<CamaraListResponse<CamaraEventRaw>>(firstPageUrl, TTL.CAMARA_DEPUTY_EVENTS)
 
-  const events: DeputyEvent[] = response.dados.map(mapRawToEvent)
+  const allRaw: CamaraEventRaw[] = [...firstPage.dados]
 
-  return Object.assign(events, { _source: response._source })
+  const lastPageNum = extractLastPage(firstPage.links)
+
+  if (lastPageNum > 1) {
+    const pagePromises: Promise<CamaraListResponse<CamaraEventRaw> & { _source: string }>[] = []
+    for (let p = 2; p <= lastPageNum; p++) {
+      const pageParams = new URLSearchParams(params)
+      pageParams.set("pagina", String(p))
+      const pageUrl = `${base}?${pageParams.toString()}`
+      pagePromises.push(
+        cachedFetch<CamaraListResponse<CamaraEventRaw>>(pageUrl, TTL.CAMARA_DEPUTY_EVENTS),
+      )
+    }
+    const pages = await Promise.all(pagePromises)
+    for (const page of pages) {
+      allRaw.push(...page.dados)
+    }
+  }
+
+  const events: DeputyEvent[] = allRaw.map(mapRawToEvent)
+
+  return Object.assign(events, { _source: firstPage._source })
 }
 
 /**
@@ -1507,6 +1590,8 @@ export interface DeputyAttendanceSummary {
 export interface AttendanceBulkSummary {
   /** Total number of unique events in the year. */
   totalEvents: number
+  /** Total number of plenary sessions (Sessões Deliberativas, Solenes, Preparatórias) in the year. */
+  totalPlenarySessions: number
   /** Per-deputy attendance counts. */
   deputies: DeputyAttendanceSummary[]
 }
@@ -1536,27 +1621,50 @@ export async function getDeputyAttendanceBulk(
   const url = ENDPOINTS.CAMARA_BULK_ATTENDANCE(year)
   const cacheKey = `camara:attendance:summary:${year}`
 
-  // Use cachedFetch with a custom cache key so Redis stores only the
-  // small summary (~20KB) under a distinct key, not the raw 5MB file.
-  // On cache hit, the raw URL is never fetched.
-  try {
-    const cached = await cachedFetch<AttendanceBulkSummary>(
-      url, TTL.CAMARA_DEPUTY_ATTENDANCE, undefined, cacheKey,
-    )
-    // Verify this is a valid summary (not an accidental raw response)
-    if (cached.totalEvents !== undefined) return cached
-  } catch {
-    // Cache miss or invalid data — proceed to fetch raw file
+  // Check Redis directly instead of cachedFetch to avoid fetching the raw
+  // 5MB bulk file on cache miss (cachedFetch would fetch + store it).
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed?.totalEvents !== undefined && parsed?.totalPlenarySessions !== undefined) {
+          return { ...parsed, _source: url } as WithSource<AttendanceBulkSummary>
+        }
+        // Invalid data under summary key — evict
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
   }
 
-  // Fetch the raw bulk file, bypassing Next.js's 2MB data cache.
-  // The raw file is ~5MB and must NOT be cached by Next.js or Redis as-is.
-  const res = await fetch(url, { cache: "no-store" })
+  // Fetch the raw bulk files, bypassing Next.js's 2MB data cache.
+  // Attendance file is ~5MB, events file has event type metadata.
+  const [res, eventsRes] = await Promise.all([
+    fetch(url, { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_EVENTS(year), { cache: "no-store" }),
+  ])
   if (!res.ok) {
     throw new ApiError(res.status, url)
   }
 
   const raw = (await res.json()) as { dados: CamaraAttendanceRaw[] }
+
+  // Build event type lookup from events bulk file to identify plenary sessions
+  const PLENARY_PATTERNS = [
+    "Sessão Deliberativa", "Sessão Não Deliberativa",
+    "Sessão Solene", "Sessão Preparatória",
+  ]
+  const plenaryEventIds = new Set<number>()
+  if (eventsRes.ok) {
+    const rawEvents = (await eventsRes.json()) as { dados: CamaraEventBulkRaw[] }
+    for (const e of rawEvents.dados) {
+      if (PLENARY_PATTERNS.some((p) => e.descricaoTipo.includes(p))) {
+        plenaryEventIds.add(e.id)
+      }
+    }
+  }
 
   // Aggregate: count unique events and events per deputy
   const uniqueEvents = new Set<number>()
@@ -1570,25 +1678,20 @@ export async function getDeputyAttendanceBulk(
 
   const summary: AttendanceBulkSummary = {
     totalEvents: uniqueEvents.size,
+    totalPlenarySessions: plenaryEventIds.size,
     deputies: Array.from(deputyCounts.entries()).map(([deputyId, eventsAttended]) => ({
       deputyId,
       eventsAttended,
     })),
   }
 
-  // Store only the small summary in Redis via cachedFetch's cache key.
-  // We re-use cachedFetch here by pointing it at a no-op URL — but simpler
-  // to just write to Redis directly.
-  try {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
-    if (redisUrl && redisToken) {
-      const { Redis } = await import("@upstash/redis")
-      const redis = new Redis({ url: redisUrl, token: redisToken })
+  // Store the small summary in Redis using the shared singleton
+  if (redis) {
+    try {
       await redis.set(cacheKey, JSON.stringify(summary), { ex: TTL.CAMARA_DEPUTY_ATTENDANCE })
+    } catch {
+      // Cache write failure is non-fatal — data is still returned
     }
-  } catch {
-    // Cache write failure is non-fatal — data is still returned
   }
 
   return Object.assign(summary, { _source: url })
@@ -1609,4 +1712,716 @@ function parseVoteTally(description: string): VoteTally | undefined {
     abstention: abstMatch ? parseInt(abstMatch[1], 10) : 0,
     absent: 0,
   }
+}
+
+// ── Bulk staff ──────────────────────────────────────────────────────
+
+/**
+ * Raw staff record from the bulk file funcionarios.json.
+ * Contains ~15,000 records covering all Chamber staff.
+ */
+interface CamaraStaffRaw {
+  ponto: string
+  codGrupo: number
+  grupo: string
+  nome: string
+  cargo: string
+  lotacao: string
+  atoNomeacao: string
+  dataNomeacao: string
+  dataInicioHistorico: string
+  dataPubNomeacao: string
+  funcao: string
+  uriLotacao: string
+}
+
+/**
+ * Fetches the bulk staff file and returns a pre-aggregated summary.
+ *
+ * The Câmara publishes a single JSON file listing all ~15,000 staff members
+ * (permanent civil servants, parliamentary secretaries, special positions,
+ * and current deputies). The file is not year-specific — it represents
+ * the current snapshot.
+ *
+ * Groups:
+ * - "Quadro Efetivo - RJU" — permanent civil servants
+ * - "Secretário Parlamentar" — deputy staff/aides
+ * - "Cargo de Natureza Especial" — special appointees
+ * - "Parlamentar" — current deputies themselves
+ *
+ * @returns Aggregated staff summary with all individual records
+ * @throws {ApiError} When the bulk file is unavailable
+ *
+ * @see {@link https://dadosabertos.camara.leg.br/swagger/api.html?tab=staticfile} Bulk files
+ */
+export async function getStaffBulk(): Promise<WithSource<StaffBulkSummary>> {
+  const url = ENDPOINTS.CAMARA_BULK_STAFF
+  const cacheKey = "camara:staff:summary"
+
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed?.totalStaff !== undefined) {
+          return { ...parsed, _source: url } as WithSource<StaffBulkSummary>
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
+  const res = await fetch(url, { cache: "no-store" })
+  if (!res.ok) throw new ApiError(res.status, url)
+
+  const raw = (await res.json()) as { dados: CamaraStaffRaw[] }
+
+  const members: CamaraStaffMember[] = raw.dados.map((r) => ({
+    id: r.ponto,
+    name: r.nome,
+    groupCode: r.codGrupo,
+    group: r.grupo,
+    position: r.cargo,
+    department: r.lotacao,
+    role: r.funcao,
+    appointmentAct: r.atoNomeacao,
+    appointmentDate: r.dataNomeacao,
+    historyStartDate: r.dataInicioHistorico,
+    appointmentPublicationDate: r.dataPubNomeacao,
+    departmentUri: r.uriLotacao,
+  }))
+
+  // Aggregate by group
+  const groupCounts = new Map<string, number>()
+  const deptCounts = new Map<string, number>()
+  const posCounts = new Map<string, number>()
+  const roleCounts = new Map<string, number>()
+
+  for (const m of members) {
+    groupCounts.set(m.group, (groupCounts.get(m.group) ?? 0) + 1)
+    if (m.department) deptCounts.set(m.department, (deptCounts.get(m.department) ?? 0) + 1)
+    if (m.position) posCounts.set(m.position, (posCounts.get(m.position) ?? 0) + 1)
+    if (m.role) roleCounts.set(m.role, (roleCounts.get(m.role) ?? 0) + 1)
+  }
+
+  const toSorted = (map: Map<string, number>, limit = 20) =>
+    Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+
+  const summary: StaffBulkSummary = {
+    totalStaff: members.length,
+    byGroup: toSorted(groupCounts, 10),
+    byDepartment: toSorted(deptCounts, 30),
+    byPosition: toSorted(posCounts, 30),
+    byRole: toSorted(roleCounts, 30),
+    members,
+    lastUpdated: new Date().toISOString(),
+  }
+
+  if (redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(summary), { ex: TTL.CAMARA_STAFF })
+    } catch {
+      // Cache write failure is non-fatal
+    }
+  }
+
+  return Object.assign(summary, { _source: url })
+}
+
+/**
+ * Returns the number of direct staff members assigned to a specific deputy.
+ *
+ * Filters the bulk staff file by `departmentUri` containing the deputy's ID.
+ * This captures "Secretário Parlamentar" (parliamentary secretaries/aides)
+ * and other staff assigned to the deputy's office (gabinete).
+ *
+ * Reuses the cached staff bulk data, so this is a lightweight operation
+ * after the first call.
+ *
+ * @param deputyId - Deputy's numeric ID in the Câmara API
+ * @returns Object with staff count and source URL
+ */
+export async function getDeputyStaffCount(
+  deputyId: string,
+): Promise<WithSource<{ count: number; members: CamaraStaffMember[] }>> {
+  const staff = await getStaffBulk()
+  const deputyPattern = `/deputados/${deputyId}`
+  const members = staff.members.filter(
+    (m) => m.departmentUri.includes(deputyPattern),
+  )
+  return Object.assign(
+    { count: members.length, members },
+    { _source: staff._source },
+  )
+}
+
+// ── Bulk procurement ────────────────────────────────────────────────
+
+/**
+ * Raw procurement record from the yearly licitacoes-{year}.json bulk file.
+ */
+interface CamaraProcurementRaw {
+  idLicitacao: number
+  numero: number
+  ano: number
+  numProcesso: number
+  anoProcesso: number
+  objeto: string
+  modalidade: string
+  tipo: string
+  situacao: string
+  vlrEstimado: number
+  vlrContratado: number
+  vlrPago: number
+  dataAutorizacao: string
+  dataPublicacao: string
+  dataAbertura: string
+  numItens: number
+  numUnidades: number
+  numPropostas: number
+  numContratos: number
+}
+
+/** Raw contract record from licitacoesContratos-{year}.json. */
+interface CamaraProcurementContractRaw {
+  ano: number
+  idLicitacao: number
+  numContrato: number
+  anoContrato: number
+  tipoContrato: string
+  situacaoContrato: string
+  vlrOriginal: number
+  vlrTotal: number
+  objeto: string
+  dataAssinatura: string
+  dataPublicacao: string
+  dataInicioVigenciaOriginal: string
+  dataFimVigenciaOriginal: string
+  dataFimUltimaVigencia: string
+  fornecedorCpfCnpj: string
+  fornecedorNome: string
+  fornecedorEndereco: string
+  fornecedorCidade: string
+  fornecedorSiglaUF: string
+}
+
+/** Raw item record from licitacoesItens-{year}.json. */
+interface CamaraProcurementItemRaw {
+  ano: number
+  idLicitacao: number
+  numItem: number
+  numSubitem: number
+  descricao: string
+  especificacao: string
+  unidade: string
+  qtdLicitada: number
+  qtdContratada: number
+  vlrUnitarioEstimado: number
+  vlrUnitarioContratado: number
+  vlrTotalContratado: number
+  fornecedorCpfCnpj: string
+  fornecedorNome: string
+  situacaoItem: string
+  naturezaDespesa: string
+}
+
+/** Raw request record from licitacoesPedidos-{year}.json. */
+interface CamaraProcurementRequestRaw {
+  ano: number
+  idLicitacao: number
+  numPedido: number
+  anoPedido: number
+  dataHoraCadastro: string
+  idOrgao: number
+  orgao: string
+  objeto: string
+  observacoes: string
+}
+
+/**
+ * Fetches all four procurement bulk files for a given year and returns
+ * a cross-referenced, pre-aggregated summary.
+ *
+ * The Câmara publishes yearly JSON files for procurement processes:
+ * - licitacoes — main procurement records
+ * - licitacoesContratos — awarded contracts
+ * - licitacoesItens — individual line items
+ * - licitacoesPedidos — originating purchase requests
+ *
+ * All four files are fetched in parallel and cross-referenced by
+ * procurement ID (idLicitacao). The aggregated summary is cached in Redis.
+ *
+ * @param year - Reference year (e.g. 2024). Files available from ~2014.
+ * @returns Aggregated procurement summary with all records
+ * @throws {ApiError} When the bulk files are unavailable for the given year
+ */
+export async function getProcurementBulk(
+  year: number,
+): Promise<WithSource<ProcurementBulkSummary>> {
+  const url = ENDPOINTS.CAMARA_BULK_PROCUREMENT(year)
+  const cacheKey = `camara:procurement:summary:${year}`
+  const currentYear = new Date().getFullYear()
+  const ttl = year < currentYear ? TTL.CAMARA_PROCUREMENT_BULK_HISTORY : TTL.CAMARA_PROCUREMENT_BULK
+
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed?.totalProcurements !== undefined) {
+          return { ...parsed, _source: url } as WithSource<ProcurementBulkSummary>
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
+  // Fetch all 4 files in parallel
+  const [procRes, contractsRes, itemsRes, requestsRes] = await Promise.all([
+    fetch(url, { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_CONTRACTS(year), { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_ITEMS(year), { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_REQUESTS(year), { cache: "no-store" }),
+  ])
+
+  if (!procRes.ok) throw new ApiError(procRes.status, url)
+
+  const rawProc = (await procRes.json()) as { dados: CamaraProcurementRaw[] }
+
+  // Contracts, items, requests may not exist for all years — graceful fallback
+  const rawContracts = contractsRes.ok
+    ? ((await contractsRes.json()) as { dados: CamaraProcurementContractRaw[] }).dados
+    : []
+  const rawItems = itemsRes.ok
+    ? ((await itemsRes.json()) as { dados: CamaraProcurementItemRaw[] }).dados
+    : []
+  const rawRequests = requestsRes.ok
+    ? ((await requestsRes.json()) as { dados: CamaraProcurementRequestRaw[] }).dados
+    : []
+
+  // Map procurements
+  const procurements: CamaraProcurement[] = rawProc.dados.map((r) => ({
+    id: String(r.idLicitacao),
+    number: r.numero,
+    year: r.ano,
+    processNumber: r.numProcesso,
+    object: r.objeto,
+    modality: r.modalidade,
+    type: r.tipo,
+    status: r.situacao,
+    estimatedValue: r.vlrEstimado,
+    contractedValue: r.vlrContratado,
+    paidValue: r.vlrPago,
+    authorizationDate: r.dataAutorizacao,
+    publicationDate: r.dataPublicacao,
+    openingDate: r.dataAbertura,
+    itemCount: r.numItens,
+    unitCount: r.numUnidades,
+    proposalCount: r.numPropostas,
+    contractCount: r.numContratos,
+  }))
+
+  // Map contracts
+  const contracts: CamaraProcurementContract[] = rawContracts.map((r) => ({
+    procurementId: String(r.idLicitacao),
+    procurementYear: r.ano,
+    contractNumber: r.numContrato,
+    contractYear: r.anoContrato,
+    contractType: r.tipoContrato,
+    status: r.situacaoContrato,
+    object: r.objeto,
+    originalValue: r.vlrOriginal,
+    totalValue: r.vlrTotal,
+    signatureDate: r.dataAssinatura,
+    publicationDate: r.dataPublicacao,
+    startDate: r.dataInicioVigenciaOriginal,
+    endDate: r.dataFimVigenciaOriginal,
+    latestEndDate: r.dataFimUltimaVigencia,
+    supplierDocument: r.fornecedorCpfCnpj,
+    supplierName: r.fornecedorNome,
+    supplierCity: r.fornecedorCidade,
+    supplierUF: r.fornecedorSiglaUF,
+  }))
+
+  // Aggregate by modality
+  const modalityCounts = new Map<string, { count: number; value: number }>()
+  const statusCounts = new Map<string, number>()
+
+  for (const p of procurements) {
+    const m = modalityCounts.get(p.modality) ?? { count: 0, value: 0 }
+    m.count++
+    m.value += p.contractedValue
+    modalityCounts.set(p.modality, m)
+    statusCounts.set(p.status, (statusCounts.get(p.status) ?? 0) + 1)
+  }
+
+  // Top suppliers from contracts
+  const supplierValues = new Map<string, { name: string; document: string; value: number; contractCount: number }>()
+  for (const c of contracts) {
+    if (!c.supplierName) continue
+    const key = c.supplierDocument || c.supplierName
+    const s = supplierValues.get(key) ?? { name: c.supplierName, document: c.supplierDocument, value: 0, contractCount: 0 }
+    s.value += c.totalValue
+    s.contractCount++
+    supplierValues.set(key, s)
+  }
+
+  const summary: ProcurementBulkSummary = {
+    totalProcurements: procurements.length,
+    totalEstimatedValue: procurements.reduce((s, p) => s + p.estimatedValue, 0),
+    totalContractedValue: procurements.reduce((s, p) => s + p.contractedValue, 0),
+    totalPaidValue: procurements.reduce((s, p) => s + p.paidValue, 0),
+    totalContracts: contracts.length,
+    byModality: Array.from(modalityCounts.entries())
+      .map(([name, { count, value }]) => ({ name, count, value }))
+      .sort((a, b) => b.value - a.value),
+    byStatus: Array.from(statusCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count),
+    topSuppliers: Array.from(supplierValues.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 20),
+    procurements,
+    contracts,
+    lastUpdated: new Date().toISOString(),
+  }
+
+  if (redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(summary), { ex: ttl })
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  return Object.assign(summary, { _source: url })
+}
+
+/**
+ * Fetches full detail for a specific procurement, including linked
+ * contracts, items, and requests.
+ *
+ * @param year - Procurement year
+ * @param procurementId - The procurement ID (idLicitacao)
+ * @returns Full procurement detail with all related records, or null if not found
+ */
+export async function getProcurementDetail(
+  year: number,
+  procurementId: string,
+): Promise<WithSource<ProcurementDetail> | null> {
+  const url = ENDPOINTS.CAMARA_BULK_PROCUREMENT(year)
+  const cacheKey = `camara:procurement:detail:${year}:${procurementId}`
+  const currentYear = new Date().getFullYear()
+  const ttl = year < currentYear ? TTL.CAMARA_PROCUREMENT_BULK_HISTORY : TTL.CAMARA_PROCUREMENT_BULK
+
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed?.procurement !== undefined) {
+          return { ...parsed, _source: url } as WithSource<ProcurementDetail>
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
+  // Fetch all 4 files
+  const [procRes, contractsRes, itemsRes, requestsRes] = await Promise.all([
+    fetch(url, { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_CONTRACTS(year), { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_ITEMS(year), { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_PROCUREMENT_REQUESTS(year), { cache: "no-store" }),
+  ])
+
+  if (!procRes.ok) throw new ApiError(procRes.status, url)
+
+  const rawProc = (await procRes.json()) as { dados: CamaraProcurementRaw[] }
+  const rawItem = rawProc.dados.find((r) => String(r.idLicitacao) === procurementId)
+  if (!rawItem) return null
+
+  const procurement: CamaraProcurement = {
+    id: String(rawItem.idLicitacao),
+    number: rawItem.numero,
+    year: rawItem.ano,
+    processNumber: rawItem.numProcesso,
+    object: rawItem.objeto,
+    modality: rawItem.modalidade,
+    type: rawItem.tipo,
+    status: rawItem.situacao,
+    estimatedValue: rawItem.vlrEstimado,
+    contractedValue: rawItem.vlrContratado,
+    paidValue: rawItem.vlrPago,
+    authorizationDate: rawItem.dataAutorizacao,
+    publicationDate: rawItem.dataPublicacao,
+    openingDate: rawItem.dataAbertura,
+    itemCount: rawItem.numItens,
+    unitCount: rawItem.numUnidades,
+    proposalCount: rawItem.numPropostas,
+    contractCount: rawItem.numContratos,
+  }
+
+  const rawContracts = contractsRes.ok
+    ? ((await contractsRes.json()) as { dados: CamaraProcurementContractRaw[] }).dados
+      .filter((r) => String(r.idLicitacao) === procurementId)
+    : []
+
+  const rawItems = itemsRes.ok
+    ? ((await itemsRes.json()) as { dados: CamaraProcurementItemRaw[] }).dados
+      .filter((r) => String(r.idLicitacao) === procurementId)
+    : []
+
+  const rawRequests = requestsRes.ok
+    ? ((await requestsRes.json()) as { dados: CamaraProcurementRequestRaw[] }).dados
+      .filter((r) => String(r.idLicitacao) === procurementId)
+    : []
+
+  const detail: ProcurementDetail = {
+    procurement,
+    contracts: rawContracts.map((r) => ({
+      procurementId: String(r.idLicitacao),
+      procurementYear: r.ano,
+      contractNumber: r.numContrato,
+      contractYear: r.anoContrato,
+      contractType: r.tipoContrato,
+      status: r.situacaoContrato,
+      object: r.objeto,
+      originalValue: r.vlrOriginal,
+      totalValue: r.vlrTotal,
+      signatureDate: r.dataAssinatura,
+      publicationDate: r.dataPublicacao,
+      startDate: r.dataInicioVigenciaOriginal,
+      endDate: r.dataFimVigenciaOriginal,
+      latestEndDate: r.dataFimUltimaVigencia,
+      supplierDocument: r.fornecedorCpfCnpj,
+      supplierName: r.fornecedorNome,
+      supplierCity: r.fornecedorCidade,
+      supplierUF: r.fornecedorSiglaUF,
+    })),
+    items: rawItems.map((r) => ({
+      procurementId: String(r.idLicitacao),
+      procurementYear: r.ano,
+      itemNumber: r.numItem,
+      subItemNumber: r.numSubitem,
+      description: r.descricao,
+      specification: r.especificacao,
+      unit: r.unidade,
+      quantityBid: r.qtdLicitada,
+      quantityContracted: r.qtdContratada,
+      estimatedPrice: r.vlrUnitarioEstimado,
+      contractedPrice: r.vlrUnitarioContratado,
+      totalContracted: r.vlrTotalContratado,
+      supplierDocument: r.fornecedorCpfCnpj,
+      supplierName: r.fornecedorNome,
+      status: r.situacaoItem,
+      expenseNature: r.naturezaDespesa,
+    })),
+    requests: rawRequests.map((r) => ({
+      procurementId: String(r.idLicitacao),
+      procurementYear: r.ano,
+      requestNumber: r.numPedido,
+      requestYear: r.anoPedido,
+      registrationDate: r.dataHoraCadastro,
+      organId: r.idOrgao,
+      organ: r.orgao,
+      object: r.objeto,
+      observations: r.observacoes,
+    })),
+  }
+
+  if (redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(detail), { ex: ttl })
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  return Object.assign(detail, { _source: url })
+}
+
+// ── Attendance detail (per-deputy event list) ───────────────────────
+
+/**
+ * Individual attendance record for a deputy at a specific event.
+ * Enriched with event metadata from the bulk events file.
+ */
+export interface DeputyAttendanceEvent {
+  /** Event ID in the Câmara API. */
+  eventId: string
+  /** Event start date/time (ISO). */
+  date: string
+  /** Event type: "Sessão Deliberativa", "Audiência Pública", etc. */
+  eventType: string
+  /** Event description. */
+  description: string
+  /** Event status: "Encerrada", "Cancelada", etc. */
+  status: string
+}
+
+/** Raw event record from the yearly eventos-{year}.json bulk file. */
+interface CamaraEventBulkRaw {
+  id: number
+  uri: string
+  dataHoraInicio: string
+  dataHoraFim: string
+  situacao: string
+  descricao: string
+  descricaoTipo: string
+  localExterno: string
+  localCamara: {
+    nome: string
+    predio: string
+    sala: string
+    andar: string
+  }
+}
+
+/**
+ * Fetches detailed per-event attendance records for a specific deputy.
+ *
+ * Cross-references the attendance bulk file (which events the deputy attended)
+ * with the events bulk file (event metadata like type and description).
+ * Results are cached per-deputy to avoid re-parsing multi-MB files per page load.
+ *
+ * @param deputyId - Deputy ID in the Câmara API
+ * @param year - Reference year
+ * @returns List of events the deputy attended with full metadata
+ */
+export async function getDeputyAttendanceDetail(
+  deputyId: string,
+  year: number,
+): Promise<WithSource<DeputyAttendanceEvent[]>> {
+  const attendanceUrl = ENDPOINTS.CAMARA_BULK_ATTENDANCE(year)
+  const cacheKey = `camara:attendance:detail:${year}:${deputyId}`
+  const currentYear = new Date().getFullYear()
+  const ttl = year < currentYear ? TTL.CAMARA_ATTENDANCE_HISTORY : TTL.CAMARA_DEPUTY_ATTENDANCE
+
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (Array.isArray(parsed)) {
+          return Object.assign(parsed as DeputyAttendanceEvent[], { _source: attendanceUrl })
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
+  // Fetch attendance + events bulk files in parallel
+  const [attendanceRes, eventsRes] = await Promise.all([
+    fetch(attendanceUrl, { cache: "no-store" }),
+    fetch(ENDPOINTS.CAMARA_BULK_EVENTS(year), { cache: "no-store" }),
+  ])
+
+  if (!attendanceRes.ok) throw new ApiError(attendanceRes.status, attendanceUrl)
+
+  const rawAttendance = (await attendanceRes.json()) as { dados: CamaraAttendanceRaw[] }
+  const rawEvents = eventsRes.ok
+    ? (await eventsRes.json()) as { dados: CamaraEventBulkRaw[] }
+    : { dados: [] as CamaraEventBulkRaw[] }
+
+  // Build event lookup
+  const eventMap = new Map<number, CamaraEventBulkRaw>()
+  for (const e of rawEvents.dados) {
+    eventMap.set(e.id, e)
+  }
+
+  // Filter attendance for this deputy and enrich with event data
+  const deputyEvents: DeputyAttendanceEvent[] = []
+  for (const r of rawAttendance.dados) {
+    if (String(r.idDeputado) !== deputyId) continue
+    const event = eventMap.get(r.idEvento)
+    deputyEvents.push({
+      eventId: String(r.idEvento),
+      date: r.dataHoraInicio || event?.dataHoraInicio || "",
+      eventType: event?.descricaoTipo || "",
+      description: event?.descricao || "",
+      status: event?.situacao || "",
+    })
+  }
+
+  // Sort by date descending
+  deputyEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  if (redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(deputyEvents), { ex: ttl })
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  return Object.assign(deputyEvents, { _source: attendanceUrl })
+}
+
+// ── Event attendees (REST endpoint) ──────────────────────────────────
+
+/** Raw event deputy record from GET /eventos/{id}/deputados. */
+interface CamaraEventDeputyRaw {
+  id: number
+  uri: string
+  nome: string
+  siglaPartido: string
+  uriPartido: string
+  siglaUf: string
+  idLegislatura: number
+  urlFoto: string
+}
+
+/** A deputy who attended a specific event. */
+export interface EventAttendee {
+  /** Deputy ID in the Câmara API. */
+  deputyId: string
+  /** Deputy display name. */
+  name: string
+  /** Party abbreviation. */
+  party: string
+  /** State abbreviation. */
+  uf: string
+  /** Photo URL. */
+  photoUrl: string
+}
+
+/**
+ * Fetches the list of deputies who attended (or were registered for) an event.
+ *
+ * Uses the REST endpoint GET /eventos/{id}/deputados which returns all
+ * deputies linked to the event (attendees, speakers, etc.).
+ *
+ * @param eventId - Event ID in the Câmara API
+ * @returns List of attending deputies with basic profile info
+ * @throws {ApiError} When the event is not found or API is unavailable
+ */
+export async function getEventAttendees(
+  eventId: string,
+): Promise<WithSource<EventAttendee[]>> {
+  const url = ENDPOINTS.CAMARA_EVENT_DEPUTIES(eventId)
+  const data = await cachedFetch<{ dados: CamaraEventDeputyRaw[] }>(
+    url, TTL.CAMARA_EVENT_DETAIL,
+  )
+
+  const attendees: EventAttendee[] = (data.dados ?? []).map((r) => ({
+    deputyId: String(r.id),
+    name: r.nome,
+    party: r.siglaPartido,
+    uf: r.siglaUf,
+    photoUrl: r.urlFoto,
+  }))
+
+  return Object.assign(attendees, { _source: url })
 }

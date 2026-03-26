@@ -8,6 +8,7 @@
  */
 
 import Image from "next/image"
+import type { ReactNode } from "react"
 import { AvatarInitials } from "./AvatarInitials"
 import { SourcePill } from "./SourcePill"
 
@@ -25,44 +26,53 @@ interface ProfileHeaderProps {
   sourceUrl: string
   /** Optional photo URL. When provided, renders an image instead of initials. */
   photoUrl?: string
+  /** Optional actions rendered on the right side of the header (e.g. year selector, compare button). */
+  actions?: ReactNode
 }
 
 /**
  * Renders a profile header with avatar (photo or initials), name, metadata tags,
  * and source link.
  */
-export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl }: ProfileHeaderProps) {
+export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl, actions }: ProfileHeaderProps) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        {photoUrl ? (
-          <Image
-            src={photoUrl}
-            alt={name}
-            width={64}
-            height={64}
-            className="h-16 w-16 shrink-0 rounded-full bg-gray-100 object-cover ring-2 ring-gray-100"
-            unoptimized
-          />
-        ) : (
-          <AvatarInitials initials={initials} size="lg" />
-        )}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">{name}</h1>
-            <SourcePill url={sourceUrl} />
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
-              >
-                {tag}
-              </span>
-            ))}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          {photoUrl ? (
+            <Image
+              src={photoUrl}
+              alt={name}
+              width={64}
+              height={64}
+              className="h-16 w-16 shrink-0 rounded-full bg-gray-100 object-cover ring-2 ring-gray-100"
+              unoptimized
+            />
+          ) : (
+            <AvatarInitials initials={initials} size="lg" />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">{name}</h1>
+              <SourcePill url={sourceUrl} />
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
+        {actions && (
+          <div className="flex items-center gap-3">
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   )

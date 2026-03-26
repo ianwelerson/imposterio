@@ -7,7 +7,7 @@
  * re-exported here as they are implemented.
  */
 
-export { cachedFetch, ApiError } from "./lib/cache"
+export { cachedFetch, ApiError, redis } from "./lib/cache"
 export { ENDPOINTS } from "./lib/endpoints"
 export { TTL } from "./lib/ttl"
 
@@ -23,6 +23,14 @@ export {
   getVotingSessionVotes, getVotingSessionOrientations,
   getDeputyVotingHistory,
   getDeputyAttendanceBulk,
+  getDeputyAttendanceDetail,
+  getStaffBulk,
+  getDeputyStaffCount,
+  getProcurementBulk,
+  getProcurementDetail,
+  getEventAttendees,
   type AttendanceBulkSummary,
   type DeputyAttendanceSummary,
+  type DeputyAttendanceEvent,
+  type EventAttendee,
 } from "./camara"
