@@ -68,6 +68,16 @@ export const TTL = {
   CAMARA_VOTING_SESSION_VOTES: 60 * 60 * 12,
   /** Party orientations for a vote — 12h (final after session ends) */
   CAMARA_VOTING_SESSION_ORIENTATIONS: 60 * 60 * 12,
+  /** Deputy propositions (authored bills) — 1h (updated during sessions) */
+  CAMARA_DEPUTY_PROPOSITIONS: 60 * 60,
+  /** Deputy occupations (professional background) — 24h (rarely changes) */
+  CAMARA_DEPUTY_OCCUPATIONS: 60 * 60 * 24,
+  /** Deputy leadership history — 24h (changes infrequently) */
+  CAMARA_DEPUTY_LEADER_HISTORY: 60 * 60 * 24,
+  /** Deputy Câmara mandates (elected terms) — 1h (updated during legislature) */
+  CAMARA_DEPUTY_CAMARA_MANDATES: 60 * 60,
+  /** Parliamentary caucus (frente) detail — 24h (stable membership) */
+  CAMARA_FRENTE_DETAIL: 60 * 60 * 24,
 
   // ── Senado Federal ──────────────────────────────────────────────────
   /** List of all senators currently serving — 24h */

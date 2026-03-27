@@ -313,3 +313,13 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 3. **Combined-result caching for expenses** — `getDeputyExpenses` stores the final merged+sorted expense array under a short key (`cam:exp:{id}:{year}` or `cam:exp:{id}:{year}:{month}`). On cache hit, returns in 1 Redis GET instead of N per-page lookups. Individual pages are still cached by `cachedFetch` for granular invalidation.
 
 **Consequences:** Redis command count drops significantly for repeat page views (1 GET vs N for expenses, 1 connection vs 5+ for bulk fetchers). Storage is slightly reduced by avoiding raw 5MB files cached under summary keys. Error responses no longer persist in cache. The `redis` singleton is now an architectural constraint — `new Redis()` must never be used in fetcher code. The combined-result caching pattern (`cam:` prefix keys) should be extended to other paginated fetchers (speeches, events, voting sessions) as needed.
+
+---
+
+## 2026-03-27 — HTML scraping for Verba de Gabinete data
+
+**Context:** The Verba de Gabinete (office allowance / parliamentary secretary payroll) is a critical transparency data point — it shows how much each deputy spends on staff salaries. However, unlike CEAP expenses (available via the Open Data API at `dadosabertos.camara.leg.br`), this data has **no official API endpoint**. The only public source is the HTML transparency page at `camara.leg.br/transparencia/gastos-parlamentares`, which returns pre-rendered HTML tables with monthly spending per deputy.
+
+**Decision:** Created a server-side HTML scraper at `apps/web/lib/scrapers/verba-gabinete.ts` that fetches the transparency page with query parameters (`legislatura`, `ano`, `deputado`) and parses monthly spending data (staff count, total spent, ceiling) from the HTML table rows using regex. Results are cached in Redis under `verba-gabinete:{id}:{year}` with a 24h TTL. The scraper follows the same cache validation and `_source` injection patterns as `cachedFetch()` but operates on raw HTML instead of JSON API responses.
+
+**Consequences:** This is the first and only scraper in the codebase — all other data comes from structured JSON APIs. HTML scraping is inherently fragile: if the Câmara redesigns the transparency page or changes the table structure, this scraper will silently fail or return incorrect data. Mitigations: (1) the parser throws explicitly when no data rows are found, rather than returning empty results; (2) error responses are never cached; (3) the `_source` URL is preserved so users can manually verify at the official page. If the Câmara ever publishes this data via their Open Data API, this scraper should be replaced with a standard `cachedFetch()` fetcher.

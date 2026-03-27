@@ -40,7 +40,8 @@ import { TTL } from "./lib/ttl"
 import type {
   Deputy, DeputyDetail, DeputyExpense, DeputyCommittee, DeputyCaucus,
   DeputySpeech, DeputyEvent, DeputyPreviousMandate, DeputyStatusHistory, DeputyProfession,
-  DeputyVotingRecord,
+  DeputyVotingRecord, DeputyOccupation, DeputyLeadershipHistory, DeputyMandate,
+  CaucusDetail, CaucusMember,
   CamaraProposition, CamaraPropositionAuthor, CamaraPropositionTheme,
   CamaraPropositionProgress, CamaraVotingSession, CamaraIndividualVote,
   CamaraVoteOrientation, VoteTally,
@@ -224,6 +225,68 @@ interface CamaraHistoryRaw {
 interface CamaraProfessionRaw {
   dataHora: string
   codTipoProfissao: number
+  titulo: string
+}
+
+/** Shape of an occupation entry from GET /deputados/{id}/ocupacoes. */
+interface CamaraOccupationRaw {
+  titulo: string
+  entidade: string | null
+  entidadeUF: string | null
+  anoInicio: number | null
+  anoFim: number | null
+}
+
+/** Shape of a leadership history entry from GET /deputados/{id}/historicoLideres. */
+interface CamaraLeaderHistoryRaw {
+  idLegislatura: number
+  titulo: string
+  siglaPartidoBloco: string
+  uriPartidoBloco: string | null
+  dataInicio: string
+  dataFim: string | null
+}
+
+/** Shape of a Câmara mandate from GET /deputados/{id}/mandatos. */
+interface CamaraCamaraMandateRaw {
+  idLegislatura: number
+  condicaoEleitoral: string
+  siglaUf: string
+  siglaPartido: string
+  anoInicio: number
+  anoFim: number
+}
+
+/** Shape of a caucus detail from GET /frentes/{id}. */
+interface CamaraFrenteDetailRaw {
+  id: number
+  uri: string
+  titulo: string
+  idLegislatura: number
+  idSituacao: number | null
+  situacao: string | null
+  urlDocumento: string | null
+  keywords: string | null
+  coordenador?: {
+    id: number
+    uri: string
+    nome: string
+    siglaPartido: string
+    siglaUf: string
+    idLegislatura: number
+    urlFoto: string
+  }
+}
+
+/** Shape of a caucus member from GET /frentes/{id}/membros. */
+interface CamaraFrenteMemberRaw {
+  id: number
+  uri: string
+  nome: string
+  siglaPartido: string
+  siglaUf: string
+  idLegislatura: number
+  urlFoto: string
   titulo: string
 }
 
@@ -2487,4 +2550,262 @@ export async function getEventAttendees(
   }))
 
   return Object.assign(attendees, { _source: url })
+}
+
+// ── New fetchers: propositions by author, occupations, leadership, mandates, caucus detail ──
+
+/**
+ * Fetches propositions authored by a specific deputy.
+ *
+ * Returns all legislative proposals (PL, PEC, PLP, MP, REQ, etc.) where the
+ * given deputy is listed as an author. Results are ordered by year descending
+ * (most recent first) with automatic pagination.
+ *
+ * @param id - Deputy's numeric ID in the Câmara API
+ * @returns List of propositions authored by the deputy, with `_source` injected
+ *
+ * @example
+ * ```typescript
+ * const props = await getDeputadoProposicoes("204554")
+ * console.log(props[0].typeCode) // "PL"
+ * console.log(props._source)
+ * ```
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Proposições/get_proposicoes
+ */
+export async function getDeputadoProposicoes(
+  id: string,
+): Promise<WithSource<CamaraProposition[]>> {
+  const base = ENDPOINTS.CAMARA_PROPOSITIONS
+  const params = new URLSearchParams({
+    idDeputadoAutor: id,
+    ordem: "DESC",
+    ordenarPor: "ano",
+    itens: "100",
+  })
+
+  const firstPageUrl = `${base}?${params.toString()}`
+  const firstPage = await cachedFetch<CamaraListResponse<CamaraPropositionRaw>>(
+    firstPageUrl,
+    TTL.CAMARA_DEPUTY_PROPOSITIONS,
+  )
+
+  const allRaw: CamaraPropositionRaw[] = [...firstPage.dados]
+
+  const lastPageNum = extractLastPage(firstPage.links)
+
+  if (lastPageNum > 1) {
+    const maxPages = 10
+    const pagesToFetch = Math.min(lastPageNum, maxPages)
+    const pagePromises: Promise<CamaraListResponse<CamaraPropositionRaw> & { _source: string }>[] = []
+    for (let p = 2; p <= pagesToFetch; p++) {
+      const pageParams = new URLSearchParams(params)
+      pageParams.set("pagina", String(p))
+      const pageUrl = `${base}?${pageParams.toString()}`
+      pagePromises.push(
+        cachedFetch<CamaraListResponse<CamaraPropositionRaw>>(
+          pageUrl,
+          TTL.CAMARA_DEPUTY_PROPOSITIONS,
+        ),
+      )
+    }
+    const pages = await Promise.all(pagePromises)
+    for (const page of pages) {
+      allRaw.push(...page.dados)
+    }
+  }
+
+  const propositions: CamaraProposition[] = allRaw.map(mapRawToProposition)
+
+  return Object.assign(propositions, { _source: firstPage._source })
+}
+
+/**
+ * Fetches the professional occupations declared by a deputy.
+ *
+ * Ocupações represent the professional activities a deputy has exercised
+ * outside of their parliamentary mandate — e.g. lawyer, businessperson,
+ * professor. Each entry may include the organization and time period.
+ *
+ * @param id - Deputy's numeric ID in the Câmara API
+ * @returns List of occupations with `_source` injected
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Deputados/get_deputados__id__ocupacoes
+ */
+export async function getDeputadoOcupacoes(
+  id: string,
+): Promise<WithSource<DeputyOccupation[]>> {
+  const url = ENDPOINTS.CAMARA_DEPUTY_OCCUPATIONS(id)
+  const response = await cachedFetch<CamaraListResponse<CamaraOccupationRaw>>(
+    url,
+    TTL.CAMARA_DEPUTY_OCCUPATIONS,
+  )
+
+  const occupations: DeputyOccupation[] = response.dados.map(mapRawToOccupation)
+
+  return Object.assign(occupations, { _source: response._source })
+}
+
+/**
+ * Fetches the leadership history of a deputy.
+ *
+ * Tracks positions as party leader (Líder), vice-leader (Vice-Líder),
+ * government leader, minority leader, and bloc coordinator throughout
+ * their mandates. Essential for understanding a deputy's political influence.
+ *
+ * @param id - Deputy's numeric ID in the Câmara API
+ * @returns List of leadership positions sorted by start date (newest first),
+ *          with `_source` injected
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Deputados/get_deputados__id__historicoLideres
+ */
+export async function getDeputadoHistoricoLideres(
+  id: string,
+): Promise<WithSource<DeputyLeadershipHistory[]>> {
+  const url = ENDPOINTS.CAMARA_DEPUTY_LEADER_HISTORY(id)
+  const response = await cachedFetch<CamaraListResponse<CamaraLeaderHistoryRaw>>(
+    url,
+    TTL.CAMARA_DEPUTY_LEADER_HISTORY,
+  )
+
+  const history: DeputyLeadershipHistory[] = response.dados
+    .map(mapRawToLeaderHistory)
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+
+  return Object.assign(history, { _source: response._source })
+}
+
+/**
+ * Fetches the Câmara mandates (elected terms) of a deputy.
+ *
+ * Unlike `getDeputyPreviousMandates()` which returns external mandates from
+ * TSE data (vereador, prefeito, etc.), this function returns the deputy's
+ * terms specifically within the Câmara dos Deputados — including the current
+ * and any previous Câmara legislatures.
+ *
+ * @param id - Deputy's numeric ID in the Câmara API
+ * @returns List of Câmara mandates sorted by start year (newest first),
+ *          with `_source` injected
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Deputados/get_deputados__id__mandatos
+ */
+export async function getDeputadoMandatos(
+  id: string,
+): Promise<WithSource<DeputyMandate[]>> {
+  const url = ENDPOINTS.CAMARA_DEPUTY_CAMARA_MANDATES(id)
+  const response = await cachedFetch<CamaraListResponse<CamaraCamaraMandateRaw>>(
+    url,
+    TTL.CAMARA_DEPUTY_CAMARA_MANDATES,
+  )
+
+  const mandates: DeputyMandate[] = response.dados
+    .map(mapRawToDeputyMandate)
+    .sort((a, b) => b.startYear - a.startYear)
+
+  return Object.assign(mandates, { _source: response._source })
+}
+
+/**
+ * Fetches the full detail of a parliamentary caucus (frente parlamentar).
+ *
+ * Returns the caucus purpose, creation metadata, coordinator, and the
+ * complete member list with each member's name, party, and UF. This
+ * requires two API calls: one for the caucus detail and one for the
+ * member list.
+ *
+ * @param frenteId - Caucus ID in the Câmara API
+ * @returns Caucus detail with full member list and `_source` injected
+ * @throws {ApiError} When the caucus is not found
+ *
+ * @example
+ * ```typescript
+ * const caucus = await getFrenteDetail("54321")
+ * console.log(caucus.name)           // "Frente Parlamentar da Agropecuária"
+ * console.log(caucus.members.length) // 245
+ * console.log(caucus._source)
+ * ```
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Frentes/get_frentes__id_
+ */
+export async function getFrenteDetail(
+  frenteId: string,
+): Promise<WithSource<CaucusDetail>> {
+  const detailUrl = ENDPOINTS.CAMARA_FRENTE(frenteId)
+  const membersUrl = ENDPOINTS.CAMARA_FRENTE_MEMBERS(frenteId)
+
+  // Fetch detail and members in parallel
+  const [detailResponse, membersResponse] = await Promise.all([
+    cachedFetch<CamaraDetailResponse<CamaraFrenteDetailRaw>>(
+      detailUrl,
+      TTL.CAMARA_FRENTE_DETAIL,
+    ),
+    cachedFetch<CamaraListResponse<CamaraFrenteMemberRaw>>(
+      membersUrl,
+      TTL.CAMARA_FRENTE_DETAIL,
+    ),
+  ])
+
+  const raw = detailResponse.dados
+  const members: CaucusMember[] = membersResponse.dados.map(mapRawToFrenteMember)
+
+  const detail: CaucusDetail = {
+    id: String(raw.id),
+    name: raw.titulo,
+    legislature: raw.idLegislatura,
+    purpose: raw.keywords ?? undefined,
+    creationDate: undefined,
+    coordinatorName: raw.coordenador?.nome,
+    coordinatorId: raw.coordenador ? String(raw.coordenador.id) : undefined,
+    members,
+  }
+
+  return Object.assign(detail, { _source: detailResponse._source })
+}
+
+// ── Mapping functions for new fetchers ──────────────────────────────
+
+/** Maps a raw occupation to the public DeputyOccupation type. */
+function mapRawToOccupation(raw: CamaraOccupationRaw): DeputyOccupation {
+  return {
+    title: raw.titulo,
+    entity: raw.entidade || undefined,
+    uf: raw.entidadeUF || undefined,
+    startYear: raw.anoInicio ?? undefined,
+    endYear: raw.anoFim ?? undefined,
+  }
+}
+
+/** Maps a raw leadership history entry to the public DeputyLeadershipHistory type. */
+function mapRawToLeaderHistory(raw: CamaraLeaderHistoryRaw): DeputyLeadershipHistory {
+  return {
+    role: raw.titulo,
+    party: raw.siglaPartidoBloco,
+    legislature: raw.idLegislatura,
+    startDate: raw.dataInicio,
+    endDate: raw.dataFim || undefined,
+  }
+}
+
+/** Maps a raw Câmara mandate to the public DeputyMandate type. */
+function mapRawToDeputyMandate(raw: CamaraCamaraMandateRaw): DeputyMandate {
+  return {
+    legislature: raw.idLegislatura,
+    electoralCondition: raw.condicaoEleitoral,
+    uf: raw.siglaUf,
+    party: raw.siglaPartido,
+    startYear: raw.anoInicio,
+    endYear: raw.anoFim,
+  }
+}
+
+/** Maps a raw caucus member to the public CaucusMember type. */
+function mapRawToFrenteMember(raw: CamaraFrenteMemberRaw): CaucusMember {
+  return {
+    id: String(raw.id),
+    name: raw.nome,
+    party: raw.siglaPartido,
+    uf: raw.siglaUf,
+    photoUrl: raw.urlFoto || undefined,
+    role: raw.titulo,
+  }
 }

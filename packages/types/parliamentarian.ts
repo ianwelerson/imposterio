@@ -221,6 +221,89 @@ export interface DeputyVotingRecord {
   propositions: Array<{ id: string; typeCode: string; number: number; year: number; summary: string }>
 }
 
+/** A professional occupation declared by a deputy from GET /deputados/{id}/ocupacoes. */
+export interface DeputyOccupation {
+  /** Occupation title (e.g. "Advogado", "Empresário"). */
+  title: string
+  /** Entity/organization where the occupation was exercised. */
+  entity?: string
+  /** State abbreviation (if applicable). */
+  uf?: string
+  /** Year the occupation started. */
+  startYear?: number
+  /** Year the occupation ended (null if current). */
+  endYear?: number
+}
+
+/** A leadership position entry from GET /deputados/{id}/historicoLideres. */
+export interface DeputyLeadershipHistory {
+  /** Leadership role: "Líder", "Vice-Líder", "Líder do Governo", etc. */
+  role: string
+  /** Party or bloc abbreviation. */
+  party: string
+  /** Legislature number. */
+  legislature: number
+  /** ISO date when the leadership started. */
+  startDate: string
+  /** ISO date when the leadership ended (null if current). */
+  endDate?: string
+}
+
+/** A Câmara mandate (elected term) from GET /deputados/{id}/mandatos. */
+export interface DeputyMandate {
+  /** Legislature number (e.g. 57 for 2023–2027). */
+  legislature: number
+  /** Electoral condition: "Titular", "Suplente". */
+  electoralCondition: string
+  /** State elected from. */
+  uf: string
+  /** Party at the time of election. */
+  party: string
+  /** Year the mandate started. */
+  startYear: number
+  /** Year the mandate ended. */
+  endYear: number
+}
+
+/**
+ * Detail of a parliamentary caucus (frente parlamentar) from GET /frentes/{id}.
+ * Extends the basic DeputyCaucus with purpose, creation date, and member list.
+ */
+export interface CaucusDetail {
+  /** Caucus ID in the Câmara API. */
+  id: string
+  /** Full caucus name. */
+  name: string
+  /** Legislature number the caucus belongs to. */
+  legislature: number
+  /** Official purpose statement of the caucus. */
+  purpose?: string
+  /** ISO date when the caucus was registered. */
+  creationDate?: string
+  /** Coordinator deputy name. */
+  coordinatorName?: string
+  /** Coordinator deputy ID. */
+  coordinatorId?: string
+  /** Full list of caucus members. */
+  members: CaucusMember[]
+}
+
+/** A member of a parliamentary caucus. */
+export interface CaucusMember {
+  /** Deputy ID in the Câmara API. */
+  id: string
+  /** Deputy display name. */
+  name: string
+  /** Party abbreviation. */
+  party: string
+  /** State abbreviation. */
+  uf: string
+  /** Photo URL. */
+  photoUrl?: string
+  /** Role in the caucus (e.g. "Coordenador", "Membro"). */
+  role: string
+}
+
 /** Deputy attendance summary computed from the yearly bulk file. */
 export interface DeputyAttendance {
   totalSessions: number
