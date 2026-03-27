@@ -31,10 +31,10 @@ const VOTE_COLORS: Record<string, string> = {
 }
 
 const VOTE_BADGE: Record<string, string> = {
-  "Sim": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Não": "bg-red-50 text-red-700 border-red-200",
-  "Abstenção": "bg-amber-50 text-amber-700 border-amber-200",
-  "Ausente": "bg-gray-100 text-gray-600 border-gray-200",
+  "Sim": "bg-emerald-50 text-emerald-700 ring-emerald-600/10",
+  "Não": "bg-red-50 text-red-700 ring-red-600/10",
+  "Abstenção": "bg-amber-50 text-amber-700 ring-amber-600/10",
+  "Ausente": "bg-gray-50 text-gray-600 ring-gray-500/10",
 }
 
 export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
@@ -59,18 +59,18 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
       </p>
 
       {/* Proportional bar */}
-      <div className="flex h-3 overflow-hidden rounded-full" role="img" aria-label="Resultado da votação">
+      <div className="flex h-2.5 overflow-hidden rounded-full" role="img" aria-label="Resultado da votação">
         {tally.yes > 0 && (
-          <div className={`${VOTE_COLORS.yes}`} style={{ width: pct(tally.yes) }} title={`Sim: ${tally.yes}`} />
+          <div className={`${VOTE_COLORS.yes} transition-all`} style={{ width: pct(tally.yes) }} title={`Sim: ${tally.yes}`} />
         )}
         {tally.no > 0 && (
-          <div className={`${VOTE_COLORS.no}`} style={{ width: pct(tally.no) }} title={`Não: ${tally.no}`} />
+          <div className={`${VOTE_COLORS.no} transition-all`} style={{ width: pct(tally.no) }} title={`Não: ${tally.no}`} />
         )}
         {tally.abstention > 0 && (
-          <div className={`${VOTE_COLORS.abstention}`} style={{ width: pct(tally.abstention) }} title={`Abstenção: ${tally.abstention}`} />
+          <div className={`${VOTE_COLORS.abstention} transition-all`} style={{ width: pct(tally.abstention) }} title={`Abstenção: ${tally.abstention}`} />
         )}
         {tally.absent > 0 && (
-          <div className={`${VOTE_COLORS.absent}`} style={{ width: pct(tally.absent) }} title={`Ausentes: ${tally.absent}`} />
+          <div className={`${VOTE_COLORS.absent} transition-all`} style={{ width: pct(tally.absent) }} title={`Ausentes: ${tally.absent}`} />
         )}
       </div>
 
@@ -85,9 +85,9 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
           </button>
 
           {showVotes && (
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200">
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200/80 shadow-card">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-gray-50">
+                <thead className="sticky top-0 bg-gray-50/90 backdrop-blur-sm">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-gray-500">Parlamentar</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-500">Partido</th>
@@ -95,14 +95,14 @@ export function VoteBreakdown({ tally, votes, sourceUrl }: VoteBreakdownProps) {
                     <th className="px-3 py-2 text-left font-medium text-gray-500">Voto</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100/80">
                   {votes.map((v) => (
-                    <tr key={v.parliamentarianId} className="hover:bg-gray-50/50">
+                    <tr key={v.parliamentarianId} className="hover:bg-gray-50/60">
                       <td className="px-3 py-1.5 text-gray-900">{v.parliamentarianName}</td>
                       <td className="px-3 py-1.5 text-gray-600">{v.party}</td>
                       <td className="px-3 py-1.5 text-gray-600">{v.uf}</td>
                       <td className="px-3 py-1.5">
-                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${VOTE_BADGE[v.vote] ?? ""}`}>
+                        <span className={`inline-flex items-center rounded-md ring-1 ring-inset px-2 py-0.5 text-[10px] font-medium ${VOTE_BADGE[v.vote] ?? ""}`}>
                           {v.vote}
                         </span>
                       </td>

@@ -248,9 +248,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <li key={item.href}>
         {/* Single row: icon + label (link) + chevron toggle, all aligned */}
         <div
-          className={`flex items-center rounded-md px-3 py-2 transition-colors
+          className={`group flex items-center rounded-lg px-3 py-2 transition-all duration-150
             ${isActive
-              ? "bg-accent-light text-accent"
+              ? "bg-accent/[0.08] text-accent font-medium"
               : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             }`}
         >
@@ -261,16 +261,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             aria-current={isActive ? "page" : undefined}
           >
             <svg
-              className="h-5 w-5 shrink-0"
+              className={`h-[18px] w-[18px] shrink-0 transition-colors ${isActive ? "text-accent" : "text-gray-400 group-hover:text-gray-600"}`}
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
             >
               <path fillRule="evenodd" d={item.icon} clipRule="evenodd" />
             </svg>
-            <span className="truncate text-sm font-medium">{item.label}</span>
+            <span className="truncate text-[13px] leading-5">{item.label}</span>
             {isComingSoon && (
-              <span className="ml-auto shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+              <span className="ml-auto shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
                 Em breve
               </span>
             )}
@@ -280,7 +280,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           {hasChildren && (
             <button
               onClick={(e) => { e.stopPropagation(); toggleExpanded(item.href) }}
-              className="-mr-1 ml-1 shrink-0 rounded p-1 text-gray-400 hover:text-gray-600"
+              className="-mr-1 ml-1 shrink-0 rounded-md p-1 text-gray-400 hover:text-gray-600 transition-colors"
               aria-label={isExpanded ? `Recolher ${item.label}` : `Expandir ${item.label}`}
               aria-expanded={isExpanded}
             >
@@ -291,7 +291,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
         {/* Sub-items */}
         {hasChildren && isExpanded && (
-          <ul className="ml-8 mt-0.5 space-y-0.5 border-l border-gray-200/60 pl-3">
+          <ul className="ml-[30px] mt-0.5 space-y-0.5 border-l border-gray-200/70 pl-3">
             {item.children!.map((child) => {
               const isChildActive = pathname.startsWith(child.href)
               return (
@@ -299,7 +299,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={child.href}
                     onClick={() => track("navigate", { href: child.href, label: child.label })}
-                    className={`block rounded-md px-3 py-1.5 text-sm transition-colors
+                    className={`block rounded-md px-3 py-1.5 text-[13px] transition-colors
                       ${isChildActive
                         ? "font-medium text-accent"
                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
@@ -320,24 +320,24 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const sidebarContent = (
     <>
       {/* Logo + close button on mobile */}
-      <div className="flex h-16 items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
+      <div className="flex h-16 items-center justify-between px-5">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
           <span>
             <span className="text-gray-900">impost</span>
             <span className="text-brasil-green">e</span>
             <span className="text-gray-900">rio</span>
           </span>
-          <span className="rounded bg-brasil-green/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-brasil-green">
+          <span className="rounded-md bg-brasil-green/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-brasil-green">
             beta
           </span>
         </Link>
 
         <button
           onClick={onClose}
-          className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 lg:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 lg:hidden"
           aria-label="Fechar menu"
         >
-          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
               fillRule="evenodd"
               d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -348,12 +348,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation sections */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-3">
         <div className="flex min-h-full flex-col">
-          <div className="flex-1">
+          <div className="flex-1 space-y-5">
             {NAV_SECTIONS.map((section) => (
-              <div key={section.title} className="mb-6">
-                <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              <div key={section.title}>
+                <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                   {section.title}
                 </p>
                 <ul role="list" className="space-y-0.5">
@@ -364,28 +364,28 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           </div>
 
           {/* "Sobre o projeto" — bottom-aligned nav item */}
-          <div className="mt-auto pt-3">
+          <div className="mt-auto border-t border-gray-100 pt-3">
             <Link
               href="/sobre"
               onClick={() => track("navigate", { href: "/sobre", label: "Sobre o projeto" })}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors
                 ${pathname === "/sobre"
-                  ? "bg-accent-light text-accent"
+                  ? "bg-accent/[0.08] text-accent font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               aria-current={pathname === "/sobre" ? "page" : undefined}
             >
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <svg className={`h-[18px] w-[18px] shrink-0 ${pathname === "/sobre" ? "text-accent" : "text-gray-400"}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
-              <span className="truncate text-sm font-medium">Sobre o projeto</span>
+              <span className="truncate text-[13px]">Sobre o projeto</span>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-200/60 px-6 py-4">
+      <div className="border-t border-gray-100 px-5 py-3.5">
         <a
           href="https://github.com/ianwelerson/imposterio"
           target="_blank"
@@ -405,7 +405,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     <>
       {/* Desktop sidebar */}
       <aside
-        className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r
+        className="fixed inset-y-0 left-0 z-30 hidden w-[272px] flex-col border-r
                    border-gray-200/60 bg-white lg:flex"
         aria-label="Navegação principal"
       >
@@ -418,13 +418,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         aria-hidden={!open}
       >
         <div
-          className={`absolute inset-0 bg-gray-900/50 transition-opacity duration-300
+          className={`absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300
             ${open ? "opacity-100" : "opacity-0"}`}
           onClick={onClose}
           aria-label="Fechar menu"
         />
         <aside
-          className={`absolute inset-y-0 left-0 flex w-72 flex-col bg-white shadow-xl
+          className={`absolute inset-y-0 left-0 flex w-[280px] flex-col bg-white shadow-elevated
             transition-transform duration-300 ease-in-out
             ${open ? "translate-x-0" : "-translate-x-full"}`}
           aria-label="Navegação principal"

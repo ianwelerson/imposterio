@@ -389,7 +389,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
           </section>
 
           {/* Charts */}
-          <section className="mb-12">
+          <section className="mb-12 border-t border-gray-200/60 pt-10">
             <SectionHeader title="Visualizações comparativas" />
             <ComparisonCharts
               metrics={metrics}

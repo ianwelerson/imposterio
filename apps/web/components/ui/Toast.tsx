@@ -51,10 +51,10 @@ export function useToast(): ToastContextValue {
 // ── Variant styles ───────────────────────────────────────────────────
 
 const variantStyles: Record<ToastVariant, string> = {
-  error: "border-red-200 bg-red-50 text-red-800",
-  warning: "border-amber-200 bg-amber-50 text-amber-800",
-  info: "border-blue-200 bg-blue-50 text-blue-800",
-  success: "border-green-200 bg-green-50 text-green-800",
+  error: "border-red-200/80 bg-red-50 text-red-800",
+  warning: "border-amber-200/80 bg-amber-50 text-amber-800",
+  info: "border-blue-200/80 bg-blue-50 text-blue-800",
+  success: "border-green-200/80 bg-green-50 text-green-800",
 }
 
 const variantIcons: Record<ToastVariant, string> = {
@@ -84,7 +84,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ show }}>
       {children}
       {/* Toast container — fixed bottom-right */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />
         ))}
@@ -112,7 +112,7 @@ function ToastItem({
   return (
     <div
       role="alert"
-      className={`flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-right ${variantStyles[toast.variant]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-elevated backdrop-blur-sm ${variantStyles[toast.variant]}`}
     >
       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-current/10 text-xs font-bold">
         {variantIcons[toast.variant]}

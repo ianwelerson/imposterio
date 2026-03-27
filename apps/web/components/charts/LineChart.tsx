@@ -62,30 +62,32 @@ export function LineChart({
 
   const sharedChildren = (
     <>
-      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
       <XAxis
         dataKey="label"
-        tick={{ fontSize: 12, fill: "#6b7280" }}
+        tick={{ fontSize: 12, fill: "#64748b" }}
         tickLine={false}
+        axisLine={{ stroke: "#e2e8f0" }}
       />
-      <YAxis tick={{ fontSize: 12, fill: "#9ca3af" }} />
+      <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
       <Tooltip
         contentStyle={{
-          borderRadius: 8,
-          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          border: "1px solid #e2e8f0",
           fontSize: 13,
+          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.06)",
         }}
         formatter={(value, name) => [
           formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),
           name,
         ]}
-        labelStyle={{ fontWeight: 600, color: "#111827" }}
+        labelStyle={{ fontWeight: 600, color: "#0f172a" }}
       />
       <Legend
         verticalAlign="top"
         align="right"
         iconType="line"
-        wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+        wrapperStyle={{ fontSize: 12, paddingBottom: 8, color: "#64748b" }}
       />
     </>
   )
@@ -107,10 +109,10 @@ export function LineChart({
                 name={s.name}
                 stroke={color}
                 fill={color}
-                fillOpacity={0.1}
+                fillOpacity={0.08}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4 }}
+                activeDot={{ r: 4, strokeWidth: 2 }}
               />
             )
           })}
@@ -134,7 +136,7 @@ export function LineChart({
               stroke={color}
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4 }}
+              activeDot={{ r: 4, strokeWidth: 2 }}
             />
           )
         })}

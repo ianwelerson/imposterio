@@ -5,11 +5,30 @@
 @layer base {
   html {
     @apply overflow-x-hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     @apply bg-page text-gray-900 antialiased overflow-x-hidden;
     font-size: 16px;
     line-height: 1.5;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Better focus rings */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@layer components {
+  /* Shared card surface */
+  .card-surface {
+    @apply rounded-xl border border-gray-200/80 bg-white shadow-card;
+  }
+
+  .card-surface-hover {
+    @apply card-surface transition-shadow hover:shadow-card-hover;
   }
 }

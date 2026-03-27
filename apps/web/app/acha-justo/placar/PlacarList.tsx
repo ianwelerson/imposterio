@@ -210,7 +210,7 @@ export function PlacarList() {
             ← Acha Justo?
           </Link>
         </header>
-        <div className="flex h-48 items-center justify-center rounded-xl border border-gray-200 bg-white">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-gray-200/80 bg-white shadow-card">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-indigo-600" />
         </div>
       </>
@@ -238,7 +238,7 @@ export function PlacarList() {
 
   return (
     <>
-      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Placar</h1>
           <p className="mt-1 text-sm text-gray-500">

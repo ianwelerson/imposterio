@@ -184,21 +184,21 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
 
       {/* Hero header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href="/camara"
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à Câmara
               </Link>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Licitações</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Licitações</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
                 Processos licitatórios, contratos, itens e pedidos de compra da Câmara dos Deputados.
               </p>
             </div>
-            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 backdrop-blur-sm">
               <span className="text-sm font-medium text-white/80">Ver dados de</span>
               <YearSelector years={availableYears} selected={selectedYear} />
             </div>
@@ -213,38 +213,40 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
           {/* Resumo geral */}
           <section className="mb-12">
             <SectionHeader title="Resumo geral" sourceUrl={summary._source} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Licitações"
-                value={String(summary.totalProcurements)}
-                tooltip="Quantidade de processos licitatórios registrados no período selecionado."
-              />
-              <StatCard
-                label="Valor contratado"
-                value={formatCurrency(summary.totalContractedValue)}
-                tooltip="Soma dos valores acordados em contratos firmados nas licitações. Representa o compromisso financeiro total assumido pela Câmara."
-              />
-              <StatCard
-                label="Valor pago"
-                value={formatCurrency(summary.totalPaidValue)}
-                tooltip="Soma dos valores efetivamente desembolsados até o momento. Contratos podem ter vigência de anos, por isso o valor pago costuma ser menor que o contratado no mesmo período."
-              />
-              <StatCard
-                label="Economia estimada"
-                value={`${savingsRate}%`}
-                badge={Number(savingsRate) > 0
-                  ? { text: "economia", variant: "green" as const }
-                  : Number(savingsRate) < 0
-                    ? { text: "acima do estimado", variant: "red" as const }
-                    : undefined
-                }
-                tooltip="Percentual de economia entre o valor estimado e o valor efetivamente contratado"
-              />
+            <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  label="Licitações"
+                  value={String(summary.totalProcurements)}
+                  tooltip="Quantidade de processos licitatórios registrados no período selecionado."
+                />
+                <StatCard
+                  label="Valor contratado"
+                  value={formatCurrency(summary.totalContractedValue)}
+                  tooltip="Soma dos valores acordados em contratos firmados nas licitações. Representa o compromisso financeiro total assumido pela Câmara."
+                />
+                <StatCard
+                  label="Valor pago"
+                  value={formatCurrency(summary.totalPaidValue)}
+                  tooltip="Soma dos valores efetivamente desembolsados até o momento. Contratos podem ter vigência de anos, por isso o valor pago costuma ser menor que o contratado no mesmo período."
+                />
+                <StatCard
+                  label="Economia estimada"
+                  value={`${savingsRate}%`}
+                  badge={Number(savingsRate) > 0
+                    ? { text: "economia", variant: "green" as const }
+                    : Number(savingsRate) < 0
+                      ? { text: "acima do estimado", variant: "red" as const }
+                      : undefined
+                  }
+                  tooltip="Percentual de economia entre o valor estimado e o valor efetivamente contratado"
+                />
+              </div>
             </div>
           </section>
 
           {/* Charts */}
-          <section className="mb-12">
+          <section className="mb-12 border-t border-gray-200/60 pt-10">
             <SectionHeader title="Visualizações" sourceUrl={summary._source} />
             <LicitacoesCharts
               byModality={summary.byModality}
@@ -255,7 +257,7 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
           </section>
 
           {/* Latest procurements */}
-          <section className="mb-12">
+          <section className="mb-12 border-t border-gray-200/60 pt-10">
             <SectionHeader
               title={`Últimas licitações (${selectedYear})`}
               sourceUrl={summary._source}
@@ -266,7 +268,7 @@ export default async function CamaraLicitacoesPage({ searchParams }: PageProps) 
 
           {/* Top suppliers */}
           {top5Suppliers.length > 0 && (
-            <section className="mb-12">
+            <section className="mb-12 border-t border-gray-200/60 pt-10">
               <SectionHeader title="Maiores fornecedores" sourceUrl={summary._source} />
               <DataTable
                 columns={supplierColumns}

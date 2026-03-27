@@ -31,7 +31,7 @@ export function DataFetchError({ label }: DataFetchErrorProps) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4"
+      className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-5 py-4 shadow-xs"
     >
       <span className="mt-0.5 shrink-0 text-amber-500" aria-hidden="true">
         <svg

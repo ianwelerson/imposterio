@@ -29,8 +29,8 @@ interface ChartCardProps {
  */
 export function ChartCard({ title, subtitle, sourceUrl, action, children }: ChartCardProps) {
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-3 sm:p-5">
-      <div className="flex items-center justify-between">
+    <article className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-5">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           {sourceUrl && (
@@ -39,9 +39,9 @@ export function ChartCard({ title, subtitle, sourceUrl, action, children }: Char
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Verificar na fonte oficial"
-              className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full
-                         bg-indigo-50 text-indigo-600 border border-indigo-200
-                         hover:bg-indigo-100 font-mono transition-colors whitespace-nowrap"
+              className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md
+                         bg-accent/[0.06] text-accent/80
+                         hover:bg-accent/10 font-mono transition-colors whitespace-nowrap"
             >
               ↗ fonte
             </a>

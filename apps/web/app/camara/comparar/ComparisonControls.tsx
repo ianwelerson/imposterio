@@ -66,15 +66,15 @@ export function ComparisonControls({
     <>
       {/* Header with year selector */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Comparar deputados</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Comparar deputados</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
                 Compare até 3 deputados lado a lado — despesas, votações e atividade parlamentar.
               </p>
             </div>
-            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 backdrop-blur-sm">
           <span className="text-sm font-medium text-white/80">Ver dados de</span>
           {isPending && (
             <div

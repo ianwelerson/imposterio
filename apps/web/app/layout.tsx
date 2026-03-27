@@ -1,7 +1,14 @@
 import type { Metadata } from "next"
 import Script from "next/script"
+import { Inter } from "next/font/google"
 import { AppShell, ToastProvider } from "@/components/ui"
 import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+})
 
 export const metadata: Metadata = {
   title: "Imposterio — O raio-x de quem vive do seu imposto",
@@ -17,8 +24,8 @@ export default function RootLayout({
   const umamiId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID
 
   return (
-    <html lang="pt-BR">
-      <body>
+    <html lang="pt-BR" className={inter.variable}>
+      <body className="font-sans">
         {umamiId && (
           <Script
             src="https://cloud.umami.is/script.js"

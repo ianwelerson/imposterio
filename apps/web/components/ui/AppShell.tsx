@@ -3,7 +3,7 @@
  * @description Outer layout shell providing the sidebar + main content structure.
  *
  * This component defines the responsive layout used across all pages:
- * - Desktop (lg+): fixed left sidebar (256px) always visible, content offset
+ * - Desktop (lg+): fixed left sidebar (272px) always visible, content offset
  * - Mobile (< lg): sidebar hidden by default, slides in from the left when
  *   the hamburger button is tapped; a backdrop overlay covers the content
  *
@@ -29,7 +29,7 @@ interface AppShellProps {
 /**
  * Renders the application shell with responsive sidebar and scrollable main area.
  *
- * On desktop (lg+): fixed sidebar on the left, main content offset by 256px.
+ * On desktop (lg+): fixed sidebar on the left, main content offset by 272px.
  * On mobile (< lg): sidebar hidden, mobile header with hamburger + logo shown.
  *
  * @param children - Page content to display in the main area
@@ -40,22 +40,22 @@ export function AppShell({ children }: AppShellProps) {
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-page">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content area */}
-      <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
+      <div className="flex min-w-0 flex-1 flex-col lg:ml-[272px]">
         {/* Mobile header — visible only on < lg */}
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/60 bg-white px-4 lg:hidden">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/60 bg-white/80 px-4 backdrop-blur-md lg:hidden">
           <button
             onClick={() => {
               track("open_mobile_menu")
               setSidebarOpen(true)
             }}
-            className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition-colors active:bg-gray-100"
             aria-label="Abrir menu"
           >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -65,14 +65,14 @@ export function AppShell({ children }: AppShellProps) {
               <span className="text-brasil-green">e</span>
               <span className="text-gray-900">rio</span>
             </span>
-            <span className="rounded bg-brasil-green/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-brasil-green">
+            <span className="rounded-md bg-brasil-green/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-brasil-green">
               beta
             </span>
           </span>
         </header>
 
         {/* Page content */}
-        <main className="relative min-w-0 flex-1 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+        <main className="relative min-w-0 flex-1 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
           {children}
 
           {/* "Coming soon" overlay — covers all non-public pages */}

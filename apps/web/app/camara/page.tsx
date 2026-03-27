@@ -241,15 +241,15 @@ export default async function CamaraPage({ searchParams }: PageProps) {
 
       {/* Hero header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Câmara dos Deputados</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Câmara dos Deputados</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
                 Visão geral da Câmara dos Deputados — despesas, votações, proposições e presença parlamentar.
               </p>
             </div>
-            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 backdrop-blur-sm">
               <span className="text-sm font-medium text-white/80">Ver dados de</span>
               <YearSelector years={availableYears} selected={selectedYear} />
             </div>
@@ -265,35 +265,37 @@ export default async function CamaraPage({ searchParams }: PageProps) {
             <DataFetchError label="alguns dados do resumo" />
           </div>
         )}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Deputados em exercício"
-            value={String(deputies.length)}
-            badge={largestParty ? { text: `Maior bancada: ${largestParty.name} (${largestParty.value})`, variant: "gray" } : undefined}
-          />
-          <StatCard
-            label="Proposições"
-            value={String(propositions.length)}
-            badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
-            tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
-          />
-          <StatCard
-            label="Votações realizadas"
-            value={String(totalVotes)}
-          />
-          <StatCard
-            label="Taxa de aprovação"
-            value={`${approvalRate}%`}
-            badge={totalVotes > 0 ? {
-              text: `${approvedVotes} de ${totalVotes}`,
-              variant: Number(approvalRate) >= 50 ? "green" : "amber",
-            } : undefined}
-          />
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Deputados em exercício"
+              value={String(deputies.length)}
+              badge={largestParty ? { text: `Maior bancada: ${largestParty.name} (${largestParty.value})`, variant: "gray" } : undefined}
+            />
+            <StatCard
+              label="Proposições"
+              value={String(propositions.length)}
+              badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
+              tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
+            />
+            <StatCard
+              label="Votações realizadas"
+              value={String(totalVotes)}
+            />
+            <StatCard
+              label="Taxa de aprovação"
+              value={`${approvalRate}%`}
+              badge={totalVotes > 0 ? {
+                text: `${approvedVotes} de ${totalVotes}`,
+                variant: Number(approvalRate) >= 50 ? "green" : "amber",
+              } : undefined}
+            />
+          </div>
         </div>
       </section>
 
       {/* ── 2. Charts ────────────────────────────────────────────── */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <CamaraCharts
           byParty={byParty}
@@ -311,7 +313,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 3. Deputados ─────────────────────────────────────────── */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Deputados"
           sourceUrl={deputies._source}
@@ -325,42 +327,44 @@ export default async function CamaraPage({ searchParams }: PageProps) {
       </section>
 
       {/* ── 4. Quick links to subsections ──────────────────────────── */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Explorar" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Link
-            href={`/camara/pautas?ano=${selectedYear}`}
-            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
-          >
-            <span className="text-sm font-semibold text-gray-900">Pauta Legislativa</span>
-            <p className="mt-1 text-xs text-gray-500">Proposições e votações</p>
-          </Link>
-          <Link
-            href={`/camara/licitacoes?ano=${selectedYear}`}
-            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
-          >
-            <span className="text-sm font-semibold text-gray-900">Licitações</span>
-            <p className="mt-1 text-xs text-gray-500">Compras, contratos e fornecedores</p>
-          </Link>
-          <Link
-            href="/camara/funcionarios"
-            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
-          >
-            <span className="text-sm font-semibold text-gray-900">Funcionários</span>
-            <p className="mt-1 text-xs text-gray-500">Servidores e secretários parlamentares</p>
-          </Link>
-          <Link
-            href="/camara/comparar"
-            className="rounded-xl border border-gray-200 bg-white px-5 py-4 hover:border-accent/30 transition-colors"
-          >
-            <span className="text-sm font-semibold text-gray-900">Comparar Deputados</span>
-            <p className="mt-1 text-xs text-gray-500">Até 3 deputados lado a lado</p>
-          </Link>
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Link
+              href={`/camara/pautas?ano=${selectedYear}`}
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Pauta Legislativa</span>
+              <p className="mt-1 text-xs text-gray-500">Proposições e votações</p>
+            </Link>
+            <Link
+              href={`/camara/licitacoes?ano=${selectedYear}`}
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Licitações</span>
+              <p className="mt-1 text-xs text-gray-500">Compras, contratos e fornecedores</p>
+            </Link>
+            <Link
+              href="/camara/funcionarios"
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Funcionários</span>
+              <p className="mt-1 text-xs text-gray-500">Servidores e secretários parlamentares</p>
+            </Link>
+            <Link
+              href="/camara/comparar"
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Comparar Deputados</span>
+              <p className="mt-1 text-xs text-gray-500">Até 3 deputados lado a lado</p>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── 5. Pauta legislativa ──────────────────────────────────── */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Últimas proposições"
           sourceUrl={propositions._source}
@@ -373,7 +377,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         )}
       </section>
 
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Últimas votações"
           sourceUrl={votingSessions._source}
@@ -386,8 +390,8 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         )}
       </section>
 
-      {/* ── 5. Game ──────────────────────────────────────────────── */}
-      <section className="mb-12">
+      {/* ── 6. Game ──────────────────────────────────────────────── */}
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

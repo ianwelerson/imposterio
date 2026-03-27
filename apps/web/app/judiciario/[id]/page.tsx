@@ -62,17 +62,21 @@ export default function MagistrateDetailPage() {
         sourceUrl="https://portal.stf.jus.br/remuneracao/"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do magistrado"
-      >
-        <StatCard label="Remuneração mensal" value="R$ 46.366,19" badge={{ text: "Teto constitucional", variant: "amber" }} />
-        <StatCard label="Processos como relator" value="384" />
-        <StatCard label="Anos no tribunal" value="12" />
-        <StatCard label="Processos julgados (2024)" value="127" badge={{ text: "+18% vs 2023", variant: "green" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do magistrado"
+          >
+            <StatCard label="Remuneração mensal" value="R$ 46.366,19" badge={{ text: "Teto constitucional", variant: "amber" }} />
+            <StatCard label="Processos como relator" value="384" />
+            <StatCard label="Anos no tribunal" value="12" />
+            <StatCard label="Processos julgados (2024)" value="127" badge={{ text: "+18% vs 2023", variant: "green" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Dados pessoais" />
         <InfoPanel fields={[
           { label: "Nome completo", value: "João da Silva Neto" },
@@ -84,7 +88,7 @@ export default function MagistrateDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Detalhamento da remuneração" />
         <InfoPanel fields={[
           { label: "Subsídio", value: "R$ 41.650,92" },
@@ -97,7 +101,7 @@ export default function MagistrateDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Processos notáveis (como relator)" />
         <DataTable columns={caseColumns} data={MOCK_CASES} rowKey={(r) => r.id} />
       </section>

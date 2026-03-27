@@ -83,39 +83,43 @@ export default function ExecutivoPage() {
     <>
       <TopBar title="Executivo Federal" defaultPeriod="30d" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do Executivo"
-      >
-        <StatCard label="Servidores ativos" value="583.241" />
-        <StatCard label="Folha mensal" value="R$ 18,2 bi" badge={{ text: "+2,1% vs mês anterior", variant: "red" }} />
-        <StatCard label="Contratos vigentes" value="12.847" />
-        <StatCard label="Viagens no período" value="3.214" badge={{ text: "-8% vs período anterior", variant: "green" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do Executivo"
+          >
+            <StatCard label="Servidores ativos" value="583.241" />
+            <StatCard label="Folha mensal" value="R$ 18,2 bi" badge={{ text: "+2,1% vs mês anterior", variant: "red" }} />
+            <StatCard label="Contratos vigentes" value="12.847" />
+            <StatCard label="Viagens no período" value="3.214" badge={{ text: "-8% vs período anterior", variant: "green" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <ExecutivoCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Maiores remunerações" action={{ label: "Ver servidores", href: "/executivo/servidores" }} />
         <DataTable columns={servantColumns} data={MOCK_SERVANTS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Contratos recentes" action={{ label: "Ver ministros", href: "/executivo/ministros" }} />
         <DataTable columns={contractColumns} data={MOCK_CONTRACTS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gastos por órgão" />
         <div className="rounded-lg border border-gray-200/60 bg-white p-5">
           <RankingList items={TOP_AGENCIES} />
         </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

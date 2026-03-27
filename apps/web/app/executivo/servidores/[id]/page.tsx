@@ -53,17 +53,21 @@ export default function ServidorDetailPage() {
         sourceUrl="https://api.portaldatransparencia.gov.br/api-de-dados/servidores/123456/remuneracao"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do servidor"
-      >
-        <StatCard label="Remuneração bruta" value="R$ 35.462,71" />
-        <StatCard label="Remuneração líquida" value="R$ 27.120,30" />
-        <StatCard label="Descontos obrigatórios" value="R$ 8.342,41" badge={{ text: "23,5%", variant: "amber" }} />
-        <StatCard label="13º (Dez/2023)" value="R$ 35.462,71" badge={{ text: "Pago", variant: "green" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do servidor"
+          >
+            <StatCard label="Remuneração bruta" value="R$ 35.462,71" />
+            <StatCard label="Remuneração líquida" value="R$ 27.120,30" />
+            <StatCard label="Descontos obrigatórios" value="R$ 8.342,41" badge={{ text: "23,5%", variant: "amber" }} />
+            <StatCard label="13º (Dez/2023)" value="R$ 35.462,71" badge={{ text: "Pago", variant: "green" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Detalhamento da remuneração" />
         <InfoPanel fields={[
           { label: "Vencimento básico", value: "R$ 21.029,09" },
@@ -78,7 +82,7 @@ export default function ServidorDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Histórico de remuneração" />
         <DataTable columns={historyColumns} data={MOCK_HISTORY} rowKey={(r) => r.id} />
       </section>

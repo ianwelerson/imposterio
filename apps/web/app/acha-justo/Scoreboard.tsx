@@ -78,8 +78,8 @@ export const Scoreboard = forwardRef<ScoreboardHandle>(function Scoreboard(_, re
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200/60 bg-white">
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+      <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-card">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
           <span className="text-xs font-bold uppercase tracking-widest text-white/80">
             Placar
           </span>
@@ -93,8 +93,8 @@ export const Scoreboard = forwardRef<ScoreboardHandle>(function Scoreboard(_, re
 
   if (entries.length === 0) {
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200/60 bg-white">
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+      <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-card">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
           <span className="text-xs font-bold uppercase tracking-widest text-white/80">
             Placar
           </span>
@@ -109,9 +109,9 @@ export const Scoreboard = forwardRef<ScoreboardHandle>(function Scoreboard(_, re
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200/60 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-card">
       {/* Gradient header — matches game card style */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-widest text-white/80">
             Placar

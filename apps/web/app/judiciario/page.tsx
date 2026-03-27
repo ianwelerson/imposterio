@@ -61,34 +61,38 @@ export default function JudiciarioPage() {
     <>
       <TopBar title="Judiciário" defaultPeriod="30d" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do Judiciário"
-      >
-        <StatCard label="Tribunais monitorados" value="91" />
-        <StatCard label="Processos ativos (total)" value="79,8 mi" badge={{ text: "+3,2% vs ano anterior", variant: "red" }} />
-        <StatCard label="Magistrados" value="18.091" />
-        <StatCard label="Maior remuneração" value="R$ 46.366,19" badge={{ text: "Teto constitucional", variant: "amber" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do Judiciário"
+          >
+            <StatCard label="Tribunais monitorados" value="91" />
+            <StatCard label="Processos ativos (total)" value="79,8 mi" badge={{ text: "+3,2% vs ano anterior", variant: "red" }} />
+            <StatCard label="Magistrados" value="18.091" />
+            <StatCard label="Maior remuneração" value="R$ 46.366,19" badge={{ text: "Teto constitucional", variant: "amber" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <JudiciarioCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Tribunais — visão geral" action={{ label: "Ver magistrados", href: "/judiciario/magistrados" }} />
         <DataTable columns={courtColumns} data={MOCK_COURTS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Processos por área" />
         <div className="rounded-lg border border-gray-200/60 bg-white p-5">
           <RankingList items={CASE_TYPES} />
         </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

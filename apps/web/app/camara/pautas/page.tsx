@@ -184,21 +184,21 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
 
       {/* Hero header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href="/camara"
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à Câmara
               </Link>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Pauta Legislativa</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Pauta Legislativa</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
                 Proposições legislativas e votações em plenário da Câmara dos Deputados.
               </p>
             </div>
-            <div className="inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 backdrop-blur-sm">
               <span className="text-sm font-medium text-white/80">Ver dados de</span>
               <YearSelector years={availableYears} selected={selectedYear} />
             </div>
@@ -209,45 +209,45 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
       {/* Resumo geral */}
       <section className="mb-12">
         <SectionHeader title="Resumo geral" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Proposições"
-            value={String(totalPropositions)}
-            badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
-            tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
-          />
-          <StatCard label="Tipos distintos" value={String(byType.length)} />
-          <StatCard label="Votações realizadas" value={String(totalVotes)} />
-          <StatCard
-            label="Taxa de aprovação"
-            value={`${approvalRate}%`}
-            badge={totalVotes > 0 ? {
-              text: `${approvedVotes} de ${totalVotes}`,
-              variant: Number(approvalRate) >= 50 ? "green" : "amber",
-            } : undefined}
-          />
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Proposições"
+              value={String(totalPropositions)}
+              badge={{ text: "PL, PEC, PLP, MP, PDL", variant: "gray" }}
+              tooltip="Projeto de Lei, Proposta de Emenda à Constituição, Projeto de Lei Complementar, Medida Provisória, Projeto de Decreto Legislativo"
+            />
+            <StatCard label="Tipos distintos" value={String(byType.length)} />
+            <StatCard label="Votações realizadas" value={String(totalVotes)} />
+            <StatCard
+              label="Taxa de aprovação"
+              value={`${approvalRate}%`}
+              badge={totalVotes > 0 ? {
+                text: `${approvedVotes} de ${totalVotes}`,
+                variant: Number(approvalRate) >= 50 ? "green" : "amber",
+              } : undefined}
+            />
+          </div>
         </div>
       </section>
 
       {/* Proposições section */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Proposições"
+          description="Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições apresentadas na Câmara dos Deputados"
           action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
         />
         {failed.has("Proposições") ? (
           <DataFetchError label="as proposições" />
         ) : (
           <>
-            <p className="mb-4 text-sm text-gray-500">
-              Projetos de lei, emendas constitucionais, medidas provisórias e outras proposições
-              apresentadas na Câmara dos Deputados
-            </p>
-
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {byType.slice(0, 3).map((item) => (
-                <StatCard key={item.name} label={item.name} value={String(item.value)} />
-              ))}
+            <div className="mb-6 rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {byType.slice(0, 3).map((item) => (
+                  <StatCard key={item.name} label={item.name} value={String(item.value)} />
+                ))}
+              </div>
             </div>
 
             <PautasCharts
@@ -256,35 +256,35 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
               sourceUrl={propositions._source}
             />
 
-            <SectionHeader
-              title={`Últimas proposições (${selectedYear})`}
-              sourceUrl={propositions._source}
-              action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
-            />
-            <DataTable columns={propColumns} data={latest5} rowKey={(r) => r.id} />
+            <div className="mt-8">
+              <SectionHeader
+                title={`Últimas proposições (${selectedYear})`}
+                sourceUrl={propositions._source}
+                action={{ label: "Ver todas", href: `/camara/pautas/lista?ano=${selectedYear}` }}
+              />
+              <DataTable columns={propColumns} data={latest5} rowKey={(r) => r.id} />
+            </div>
           </>
         )}
       </section>
 
       {/* Votações section */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Votações"
+          description="Sessões de votação nominal em plenário — inclui resultado, votos individuais e orientações partidárias"
           action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
         />
         {failed.has("Votações") ? (
           <DataFetchError label="as votações" />
         ) : (
           <>
-            <p className="mb-4 text-sm text-gray-500">
-              Sessões de votação nominal em plenário — inclui resultado, votos individuais
-              e orientações partidárias
-            </p>
-
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatCard label="Votações aprovadas" value={String(approvedVotes)} badge={{ text: `${approvalRate}%`, variant: "green" }} />
-              <StatCard label="Votações rejeitadas" value={String(rejectedVotes)} />
-              <StatCard label="Total de votações" value={String(totalVotes)} />
+            <div className="mb-6 rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatCard label="Votações aprovadas" value={String(approvedVotes)} badge={{ text: `${approvalRate}%`, variant: "green" }} />
+                <StatCard label="Votações rejeitadas" value={String(rejectedVotes)} />
+                <StatCard label="Total de votações" value={String(totalVotes)} />
+              </div>
             </div>
 
             <PautasCharts
@@ -293,12 +293,14 @@ export default async function CamaraPautasPage({ searchParams }: PageProps) {
               sourceUrl={votingSessions._source}
             />
 
-            <SectionHeader
-              title={`Últimas votações (${selectedYear})`}
-              sourceUrl={votingSessions._source}
-              action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
-            />
-            <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+            <div className="mt-8">
+              <SectionHeader
+                title={`Últimas votações (${selectedYear})`}
+                sourceUrl={votingSessions._source}
+                action={{ label: "Ver todas", href: `/camara/pautas/votacoes?ano=${selectedYear}` }}
+              />
+              <DataTable columns={voteColumns} data={latestVotes} rowKey={(r) => r.id} />
+            </div>
           </>
         )}
       </section>

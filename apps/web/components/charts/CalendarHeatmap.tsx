@@ -215,7 +215,7 @@ export function CalendarHeatmap({
       {tooltip && (
         <div
           className={`pointer-events-none absolute z-10 -translate-x-1/2
-                     rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-md
+                     rounded-xl border border-gray-200/80 bg-white px-3 py-2 text-xs shadow-elevated
                      ${tooltip.below ? "translate-y-0" : "-translate-y-full"}`}
           style={{ left: tooltip.x, top: tooltip.y }}
         >

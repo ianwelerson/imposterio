@@ -99,14 +99,14 @@ export function DataTable<T>({
   renderExpanded,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-gray-200/80 bg-white shadow-card">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-gray-200/60 bg-gray-50/70">
+          <tr className="border-b border-gray-100 bg-gray-50/80">
             {columns.map((col, i) => (
               <th
                 key={i}
-                className={`px-3 py-3 text-xs font-semibold uppercase tracking-wider
+                className={`px-3 py-3 text-xs font-medium uppercase tracking-wider
                   text-gray-500 sm:px-4 ${alignClass[col.align ?? "left"]} ${col.className ?? ""}`}
               >
                 {col.header}
@@ -114,13 +114,13 @@ export function DataTable<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100/80">
           {data.map((row, rowIndex) => {
             const key = rowKey ? rowKey(row, rowIndex) : String(rowIndex)
             const isExpanded = expandedRowKey === key && renderExpanded
             return (
               <Fragment key={key}>
-                <tr className="transition-colors hover:bg-gray-50/50">
+                <tr className="transition-colors hover:bg-gray-50/60">
                   {columns.map((col, colIndex) => (
                     <td
                       key={colIndex}

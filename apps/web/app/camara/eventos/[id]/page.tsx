@@ -58,17 +58,17 @@ export default async function EventDetailPage({ params }: PageProps) {
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href="/camara"
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à Câmara
               </Link>
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{event.type}</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{event.type}</h1>
                 <Badge variant={statusVariant}>{event.status}</Badge>
               </div>
               <p className="max-w-xl text-sm leading-relaxed text-white/70">
@@ -85,7 +85,7 @@ export default async function EventDetailPage({ params }: PageProps) {
       </section>
 
       {event.organs.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Órgãos organizadores" />
           <div className="space-y-2">
             {event.organs.map((o) => (
@@ -104,9 +104,9 @@ export default async function EventDetailPage({ params }: PageProps) {
       )}
 
       {event.recordingUrl && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Gravação" />
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-card">
             <a
               href={event.recordingUrl}
               target="_blank"
@@ -120,17 +120,16 @@ export default async function EventDetailPage({ params }: PageProps) {
       )}
 
       {/* ── Lista de presença ──────────────────────────────────────── */}
-      <section className="mb-12">
-        <SectionHeader title="Lista de presença" sourceUrl={attendees._source} />
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <SectionHeader
+          title="Lista de presença"
+          description={attendees.length > 0 ? `${attendees.length} ${attendees.length === 1 ? "deputado presente" : "deputados presentes"}` : undefined}
+          sourceUrl={attendees._source}
+        />
         {failed.has("Lista de presença") ? (
           <DataFetchError label="a lista de presença" />
         ) : attendees.length > 0 ? (
-          <>
-            <p className="mb-4 text-sm text-gray-500">
-              {attendees.length} {attendees.length === 1 ? "deputado presente" : "deputados presentes"}
-            </p>
-            <AttendeesList attendees={attendees} sourceUrl={attendees._source} />
-          </>
+          <AttendeesList attendees={attendees} sourceUrl={attendees._source} />
         ) : (
           <p className="text-sm text-gray-500">
             Nenhum registro de presença disponível para este evento.

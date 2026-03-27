@@ -49,9 +49,9 @@ export function SourcePill({ url }: SourcePillProps) {
       rel="noopener noreferrer"
       aria-label="Verificar na fonte oficial"
       onClick={() => track("click_source_link", { url })}
-      className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full
-                 bg-indigo-50 text-indigo-600 border border-indigo-200
-                 hover:bg-indigo-100 font-mono transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md
+                 bg-accent/[0.06] text-accent/80
+                 hover:bg-accent/10 font-mono transition-colors whitespace-nowrap"
     >
       ↗ fonte
     </a>

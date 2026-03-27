@@ -63,16 +63,16 @@ export default async function CamaraLicitacoesListaPage({ searchParams }: PagePr
       {errors.length > 0 && <ToastTrigger errors={errors} />}
 
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href={`/camara/licitacoes?ano=${selectedYear}`}
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar às Licitações
               </Link>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Listagem de Licitações</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Listagem de Licitações</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
                 {summary.totalProcurements} processos licitatórios em {selectedYear}
               </p>

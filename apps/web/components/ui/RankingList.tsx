@@ -51,7 +51,7 @@ export function RankingList({ items }: RankingListProps) {
       {items.map((item, index) => (
         <li key={item.id} className="flex items-center gap-3">
           {/* Rank number */}
-          <span className="w-6 shrink-0 text-center text-sm font-semibold text-gray-400">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-semibold text-gray-500">
             {index + 1}
           </span>
 
@@ -68,14 +68,14 @@ export function RankingList({ items }: RankingListProps) {
                   </p>
                 )}
               </div>
-              <span className="shrink-0 text-sm font-semibold text-gray-700">
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-700">
                 {item.percentage}%
               </span>
             </div>
 
             {/* Progress bar */}
             <div
-              className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-gray-100"
+              className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100"
               role="progressbar"
               aria-valuenow={item.percentage}
               aria-valuemin={0}
@@ -83,7 +83,7 @@ export function RankingList({ items }: RankingListProps) {
               aria-label={`${item.name}: ${item.percentage}% de reprovação`}
             >
               <div
-                className="h-full rounded-full bg-accent transition-all"
+                className="h-full rounded-full bg-accent/80 transition-all"
                 style={{ width: `${item.percentage}%` }}
               />
             </div>

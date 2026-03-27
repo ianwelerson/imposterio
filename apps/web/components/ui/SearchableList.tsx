@@ -135,28 +135,35 @@ export function SearchableList<T>({
       {/* Search bar + filters row */}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="min-w-[180px] flex-1 sm:max-w-xs">
-          <label className="mb-1 block text-xs font-medium text-gray-500">Buscar</label>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder={placeholder}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2
-                       text-sm text-gray-900 placeholder-gray-400
-                       focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            aria-label="Buscar na lista"
-          />
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Buscar</label>
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder={placeholder}
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3
+                         text-sm text-gray-900 shadow-xs placeholder-gray-400
+                         transition-shadow
+                         focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/10"
+              aria-label="Buscar na lista"
+            />
+          </div>
         </div>
 
         {filters.map((f) => (
           <div key={f.label} className="min-w-[140px] sm:w-auto">
-            <label className="mb-1 block text-xs font-medium text-gray-500">{f.label}</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{f.label}</label>
             <select
               value={activeFilters[f.label] ?? ""}
               onChange={(e) => handleFilter(f.label, e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2
-                         text-sm text-gray-900
-                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                         text-sm text-gray-900 shadow-xs
+                         transition-shadow
+                         focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/10"
             >
               <option value="">{f.allLabel ?? "Todos"}</option>
               {filterOptions[f.label]?.map((opt) => (
@@ -182,7 +189,7 @@ export function SearchableList<T>({
       {filtered.length > 0 ? (
         children(paged)
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-gray-200/80 bg-white p-8 text-center text-sm text-gray-500 shadow-card">
           Nenhum resultado encontrado.
         </div>
       )}
@@ -190,14 +197,15 @@ export function SearchableList<T>({
       {/* Pagination */}
       {totalPages > 1 && (
         <nav
-          className="mt-4 flex items-center justify-between"
+          className="mt-5 flex items-center justify-between"
           aria-label="Paginação"
         >
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm
-                       text-gray-600 transition-colors hover:bg-gray-50
+            className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm
+                       font-medium text-gray-600 shadow-xs transition-all hover:bg-gray-50
+                       active:bg-gray-100
                        disabled:cursor-not-allowed disabled:opacity-40"
           >
             ← Anterior
@@ -210,8 +218,9 @@ export function SearchableList<T>({
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={safePage >= totalPages}
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm
-                       text-gray-600 transition-colors hover:bg-gray-50
+            className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm
+                       font-medium text-gray-600 shadow-xs transition-all hover:bg-gray-50
+                       active:bg-gray-100
                        disabled:cursor-not-allowed disabled:opacity-40"
           >
             Próxima →

@@ -45,12 +45,12 @@ export function YearSelector({ years, selected, inline = false }: YearSelectorPr
 
   const selectClasses = inline
     ? `w-full rounded-lg border border-gray-200 bg-white px-3 py-2
-       text-sm text-gray-900
-       focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent
+       text-sm text-gray-900 shadow-xs
+       focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/10
        disabled:cursor-wait disabled:opacity-60`
-    : `rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm
-       font-medium text-gray-700 shadow-sm hover:border-gray-400
-       focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500
+    : `rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm
+       font-medium text-gray-700 shadow-xs hover:border-gray-300
+       focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/10
        disabled:cursor-wait disabled:opacity-60`
 
   return (

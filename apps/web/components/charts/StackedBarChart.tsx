@@ -44,13 +44,15 @@ export function StackedBarChart({
         layout="vertical"
         margin={{ top: 4, right: 12, bottom: 4, left: 8 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 12, fill: "#9ca3af" }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
         <YAxis
           type="category"
           dataKey={categoryKey}
-          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tick={{ fontSize: 11, fill: "#64748b" }}
           width={140}
+          axisLine={false}
+          tickLine={false}
           tickFormatter={(val: string) =>
             val.length > 20 ? `${val.slice(0, 18)}...` : val
           }
@@ -62,21 +64,21 @@ export function StackedBarChart({
               <div
                 style={{
                   background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
                   padding: "8px 12px",
                   maxWidth: 320,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.06)",
                 }}
               >
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#111827", lineHeight: 1.4, wordWrap: "break-word", overflowWrap: "break-word" }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a", lineHeight: 1.4, wordWrap: "break-word", overflowWrap: "break-word" }}>
                   {label}
                 </p>
                 {payload
                   .filter((p) => Number(p.value) > 0)
                   .sort((a, b) => Number(b.value) - Number(a.value))
                   .map((p) => (
-                  <p key={p.dataKey as string} style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563", lineHeight: 1.4, wordWrap: "break-word", overflowWrap: "break-word" }}>
+                  <p key={p.dataKey as string} style={{ margin: "4px 0 0", fontSize: 12, color: "#475569", lineHeight: 1.4, wordWrap: "break-word", overflowWrap: "break-word" }}>
                     <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: p.color, marginRight: 6, verticalAlign: "middle" }} />
                     {p.name}: {formatValue ? formatValue(Number(p.value)) : Number(p.value).toLocaleString("pt-BR")}
                   </p>
@@ -88,7 +90,7 @@ export function StackedBarChart({
         <Legend
           iconType="circle"
           iconSize={8}
-          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+          wrapperStyle={{ fontSize: 11, paddingTop: 8, color: "#64748b" }}
         />
         {series.map((s) => (
           <Bar

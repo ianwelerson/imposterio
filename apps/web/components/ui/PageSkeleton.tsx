@@ -15,7 +15,7 @@
 function Bone({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-md bg-gray-200/70 ${className}`}
+      className={`animate-pulse rounded-lg bg-gray-200/60 ${className}`}
       aria-hidden="true"
     />
   )
@@ -24,7 +24,7 @@ function Bone({ className = "" }: { className?: string }) {
 /** Skeleton stat card matching the StatCard component dimensions. */
 function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200/60 bg-white p-5">
+    <div className="rounded-xl border border-gray-200/60 bg-white p-5 shadow-card">
       <Bone className="mb-3 h-3 w-24" />
       <Bone className="mb-2 h-7 w-20" />
       <Bone className="h-3 w-16" />
@@ -35,7 +35,7 @@ function StatCardSkeleton() {
 /** Skeleton table row matching DataTable row dimensions. */
 function TableRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 border-b border-gray-100 px-4 py-3.5">
+    <div className="flex items-center gap-4 border-b border-gray-100/80 px-4 py-3.5">
       <Bone className="h-9 w-9 shrink-0 rounded-full" />
       <div className="flex-1 space-y-2">
         <Bone className="h-3.5 w-48" />
@@ -49,7 +49,7 @@ function TableRowSkeleton() {
 /** Skeleton chart card matching ChartCard dimensions. */
 function ChartSkeleton({ wide = false }: { wide?: boolean }) {
   return (
-    <div className={`rounded-xl border border-gray-200/60 bg-white p-5 ${wide ? "lg:col-span-2" : ""}`}>
+    <div className={`rounded-xl border border-gray-200/60 bg-white p-5 shadow-card ${wide ? "lg:col-span-2" : ""}`}>
       <Bone className="mb-4 h-4 w-36" />
       <Bone className="h-48 w-full rounded-lg" />
     </div>
@@ -61,7 +61,7 @@ function OverviewSkeleton() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-10">
+      <div className="mb-12">
         <Bone className="mb-3 h-8 w-64" />
         <Bone className="h-4 w-96 max-w-full" />
       </div>
@@ -103,7 +103,7 @@ function ListingSkeleton() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200/60 bg-white">
+      <div className="rounded-xl border border-gray-200/60 bg-white shadow-card">
         {Array.from({ length: 8 }).map((_, i) => (
           <TableRowSkeleton key={i} />
         ))}
@@ -117,19 +117,19 @@ function DetailSkeleton() {
   return (
     <div>
       {/* Profile header */}
-      <div className="mb-10 flex items-center gap-5">
-        <Bone className="h-20 w-20 shrink-0 rounded-full" />
+      <div className="mb-10 flex items-center gap-5 rounded-xl border border-gray-200/60 bg-white p-5 shadow-card">
+        <Bone className="h-[72px] w-[72px] shrink-0 rounded-full" />
         <div className="space-y-2.5">
           <Bone className="h-7 w-52" />
           <div className="flex gap-2">
-            <Bone className="h-5 w-16 rounded-full" />
-            <Bone className="h-5 w-20 rounded-full" />
+            <Bone className="h-5 w-16 rounded-md" />
+            <Bone className="h-5 w-20 rounded-md" />
           </div>
         </div>
       </div>
 
       {/* Info panel */}
-      <div className="mb-8 rounded-xl border border-gray-200/60 bg-white p-5">
+      <div className="mb-8 rounded-xl border border-gray-200/60 bg-white p-5 shadow-card">
         <Bone className="mb-4 h-4 w-32" />
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (

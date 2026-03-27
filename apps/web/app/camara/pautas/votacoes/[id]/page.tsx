@@ -121,17 +121,17 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href={`/camara/pautas/votacoes?ano=${selectedYear}`}
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à lista
               </Link>
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Votação {id}</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Votação {id}</h1>
                 {session.approved === true && <Badge variant="green">Aprovada</Badge>}
                 {session.approved === false && <Badge variant="red">Rejeitada</Badge>}
                 {session.approved === null && <Badge variant="gray">Indefinida</Badge>}
@@ -160,36 +160,38 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
       {/* Vote stats */}
       {totalVotes > 0 && (
         <section className="mb-12">
-          <SectionHeader title="Resultado" />
-          <p className="mb-4 text-sm text-gray-500">
-            {totalVotes} votos registrados nesta sessão
-          </p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard
-              label="Sim"
-              value={String(yesCt)}
-              badge={{ text: `${approvalRate}%`, variant: "green" }}
-            />
-            <StatCard label="Não" value={String(noCt)} />
-            <StatCard label="Abstenção" value={String(abstCt)} />
-            {obstructionCt > 0 && (
-              <StatCard label="Obstrução" value={String(obstructionCt)} />
-            )}
+          <SectionHeader
+            title="Resultado"
+            description={`${totalVotes} votos registrados nesta sessão`}
+          />
+          <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatCard
+                label="Sim"
+                value={String(yesCt)}
+                badge={{ text: `${approvalRate}%`, variant: "green" }}
+              />
+              <StatCard label="Não" value={String(noCt)} />
+              <StatCard label="Abstenção" value={String(abstCt)} />
+              {obstructionCt > 0 && (
+                <StatCard label="Obstrução" value={String(obstructionCt)} />
+              )}
+            </div>
           </div>
         </section>
       )}
 
       {/* Info panel */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Informações" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Affected propositions */}
       {session.propositions.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Proposições afetadas" />
-          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+          <div className="rounded-xl border border-gray-200/80 bg-white shadow-card divide-y divide-gray-100">
             {session.propositions.map((p) => (
               <div key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
@@ -215,9 +217,9 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Voting objects (propositions that could be the object of this vote) */}
       {session.votingObjects.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Objeto da votação" />
-          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+          <div className="rounded-xl border border-gray-200/80 bg-white shadow-card divide-y divide-gray-100">
             {session.votingObjects.map((p) => (
               <div key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
@@ -243,12 +245,12 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Party orientations */}
       {failed.has("Orientações partidárias") ? (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Orientações partidárias" />
           <DataFetchError label="as orientações partidárias" />
         </section>
       ) : validOrientations.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Orientações partidárias" sourceUrl={orientations._source} />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {validOrientations.map((o) => (
@@ -266,12 +268,12 @@ export default async function VotingSessionDetailPage({ params, searchParams }: 
 
       {/* Individual votes */}
       {failed.has("Votos individuais") ? (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Votos individuais" />
           <DataFetchError label="os votos individuais" />
         </section>
       ) : totalVotes > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Votos individuais" sourceUrl={votes._source} />
           <VotesList votes={votes} />
         </section>

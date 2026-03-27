@@ -117,17 +117,21 @@ export default function PartyDetailPage() {
         sourceUrl="https://dadosabertos.camara.leg.br/api/v2/partidos/36898"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do partido"
-      >
-        <StatCard label="Bancada (Congresso)" value="99" badge={{ text: "Maior bancada", variant: "green" }} />
-        <StatCard label="Fundo recebido (2025)" value="R$ 89,4 mi" badge={{ text: "+8,9% vs 2024", variant: "red" }} />
-        <StatCard label="Eleitos (última eleição)" value="2.214" />
-        <StatCard label="Filiados" value="1.842.350" />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do partido"
+          >
+            <StatCard label="Bancada (Congresso)" value="99" badge={{ text: "Maior bancada", variant: "green" }} />
+            <StatCard label="Fundo recebido (2025)" value="R$ 89,4 mi" badge={{ text: "+8,9% vs 2024", variant: "red" }} />
+            <StatCard label="Eleitos (última eleição)" value="2.214" />
+            <StatCard label="Filiados" value="1.842.350" />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Dados do partido" />
         <InfoPanel fields={[
           { label: "Nome completo", value: "Partido Liberal" },
@@ -142,22 +146,22 @@ export default function PartyDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title={`Deputados federais (${MOCK_DEPUTIES.length} de 92)`} />
         <DataTable columns={memberColumns} data={MOCK_DEPUTIES} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title={`Senadores (${MOCK_SENATORS.length} de 7)`} />
         <DataTable columns={memberColumns} data={MOCK_SENATORS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Histórico de fundos públicos recebidos" />
         <DataTable columns={fundColumns} data={MOCK_FUND_HISTORY} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Resultados eleitorais (última eleição geral)" />
         <DataTable columns={electionColumns} data={MOCK_ELECTION_RESULTS} rowKey={(r) => r.id} />
       </section>

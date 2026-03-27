@@ -122,7 +122,7 @@ function FilledSlot({
   loading: boolean
 }) {
   return (
-    <div className={`relative flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 ${SLOT_HEIGHT}`}>
+    <div className={`relative flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white px-4 shadow-card ${SLOT_HEIGHT}`}>
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
@@ -230,7 +230,7 @@ function EmptySlot({
       </div>
 
       {isOpen && !loading && filtered.length > 0 && (
-        <ul className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
+        <ul className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200/80 bg-white shadow-elevated max-h-64 overflow-y-auto">
           {filtered.map((d) => (
             <li key={d.id}>
               <button

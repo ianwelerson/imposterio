@@ -89,17 +89,17 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
     <>
       {/* Header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href={`/camara/${id}/despesas?ano=${selectedYear}`}
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar para despesas
               </Link>
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                   {toSentenceCase(expense.type)}
                 </h1>
                 <Badge variant="gray">CEAP</Badge>
@@ -124,38 +124,40 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
 
       {/* Values */}
       <section className="mb-12">
-        <SectionHeader title="Valores" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Valor bruto" value={formatCurrency(expense.grossValue)} />
-          <StatCard
-            label="Valor líquido"
-            value={formatCurrency(expense.value)}
-            badge={{ text: "reembolso", variant: "red" }}
-          />
-          <StatCard label="Valor glosado" value={formatCurrency(expense.deductedValue)} />
+        <SectionHeader
+          title="Valores"
+          description="O valor glosado é a parcela rejeitada pela Câmara durante a prestação de contas — não é reembolsada ao deputado."
+        />
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Valor bruto" value={formatCurrency(expense.grossValue)} />
+            <StatCard
+              label="Valor líquido"
+              value={formatCurrency(expense.value)}
+              badge={{ text: "reembolso", variant: "red" }}
+            />
+            <StatCard label="Valor glosado" value={formatCurrency(expense.deductedValue)} />
+          </div>
         </div>
-        <p className="mt-3 text-xs text-gray-500">
-          O valor glosado é a parcela rejeitada pela Câmara durante a prestação de contas — não é reembolsada ao deputado.
-        </p>
       </section>
 
       {/* General info */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Informações da despesa" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Internal reference */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Referência interna" />
         <InfoPanel fields={internalFields} />
       </section>
 
       {/* Receipt document — last section for maximum visibility */}
       {expense.documentUrl && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader title="Nota fiscal / Comprovante" />
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-card">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-4">
               <a
                 href={expense.documentUrl}

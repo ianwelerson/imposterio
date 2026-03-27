@@ -18,7 +18,7 @@ export function GitHubLink({ href }: GitHubLinkProps) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => track("click_github")}
-      className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
+      className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-medium text-white shadow-xs hover:bg-gray-800 transition-colors"
     >
       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path

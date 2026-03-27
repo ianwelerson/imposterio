@@ -70,34 +70,38 @@ export default function SenadoPage() {
     <>
       <TopBar title="Senado Federal" defaultPeriod="30d" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do Senado"
-      >
-        <StatCard label="Senadores em exercício" value="81" />
-        <StatCard label="Matérias em tramitação" value="342" badge={{ text: "+18 novas", variant: "amber" }} />
-        <StatCard label="Sessões de votação" value="64" />
-        <StatCard label="Presença média" value="89,4%" badge={{ text: "+3,2 p.p.", variant: "green" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do Senado"
+          >
+            <StatCard label="Senadores em exercício" value="81" />
+            <StatCard label="Matérias em tramitação" value="342" badge={{ text: "+18 novas", variant: "amber" }} />
+            <StatCard label="Sessões de votação" value="64" />
+            <StatCard label="Presença média" value="89,4%" badge={{ text: "+3,2 p.p.", variant: "green" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <SenadoCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Senadores — atividade legislativa" action={{ label: "Ver todos", href: "/senado/senadores" }} />
         <DataTable columns={columns} data={MOCK_SENATORS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Distribuição por tipo de matéria" />
         <div className="rounded-lg border border-gray-200/60 bg-white p-5">
           <RankingList items={BILL_TYPES} />
         </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

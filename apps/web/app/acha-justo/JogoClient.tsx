@@ -24,23 +24,23 @@ export function JogoClient() {
   return (
     <>
       {/* Hero header */}
-      <header className="mb-10">
-        <div className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-8 text-white sm:px-8 sm:py-10">
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 px-6 py-10 text-white sm:px-10 sm:py-14">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Acha Justo?
           </h1>
-          <p className="mt-2 max-w-lg text-sm text-indigo-100 sm:text-base">
+          <p className="mt-2 max-w-lg text-sm text-indigo-100/90 sm:text-base">
             Veja um dado real sobre um agente público e vote: você acha justo?
             Depois descubra de quem se trata. Todos os dados são oficiais.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="rounded-full bg-white/[0.12] px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
               Dados reais
             </span>
-            <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+            <span className="rounded-full bg-white/[0.12] px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
               100% verificável
             </span>
-            <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+            <span className="rounded-full bg-white/[0.12] px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
               Anônimo
             </span>
           </div>
@@ -48,7 +48,7 @@ export function JogoClient() {
       </header>
 
       {/* Two-column: game card + scoreboard */}
-      <section className="mb-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
+      <section className="mb-12 grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <JogoGameCard onVoted={() => scoreboardRef.current?.refresh()} />
         </div>

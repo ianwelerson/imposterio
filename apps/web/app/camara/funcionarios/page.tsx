@@ -122,16 +122,16 @@ export default async function CamaraFuncionariosPage() {
 
       {/* Hero header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href="/camara"
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à Câmara
               </Link>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Funcionários da Câmara
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
@@ -154,16 +154,18 @@ export default async function CamaraFuncionariosPage() {
           {/* Summary stats */}
           <section className="mb-12">
             <SectionHeader title="Resumo geral" sourceUrl={staff._source} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total de funcionários" value={totalStaff.toLocaleString("pt-BR")} tooltip="Total de pessoas registradas no quadro funcional da Câmara, incluindo servidores efetivos, secretários parlamentares, cargos especiais e os próprios parlamentares." />
-              {topGroups.map((g) => (
-                <StatCard key={g.name} label={g.name} value={g.count.toLocaleString("pt-BR")} tooltip={groupTooltip(g.name)} />
-              ))}
+            <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard label="Total de funcionários" value={totalStaff.toLocaleString("pt-BR")} tooltip="Total de pessoas registradas no quadro funcional da Câmara, incluindo servidores efetivos, secretários parlamentares, cargos especiais e os próprios parlamentares." />
+                {topGroups.map((g) => (
+                  <StatCard key={g.name} label={g.name} value={g.count.toLocaleString("pt-BR")} tooltip={groupTooltip(g.name)} />
+                ))}
+              </div>
             </div>
           </section>
 
           {/* Charts */}
-          <section className="mb-12">
+          <section className="mb-12 border-t border-gray-200/60 pt-10">
             <SectionHeader title="Distribuição" sourceUrl={staff._source} />
             <StaffCharts
               byGroup={byGroup}
@@ -175,7 +177,7 @@ export default async function CamaraFuncionariosPage() {
           </section>
 
           {/* Latest records table */}
-          <section className="mb-12">
+          <section className="mb-12 border-t border-gray-200/60 pt-10">
             <SectionHeader
               title="Últimos registros"
               sourceUrl={staff._source}

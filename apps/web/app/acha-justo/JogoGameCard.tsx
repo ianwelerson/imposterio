@@ -105,7 +105,7 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
   // Loading
   if (state === "loading") {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-lg border border-gray-200/60 bg-white">
+      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-gray-200/80 bg-white shadow-card">
         <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-indigo-600" />
       </div>
     )
@@ -114,7 +114,7 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
   // Empty
   if (state === "empty") {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-gray-200/60 bg-white p-8 text-center">
+      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-gray-200/80 bg-white shadow-card p-8 text-center">
         <div className="mb-4 text-4xl">🎉</div>
         <p className="text-lg font-bold text-gray-900">Você votou em todos os cards!</p>
         <p className="mt-2 text-sm text-gray-500">Volte mais tarde para novos cards.</p>
@@ -125,11 +125,11 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
   // Error
   if (state === "error") {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-red-100 bg-red-50/50 p-8 text-center">
+      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-red-200/80 bg-red-50/50 shadow-card p-8 text-center">
         <p className="text-sm font-medium text-red-600">{error}</p>
         <button
           onClick={fetchCard}
-          className="mt-4 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+          className="mt-4 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
         >
           Tentar novamente
         </button>
@@ -146,7 +146,7 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
     const unfairPercent = 100 - fairPercent
 
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200/60 bg-white">
+      <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-card">
         {/* Reveal header — colored based on majority vote */}
         <div
           className={`px-6 py-4 ${
@@ -177,7 +177,7 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
               <img
                 src={reveal.photoUrl}
                 alt={reveal.name}
-                className="h-16 w-16 rounded-full border-2 border-gray-100 object-cover"
+                className="h-16 w-16 rounded-full ring-2 ring-gray-100 object-cover"
                 onError={(e) => {
                   ;(e.target as HTMLImageElement).style.display = "none"
                 }}
@@ -234,7 +234,7 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
             {reveal.sourceUrl && <SourcePill url={reveal.sourceUrl} />}
             <button
               onClick={fetchCard}
-              className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+              className="rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
             >
               Próximo card →
             </button>
@@ -247,9 +247,9 @@ export function JogoGameCard({ onVoted }: JogoGameCardProps) {
   // Question
   if (card) {
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200/60 bg-white">
+      <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-card">
         {/* Header gradient */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-widest text-white/80">
               Acha Justo?

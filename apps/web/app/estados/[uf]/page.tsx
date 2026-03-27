@@ -113,17 +113,21 @@ export default function StateDetailPage() {
         sourceUrl="https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rreo?an_exercicio=2025&id_ente=35"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do estado"
-      >
-        <StatCard label="Receita tributária" value="R$ 254,3 bi" badge={{ text: "+6,8% vs 2024", variant: "green" }} />
-        <StatCard label="População" value="46,6 mi" badge={{ text: "Maior do país", variant: "amber" }} />
-        <StatCard label="PIB estadual" value="R$ 2,7 tri" badge={{ text: "31% do PIB nacional", variant: "amber" }} />
-        <StatCard label="Dívida / RCL" value="148%" badge={{ text: "CAPAG B", variant: "amber" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do estado"
+          >
+            <StatCard label="Receita tributária" value="R$ 254,3 bi" badge={{ text: "+6,8% vs 2024", variant: "green" }} />
+            <StatCard label="População" value="46,6 mi" badge={{ text: "Maior do país", variant: "amber" }} />
+            <StatCard label="PIB estadual" value="R$ 2,7 tri" badge={{ text: "31% do PIB nacional", variant: "amber" }} />
+            <StatCard label="Dívida / RCL" value="148%" badge={{ text: "CAPAG B", variant: "amber" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Governador e dados gerais" />
         <InfoPanel fields={[
           { label: "Governador", value: "Tarcísio Gomes de Freitas" },
@@ -138,22 +142,22 @@ export default function StateDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Arrecadação tributária — composição" />
         <DataTable columns={taxColumns} data={MOCK_TAX_BREAKDOWN} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Execução orçamentária por categoria" />
         <DataTable columns={budgetColumns} data={MOCK_BUDGET} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Transferências da União recebidas" />
         <DataTable columns={transferColumns} data={MOCK_TRANSFERS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Indicadores fiscais" />
         <InfoPanel fields={[
           { label: "Receita Corrente Líquida (RCL)", value: "R$ 171,8 bi" },

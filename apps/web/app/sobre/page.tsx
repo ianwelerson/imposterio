@@ -248,7 +248,7 @@ export default function AboutPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <header className="relative mb-12 overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-12 sm:px-10 sm:py-16">
+      <header className="relative mb-12 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-12 sm:px-10 sm:py-16">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative max-w-2xl">
           <div className="mb-4 flex items-center gap-2">
@@ -282,7 +282,7 @@ export default function AboutPage() {
 
       {/* ── Principles ───────────────────────────────────────────────── */}
       <section className="mb-12">
-        <h2 className="mb-6 text-lg font-semibold text-gray-900">Princípios</h2>
+        <h2 className="mb-6 text-lg font-semibold tracking-tight text-gray-900">Princípios</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <PrincipleCard
             icon={<VerifyIcon />}
@@ -303,8 +303,8 @@ export default function AboutPage() {
       </section>
 
       {/* ── Data sources ─────────────────────────────────────────────── */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Fontes de dados</h2>
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Fontes de dados</h2>
         <p className="mb-4 text-sm text-gray-600">
           Todos os dados exibidos no Imposterio vêm diretamente de APIs oficiais do governo
           brasileiro. Ao lado de cada dado no site, o botão{" "}
@@ -315,10 +315,10 @@ export default function AboutPage() {
         </p>
 
         {/* Card-based layout on mobile, table on sm+ */}
-        <div className="hidden sm:block overflow-hidden rounded-xl border border-gray-200">
+        <div className="hidden sm:block overflow-hidden rounded-xl border border-gray-200/80 shadow-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50">
+              <tr className="bg-gray-50/80">
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Fonte</th>
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Dados</th>
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Auth</th>
@@ -347,7 +347,7 @@ export default function AboutPage() {
                       href={api.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-500 transition-colors"
+                      className="text-accent hover:text-accent-hover transition-colors"
                     >
                       ↗
                     </a>
@@ -361,7 +361,7 @@ export default function AboutPage() {
         {/* Mobile: stacked cards */}
         <div className="space-y-3 sm:hidden">
           {API_SOURCES.map((api) => (
-            <div key={api.name} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div key={api.name} className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-gray-900">{api.name}</span>
@@ -375,7 +375,7 @@ export default function AboutPage() {
                   href={api.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                  className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
                 >
                   Docs ↗
                 </a>
@@ -391,9 +391,9 @@ export default function AboutPage() {
       </section>
 
       {/* ── Bulk data processing ─────────────────────────────────────── */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Processamento de dados em lote</h2>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Processamento de dados em lote</h2>
+        <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-6">
           <p className="text-sm leading-relaxed text-gray-700">
             Algumas fontes de dados do governo não oferecem APIs REST para consulta individual —
             os dados são disponibilizados apenas como <strong>arquivos em lote</strong> (CSV, JSON
@@ -427,7 +427,7 @@ export default function AboutPage() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="font-medium text-accent hover:text-accent-hover transition-colors"
             >
               repositório do GitHub ↗
             </a>
@@ -436,9 +436,9 @@ export default function AboutPage() {
       </section>
 
       {/* ── Cache methodology ────────────────────────────────────────── */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Metodologia de cache</h2>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Metodologia de cache</h2>
+        <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-6">
           <h3 className="text-sm font-semibold text-gray-900">O que é cache?</h3>
           <p className="mt-2 text-sm leading-relaxed text-gray-700">
             Cache é um armazenamento temporário que guarda uma cópia dos dados já consultados.
@@ -478,7 +478,7 @@ export default function AboutPage() {
               href={`${GITHUB_URL}/tree/main/packages/fetchers/lib/cache.ts`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="font-mono text-xs text-accent hover:text-accent-hover transition-colors"
             >
               cache.ts
             </a>{" "}
@@ -487,7 +487,7 @@ export default function AboutPage() {
               href={`${GITHUB_URL}/tree/main/packages/fetchers/lib/ttl.ts`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="font-mono text-xs text-accent hover:text-accent-hover transition-colors"
             >
               ttl.ts
             </a>
@@ -497,7 +497,7 @@ export default function AboutPage() {
         {/* TTL tables */}
         <div className="mt-6 space-y-4">
           {CACHE_GROUPS.map((group) => (
-            <details key={group.title} className="group rounded-xl border border-gray-200 bg-white">
+            <details key={group.title} className="group rounded-xl border border-gray-200/80 bg-white shadow-card">
               <summary className="flex cursor-pointer items-center justify-between px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors">
                 {group.title}
                 <svg
@@ -528,9 +528,9 @@ export default function AboutPage() {
       </section>
 
       {/* ── Open source ──────────────────────────────────────────────── */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Código aberto</h2>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Código aberto</h2>
+        <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-6">
           <p className="text-sm leading-relaxed text-gray-700">
             O Imposterio é um projeto de <strong>código aberto</strong>. Todo o código-fonte
             — desde as funções que buscam dados nas APIs oficiais até os componentes que
@@ -550,8 +550,8 @@ export default function AboutPage() {
       </section>
 
       {/* ── Infrastructure ───────────────────────────────────────────── */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Infraestrutura</h2>
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Infraestrutura</h2>
         <p className="mb-4 text-sm text-gray-600">
           Serviços que mantêm a plataforma funcionando. Escolhidos por serem serverless
           (sem servidor fixo), com planos gratuitos generosos e compatíveis com a
@@ -561,7 +561,7 @@ export default function AboutPage() {
           {INFRA_STACK.map((item) => (
             <div
               key={item.name}
-              className="flex flex-col rounded-xl border border-gray-200 bg-white p-5"
+              className="flex flex-col rounded-xl border border-gray-200/80 bg-white p-5 shadow-card"
             >
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-900">{item.name}</h3>
@@ -574,7 +574,7 @@ export default function AboutPage() {
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                className="mt-3 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
               >
                 {item.url.replace("https://", "")} ↗
               </a>
@@ -598,7 +598,7 @@ function PrincipleCard({
   description: string
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-card">
       <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
         {icon}
       </div>

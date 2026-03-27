@@ -232,17 +232,17 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
     <>
       {/* Header */}
       <header className="mb-12">
-        <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 px-6 py-10 text-white sm:px-10 sm:py-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link
                 href={`/camara/licitacoes/lista?ano=${selectedYear}`}
-                className="mb-3 inline-block text-sm font-medium text-white/60 hover:text-white/90 transition-colors"
+                className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
               >
                 ← Voltar à lista
               </Link>
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                   {procurement.modality} #{procurement.number}/{procurement.year}
                 </h1>
                 <Badge variant="gray">{procurement.modality}</Badge>
@@ -262,49 +262,51 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
       {/* StatCards */}
       <section className="mb-12">
         <SectionHeader title="Resumo financeiro" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatCard
-            label="Valor estimado"
-            value={formatCurrency(procurement.estimatedValue)}
-          />
-          <StatCard
-            label="Valor contratado"
-            value={formatCurrency(procurement.contractedValue)}
-          />
-          <StatCard
-            label="Valor pago"
-            value={formatCurrency(procurement.paidValue)}
-          />
-          <StatCard
-            label="Economia"
-            value={`${savingsRate}%`}
-            badge={savingsPositive
-              ? { text: "economia", variant: "green" as const }
-              : Number(savingsRate) < 0
-                ? { text: "acima do estimado", variant: "red" as const }
-                : undefined
-            }
-          />
-          <StatCard
-            label="Propostas recebidas"
-            value={String(procurement.proposalCount)}
-          />
-          <StatCard
-            label="Itens licitados"
-            value={String(procurement.itemCount)}
-          />
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <StatCard
+              label="Valor estimado"
+              value={formatCurrency(procurement.estimatedValue)}
+            />
+            <StatCard
+              label="Valor contratado"
+              value={formatCurrency(procurement.contractedValue)}
+            />
+            <StatCard
+              label="Valor pago"
+              value={formatCurrency(procurement.paidValue)}
+            />
+            <StatCard
+              label="Economia"
+              value={`${savingsRate}%`}
+              badge={savingsPositive
+                ? { text: "economia", variant: "green" as const }
+                : Number(savingsRate) < 0
+                  ? { text: "acima do estimado", variant: "red" as const }
+                  : undefined
+              }
+            />
+            <StatCard
+              label="Propostas recebidas"
+              value={String(procurement.proposalCount)}
+            />
+            <StatCard
+              label="Itens licitados"
+              value={String(procurement.itemCount)}
+            />
+          </div>
         </div>
       </section>
 
       {/* Info panel */}
-      <section className="mb-12">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Informações gerais" />
         <InfoPanel fields={infoFields} />
       </section>
 
       {/* Contracts */}
       {contracts.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader
             title="Contratos"
             sourceUrl={detail._source}
@@ -319,7 +321,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
       {/* Items */}
       {items.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader
             title="Itens"
             sourceUrl={detail._source}
@@ -334,7 +336,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
       {/* Requests */}
       {requests.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
           <SectionHeader
             title="Pedidos"
             sourceUrl={detail._source}

@@ -80,32 +80,36 @@ export default function EmpresasPage() {
     <>
       <TopBar title="Empresas" defaultPeriod="30d" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores de empresas"
-      >
-        <StatCard label="Empresas fornecedoras" value="3.847" badge={{ text: "+142 novas", variant: "green" }} />
-        <StatCard label="Total repassado" value="R$ 2,1 bi" />
-        <StatCard label="Empresas inidôneas (CEIS)" value="8.432" badge={{ text: "Lista federal", variant: "red" }} />
-        <StatCard label="Empresas punidas (CNEP)" value="3.215" />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores de empresas"
+          >
+            <StatCard label="Empresas fornecedoras" value="3.847" badge={{ text: "+142 novas", variant: "green" }} />
+            <StatCard label="Total repassado" value="R$ 2,1 bi" />
+            <StatCard label="Empresas inidôneas (CEIS)" value="8.432" badge={{ text: "Lista federal", variant: "red" }} />
+            <StatCard label="Empresas punidas (CNEP)" value="3.215" />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <EmpresasCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Maiores fornecedores do governo" />
         <DataTable columns={companyColumns} data={MOCK_COMPANIES} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Empresas sancionadas (CEIS)" />
         <DataTable columns={blacklistColumns} data={MOCK_BLACKLIST} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

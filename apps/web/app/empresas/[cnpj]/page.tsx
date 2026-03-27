@@ -77,17 +77,21 @@ export default function CompanyDetailPage() {
         sourceUrl="https://open.cnpja.com/office/12345678000190"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores da empresa"
-      >
-        <StatCard label="Total recebido do governo" value="R$ 34,2 mi" />
-        <StatCard label="Contratos ativos" value="3" />
-        <StatCard label="Sócios" value="3" />
-        <StatCard label="Situação CEIS" value="Regular" badge={{ text: "Sem sanção", variant: "green" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores da empresa"
+          >
+            <StatCard label="Total recebido do governo" value="R$ 34,2 mi" />
+            <StatCard label="Contratos ativos" value="3" />
+            <StatCard label="Sócios" value="3" />
+            <StatCard label="Situação CEIS" value="Regular" badge={{ text: "Sem sanção", variant: "green" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Dados cadastrais" />
         <InfoPanel fields={[
           { label: "Razão social", value: "MedTech Soluções em Equipamentos Médicos LTDA" },
@@ -102,12 +106,12 @@ export default function CompanyDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Quadro societário (QSA)" />
         <DataTable columns={partnerColumns} data={MOCK_PARTNERS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Contratos com o governo" />
         <DataTable columns={contractColumns} data={MOCK_CONTRACTS} rowKey={(r) => r.id} />
       </section>

@@ -90,22 +90,26 @@ export default function EstadosPage() {
     <>
       <TopBar title="Estados" defaultPeriod="1a" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores dos estados"
-      >
-        <StatCard label="Receita tributária total" value="R$ 812 bi" badge={{ text: "27 UFs", variant: "amber" }} />
-        <StatCard label="ICMS arrecadado" value="R$ 621 bi" badge={{ text: "72% da receita", variant: "amber" }} />
-        <StatCard label="Transferências da União" value="R$ 502 bi" badge={{ text: "+7,5% vs 2024", variant: "green" }} />
-        <StatCard label="Dívida consolidada" value="R$ 987 bi" badge={{ text: "4 estados em D", variant: "red" }} />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores dos estados"
+          >
+            <StatCard label="Receita tributária total" value="R$ 812 bi" badge={{ text: "27 UFs", variant: "amber" }} />
+            <StatCard label="ICMS arrecadado" value="R$ 621 bi" badge={{ text: "72% da receita", variant: "amber" }} />
+            <StatCard label="Transferências da União" value="R$ 502 bi" badge={{ text: "+7,5% vs 2024", variant: "green" }} />
+            <StatCard label="Dívida consolidada" value="R$ 987 bi" badge={{ text: "4 estados em D", variant: "red" }} />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <EstadosCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Estados — dados fiscais"
           action={{ label: "Ver arrecadação", href: "/estados/arrecadacao" }}
@@ -113,7 +117,7 @@ export default function EstadosPage() {
         <DataTable columns={stateColumns} data={MOCK_STATES} rowKey={(r) => r.uf} />
       </section>
 
-      <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section className="mb-12 border-t border-gray-200/60 pt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <SectionHeader title="Arrecadação por região" />
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
@@ -131,7 +135,7 @@ export default function EstadosPage() {
         </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Acha Justo?"
           action={{ label: "Jogar mais", href: "/acha-justo" }}

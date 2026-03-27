@@ -76,17 +76,21 @@ export default function MinistroDetailPage() {
         sourceUrl="https://api.portaldatransparencia.gov.br/api-de-dados/servidores?nome=Nisia+Trindade"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do ministro"
-      >
-        <StatCard label="Remuneração mensal" value="R$ 41.650,92" />
-        <StatCard label="Patrimônio declarado" value="R$ 1.850.000" badge={{ text: "TSE 2022", variant: "amber" }} />
-        <StatCard label="Orçamento do ministério" value="R$ 232,4 bi" badge={{ text: "LOA 2024", variant: "amber" }} />
-        <StatCard label="Servidores no ministério" value="82.430" />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do ministro"
+          >
+            <StatCard label="Remuneração mensal" value="R$ 41.650,92" />
+            <StatCard label="Patrimônio declarado" value="R$ 1.850.000" badge={{ text: "TSE 2022", variant: "amber" }} />
+            <StatCard label="Orçamento do ministério" value="R$ 232,4 bi" badge={{ text: "LOA 2024", variant: "amber" }} />
+            <StatCard label="Servidores no ministério" value="82.430" />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Dados pessoais" />
         <InfoPanel fields={[
           { label: "Nome completo", value: "Nísia Verônica Trindade Lima" },
@@ -98,12 +102,12 @@ export default function MinistroDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Contratos do ministério" />
         <DataTable columns={contractColumns} data={MOCK_CONTRACTS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Cartão corporativo" />
         <DataTable columns={cardColumns} data={MOCK_CARD_SPENDING} rowKey={(r) => r.id} />
       </section>

@@ -26,7 +26,7 @@ export function DataDisclaimer({ context, lastUpdated }: DataDisclaimerProps) {
     : null
 
   return (
-    <div className="rounded-lg border border-gray-200/60 bg-gray-50/50 px-4 py-3 text-xs text-gray-400">
+    <div className="rounded-xl border border-gray-200/60 bg-gray-50/50 px-4 py-3 text-xs text-gray-400">
       <p>
         Dados obtidos diretamente das APIs oficiais do governo.
         Verifique cada valor na fonte clicando no ícone{" "}

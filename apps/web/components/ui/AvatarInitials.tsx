@@ -26,7 +26,7 @@ interface AvatarInitialsProps {
 const sizeStyles: Record<AvatarSize, string> = {
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
-  lg: "h-16 w-16 text-xl",
+  lg: "h-[72px] w-[72px] text-xl",
 }
 
 /**
@@ -44,7 +44,7 @@ export function AvatarInitials({ initials, size = "sm" }: AvatarInitialsProps) {
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded-full
-                  bg-gray-100 font-semibold text-gray-600 ${sizeStyles[size]}`}
+                  bg-gray-100 font-semibold text-gray-500 ring-2 ring-gray-100 ${sizeStyles[size]}`}
       aria-hidden="true"
     >
       {initials}

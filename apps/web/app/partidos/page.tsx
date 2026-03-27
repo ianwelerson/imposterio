@@ -105,30 +105,34 @@ export default function PartidosPage() {
     <>
       <TopBar title="Partidos Políticos" defaultPeriod="30d" />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores de partidos"
-      >
-        <StatCard label="Partidos registrados" value="29" />
-        <StatCard
-          label="Fundo Partidário (2025)"
-          value="R$ 573 mi"
-          badge={{ text: "+8,2% vs 2024", variant: "red" }}
-        />
-        <StatCard label="Parlamentares no Congresso" value="594" />
-        <StatCard
-          label="Fundo Eleitoral (2024)"
-          value="R$ 4,96 bi"
-          badge={{ text: "Ano eleitoral", variant: "amber" }}
-        />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores de partidos"
+          >
+            <StatCard label="Partidos registrados" value="29" />
+            <StatCard
+              label="Fundo Partidário (2025)"
+              value="R$ 573 mi"
+              badge={{ text: "+8,2% vs 2024", variant: "red" }}
+            />
+            <StatCard label="Parlamentares no Congresso" value="594" />
+            <StatCard
+              label="Fundo Eleitoral (2024)"
+              value="R$ 4,96 bi"
+              badge={{ text: "Ano eleitoral", variant: "amber" }}
+            />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
         <PartidosCharts />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader
           title="Todos os partidos — bancada e financiamento"
           action={{ label: "Ver todos", href: "/partidos/lista" }}
@@ -136,7 +140,7 @@ export default function PartidosPage() {
         <DataTable columns={columns} data={MOCK_PARTIES} rowKey={(r) => r.sigla} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Distribuição do Fundo Partidário" />
         <div className="rounded-lg border border-gray-200/60 bg-white p-5">
           <RankingList items={FUND_RANKING} />

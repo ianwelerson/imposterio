@@ -58,10 +58,10 @@ export default async function PropositionDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <header className="mb-6">
+      <header className="mb-12">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold text-gray-900">{proposition.identifier}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">{proposition.identifier}</h1>
             <Badge variant={STATUS_VARIANT[proposition.status]}>{proposition.status}</Badge>
             <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
               {proposition.type}
@@ -80,40 +80,44 @@ export default async function PropositionDetailPage({ params }: PageProps) {
       </header>
 
       {proposition.voteTally && (
-        <section
-          className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-          aria-label="Resultado da votação"
-        >
-          <StatCard
-            label="Votos a favor"
-            value={String(proposition.voteTally.yes)}
-            badge={{ text: `${approvalRate}%`, variant: "green" }}
-          />
-          <StatCard
-            label="Votos contra"
-            value={String(proposition.voteTally.no)}
-            badge={{ text: `${(100 - Number(approvalRate)).toFixed(1)}%`, variant: "red" }}
-          />
-          <StatCard
-            label="Abstenções"
-            value={String(proposition.voteTally.abstention)}
-          />
-          <StatCard
-            label="Ausentes"
-            value={String(proposition.voteTally.absent)}
-            badge={{ text: `de ${total}`, variant: "gray" }}
-          />
+        <section className="mb-12">
+          <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+            <div
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              aria-label="Resultado da votação"
+            >
+              <StatCard
+                label="Votos a favor"
+                value={String(proposition.voteTally.yes)}
+                badge={{ text: `${approvalRate}%`, variant: "green" }}
+              />
+              <StatCard
+                label="Votos contra"
+                value={String(proposition.voteTally.no)}
+                badge={{ text: `${(100 - Number(approvalRate)).toFixed(1)}%`, variant: "red" }}
+              />
+              <StatCard
+                label="Abstenções"
+                value={String(proposition.voteTally.abstention)}
+              />
+              <StatCard
+                label="Ausentes"
+                value={String(proposition.voteTally.absent)}
+                badge={{ text: `de ${total}`, variant: "gray" }}
+              />
+            </div>
+          </div>
         </section>
       )}
 
-      <section className="mb-6">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Informações gerais</h2>
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
+        <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Informações gerais</h2>
         <InfoPanel fields={infoFields} />
       </section>
 
       {proposition.fullDescription && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Descrição completa</h2>
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Descrição completa</h2>
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
             <p className="text-sm text-gray-800 leading-relaxed">{proposition.fullDescription}</p>
           </div>
@@ -121,8 +125,8 @@ export default async function PropositionDetailPage({ params }: PageProps) {
       )}
 
       {proposition.voteTally && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Votação</h2>
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Votação</h2>
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
             <VoteBreakdown
               tally={proposition.voteTally}
@@ -134,13 +138,13 @@ export default async function PropositionDetailPage({ params }: PageProps) {
       )}
 
       {proposition.timeline && proposition.timeline.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Tramitação</h2>
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Tramitação</h2>
           <div className="rounded-lg border border-gray-200/60 bg-white p-5">
             <ol className="relative border-l border-gray-200 ml-3">
               {proposition.timeline.map((event, i) => (
                 <li key={i} className="mb-6 ml-6 last:mb-0">
-                  <span className="absolute -left-2 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-accent ring-4 ring-white" />
+                  <span className="absolute -left-2 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-accent ring-4 ring-white shadow-xs" />
                   <div className="flex items-baseline gap-2">
                     <time className="text-xs font-medium text-gray-400 tabular-nums">
                       {new Date(event.date).toLocaleDateString("pt-BR")}
@@ -160,8 +164,8 @@ export default async function PropositionDetailPage({ params }: PageProps) {
       )}
 
       {proposition.committees && proposition.committees.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Comissões</h2>
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Comissões</h2>
           <div className="space-y-3">
             {proposition.committees.map((c) => (
               <div
@@ -187,8 +191,8 @@ export default async function PropositionDetailPage({ params }: PageProps) {
       )}
 
       {proposition.relatedPropositions && proposition.relatedPropositions.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Proposições relacionadas</h2>
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <h2 className="mb-5 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">Proposições relacionadas</h2>
           <div className="rounded-lg border border-gray-200/60 bg-white divide-y divide-gray-100">
             {proposition.relatedPropositions.map((rel) => (
               <div key={rel.id} className="flex items-center justify-between px-5 py-3">

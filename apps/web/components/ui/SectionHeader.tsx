@@ -13,6 +13,8 @@ import type { ReactNode } from "react"
 interface SectionHeaderProps {
   /** Section title — plain text or inline elements (e.g. Acronym). */
   title: ReactNode
+  /** Optional subtitle shown below the title in lighter text. */
+  description?: string
   /** Optional source URL displayed as a small pill next to the title. */
   sourceUrl?: string
   /** Optional action link displayed on the right side. */
@@ -38,32 +40,37 @@ interface SectionHeaderProps {
  * />
  * ```
  */
-export function SectionHeader({ title, sourceUrl, action }: SectionHeaderProps) {
+export function SectionHeader({ title, description, sourceUrl, action }: SectionHeaderProps) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{title}</h2>
-        {sourceUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Verificar na fonte oficial"
-            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full
-                       bg-indigo-50 text-indigo-600 border border-indigo-200
-                       hover:bg-indigo-100 font-mono transition-colors whitespace-nowrap"
+    <div className="mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-base font-semibold tracking-tight text-gray-900 sm:text-lg">{title}</h2>
+          {sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Verificar na fonte oficial"
+              className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md
+                         bg-accent/[0.06] text-accent/80
+                         hover:bg-accent/10 font-mono transition-colors whitespace-nowrap"
+            >
+              ↗ fonte
+            </a>
+          )}
+        </div>
+        {action && (
+          <Link
+            href={action.href}
+            className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
           >
-            ↗ fonte
-          </a>
+            {action.label}{!action.label.startsWith("←") && " →"}
+          </Link>
         )}
       </div>
-      {action && (
-        <Link
-          href={action.href}
-          className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-        >
-          {action.label}{!action.label.startsWith("←") && " →"}
-        </Link>
+      {description && (
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-500">{description}</p>
       )}
     </div>
   )

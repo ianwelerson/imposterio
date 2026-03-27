@@ -53,7 +53,7 @@ function TreemapContent(props: {
         y={y}
         width={width}
         height={height}
-        rx={4}
+        rx={6}
         fill={color}
         fillOpacity={0.85}
         stroke="#fff"
@@ -105,17 +105,17 @@ export function TreemapChart({ data, height = 320, formatValue }: TreemapChartPr
               <div
                 style={{
                   background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
                   padding: "8px 12px",
                   maxWidth: 280,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.06)",
                 }}
               >
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#111827", lineHeight: 1.4, wordWrap: "break-word" }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a", lineHeight: 1.4, wordWrap: "break-word" }}>
                   {item.name}
                 </p>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#4b5563" }}>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#475569" }}>
                   {formatValue ? formatValue(item.value) : item.value.toLocaleString("pt-BR")}
                 </p>
               </div>

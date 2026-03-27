@@ -72,16 +72,18 @@ export function BarChart({
         layout={layout}
         margin={{ top: 4, right: 12, bottom: 4, left: horizontal ? 8 : 0 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={!horizontal} horizontal={horizontal || undefined} />
 
         {horizontal ? (
           <>
-            <XAxis type="number" tick={{ fontSize: 12, fill: "#9ca3af" }} />
+            <XAxis type="number" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
             <YAxis
               type="category"
               dataKey="label"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "#64748b" }}
               width={140}
+              axisLine={false}
+              tickLine={false}
               tickFormatter={(val: string) =>
                 val.length > 20 ? `${val.slice(0, 18)}...` : val
               }
@@ -91,25 +93,28 @@ export function BarChart({
           <>
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 12, fill: "#6b7280" }}
+              tick={{ fontSize: 12, fill: "#64748b" }}
               tickLine={false}
+              axisLine={{ stroke: "#e2e8f0" }}
             />
-            <YAxis tick={{ fontSize: 12, fill: "#9ca3af" }} />
+            <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
           </>
         )}
 
         <Tooltip
           contentStyle={{
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
             fontSize: 13,
             maxWidth: 320,
+            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.06)",
           }}
           formatter={(value) => [
             formatValue ? formatValue(Number(value)) : Number(value).toLocaleString("pt-BR"),
             "",
           ]}
-          labelStyle={{ fontWeight: 600, color: "#111827" }}
+          labelStyle={{ fontWeight: 600, color: "#0f172a" }}
+          cursor={{ fill: "rgba(79, 70, 229, 0.04)" }}
         />
 
         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>

@@ -42,7 +42,7 @@ interface InfoPanelProps {
  */
 export function InfoPanel({ fields }: InfoPanelProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+    <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-5">
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {fields.map((field) => (
           <div key={field.label}>

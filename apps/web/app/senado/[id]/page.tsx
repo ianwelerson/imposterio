@@ -88,17 +88,21 @@ export default function SenatorDetailPage() {
         sourceUrl="https://legis.senado.leg.br/dadosabertos/senador/5672.json"
       />
 
-      <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores do senador"
-      >
-        <StatCard label="Matérias de autoria" value="14" badge={{ text: "+3 em 2024", variant: "green" }} />
-        <StatCard label="Presença em votações" value="98%" />
-        <StatCard label="Discursos em plenário" value="23" />
-        <StatCard label="Comissões" value="4" />
+      <section className="mb-12">
+        <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores do senador"
+          >
+            <StatCard label="Matérias de autoria" value="14" badge={{ text: "+3 em 2024", variant: "green" }} />
+            <StatCard label="Presença em votações" value="98%" />
+            <StatCard label="Discursos em plenário" value="23" />
+            <StatCard label="Comissões" value="4" />
+          </div>
+        </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Dados pessoais" />
         <InfoPanel fields={[
           { label: "Nome civil", value: "Rodrigo de Souza Tavares" },
@@ -110,12 +114,12 @@ export default function SenatorDetailPage() {
         ]} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Matérias de autoria" />
         <DataTable columns={billColumns} data={MOCK_BILLS} rowKey={(r) => r.id} />
       </section>
 
-      <section className="mt-8">
+      <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Votações recentes" />
         <DataTable columns={voteColumns} data={MOCK_VOTES} rowKey={(r) => r.id} />
       </section>
