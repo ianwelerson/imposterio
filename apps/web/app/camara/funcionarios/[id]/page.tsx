@@ -20,6 +20,12 @@ import { SectionHeader, InfoPanel, Badge, SourcePill, ToastTrigger, DataFetchErr
 import { getStaffBulk } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { StaffBulkSummary } from "@imposterio/types"
+import {
+  lookupCargoSalary,
+  CNE_REPRESENTACAO_MENSAL,
+  VERBA_DE_GABINETE_TOTAL,
+  SECRETARIO_PARLAMENTAR_BONUS_MAX,
+} from "@/lib/constants/camara"
 
 /** Empty summary fallback when the fetcher fails. */
 const EMPTY_SUMMARY: StaffBulkSummary = {
@@ -149,6 +155,7 @@ export default async function StaffDetailPage({ params }: PageProps) {
                   </p>
                   <Link
                     href={`/camara/${deputyId}`}
+                    prefetch={false}
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
                   >
                     Ver perfil do deputado →
@@ -163,8 +170,109 @@ export default async function StaffDetailPage({ params }: PageProps) {
             <SectionHeader title="Dados do funcionário" sourceUrl={staff._source} />
             <InfoPanel fields={infoFields} />
           </section>
+
+          {/* Salary context */}
+          <SalarySection position={member.position} group={member.group} />
         </>
       )}
     </>
+  )
+}
+
+// ── Salary context section ─────────────────────────────────────────
+
+const PL_179_URL =
+  "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=3081387&filename=REDACAO+FINAL+PL+179%2F2026"
+const VERBA_GABINETE_URL =
+  "https://www2.camara.leg.br/comunicacao/assessoria-de-imprensa/guia-para-jornalistas/verba-de-gabinete"
+const TRANSPARENCIA_RH_URL =
+  "https://www.camara.leg.br/transparencia/recursos-humanos/funcionarios"
+
+const formatBrl = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+
+/**
+ * Displays salary context for the staff member based on their cargo code.
+ * Shows base salary from Lei 15.349/2026, plus group-specific notes.
+ */
+function SalarySection({ position, group }: { position: string; group: string }) {
+  const salary = lookupCargoSalary(position)
+  if (!salary) return null
+
+  const isSecretario = group.includes("Secretário")
+  const isCne = salary.tabela === "II"
+  const cneAllowance = isCne ? CNE_REPRESENTACAO_MENSAL[salary.key] : undefined
+
+  return (
+    <section className="mb-12 border-t border-gray-200/60 pt-10">
+      <SectionHeader title="Remuneração base" />
+
+      <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-card space-y-4">
+        {/* Base salary */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="text-2xl font-semibold tracking-tight text-gray-900">
+            {salary.range
+              ? `${formatBrl(salary.range.min)} – ${formatBrl(salary.range.max)}`
+              : formatBrl(salary.baseSalary)}
+          </span>
+          <span className="text-sm text-gray-500">/ mês</span>
+          <SourcePill url={PL_179_URL} />
+        </div>
+
+        {salary.range && (
+          <p className="text-xs text-gray-500">
+            Faixa salarial para {salary.key} (classes A/B/Especial, padrões 1–10).
+            O nível exato não consta nos dados abertos.
+          </p>
+        )}
+
+        {/* CNE additional allowance */}
+        {isCne && cneAllowance && (
+          <div className="rounded-lg bg-gray-50 px-4 py-3">
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Representação mensal:</span>{" "}
+              {formatBrl(cneAllowance)}
+              <span className="text-gray-500"> (paga além do vencimento básico)</span>
+            </p>
+          </div>
+        )}
+
+        {/* General disclaimer */}
+        <p className="text-xs leading-relaxed text-gray-500">
+          Este é o salário base (vencimento básico). O salário final pode ser até 100% maior
+          dependendo do cargo e tempo de serviço.
+        </p>
+
+        {/* Secretário Parlamentar specific notes */}
+        {isSecretario && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-4 py-3 space-y-2">
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Gratificação de gabinete:</span>{" "}
+              deputados podem adicionar uma gratificação de até{" "}
+              {Math.round(SECRETARIO_PARLAMENTAR_BONUS_MAX * 100)}% do salário base.
+            </p>
+            <p className="text-sm text-gray-700">
+              O valor máximo mensal para este cargo está limitado ao teto da Verba de Gabinete
+              do deputado:{" "}
+              <span className="font-semibold">{formatBrl(VERBA_DE_GABINETE_TOTAL)}</span>
+              <span className="ml-1.5 inline-flex"><SourcePill url={VERBA_GABINETE_URL} /></span>
+            </p>
+            <p className="text-xs text-gray-500">
+              O salário real deste funcionário é público, mas está disponível apenas
+              no Portal de Transparência da Câmara, não nas APIs de dados abertos.{" "}
+              <a
+                href={TRANSPARENCIA_RH_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:text-accent-hover underline underline-offset-2"
+              >
+                Ver no Portal de Transparência →
+              </a>
+              <span className="ml-1.5 inline-flex"><SourcePill url={TRANSPARENCIA_RH_URL} /></span>
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }

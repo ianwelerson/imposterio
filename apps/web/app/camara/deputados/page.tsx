@@ -2,28 +2,66 @@
  * @file page.tsx
  * @description Full listing of all federal deputies (Câmara dos Deputados).
  *
- * Displays a searchable, paginated table of all 513 deputies with:
+ * Displays a searchable, sortable, paginated table of all 513 deputies with:
  * - Photo, name, party, state
+ * - CEAP spending total (from bulk expenses file)
+ * - Attendance rate (from bulk attendance file)
+ * - Sortable columns with URL-persisted sort state
  * - Search by name, party abbreviation, or state (UF)
  * - Pagination (20 per page)
  *
- * Data source: https://dadosabertos.camara.leg.br/api/v2/deputados
- *
- * Columns pending integration (see TODO.md):
- * - CEAP spending: requires per-deputy expense aggregation
- * - Attendance: requires bulk attendance file parser (Phase 4)
- * - Staff count: requires bulk staff file parser (Phase 4)
+ * Data sources:
+ * - Deputies list: GET /deputados
+ * - CEAP bulk: Ano-{year}.json
+ * - Attendance bulk: eventosPresencaDeputados-{year}.json
  */
 
-import { getDeputiesList } from "@imposterio/fetchers"
+import { getDeputiesList, getCeapBulkSummary, getDeputyAttendanceBulk } from "@imposterio/fetchers"
 import { ToastTrigger, SourcePill, DataFetchError } from "@/components/ui"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
-import { DeputiesSearchList } from "./DeputiesSearchList"
+import { DeputiesSearchList, type EnrichedDeputy } from "./DeputiesSearchList"
 
-export default async function DeputadosPage() {
+interface DeputadosPageProps {
+  searchParams: Promise<{ sort?: string; dir?: string }>
+}
+
+export default async function DeputadosPage({ searchParams }: DeputadosPageProps) {
+  const query = await searchParams
+  const currentYear = new Date().getFullYear()
+
   const errors: PageError[] = []
   const failed = new Set<string>()
-  const deputies = await collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados", failed)
+
+  const [deputies, ceapBulk, attendanceBulk] = await Promise.all([
+    collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados", failed),
+    collectErrors(
+      () => getCeapBulkSummary(currentYear),
+      emptySourced({ deputies: [] }),
+      errors, "CEAP Bulk", failed,
+    ),
+    collectErrors(
+      () => getDeputyAttendanceBulk(currentYear),
+      emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }),
+      errors, "Presença Bulk", failed,
+    ),
+  ])
+
+  // Build lookup maps for enrichment
+  const ceapMap = new Map(ceapBulk.deputies.map((d) => [d.name, d.total]))
+  const plenaryMap = new Map(attendanceBulk.deputies.map((d) => [d.deputyId, d.plenaryEventsAttended]))
+  const totalPlenarySessions = attendanceBulk.totalPlenarySessions
+
+  // Enrich deputies with CEAP and plenary attendance data
+  // Attendance % uses plenary sessions only — these are the events where
+  // presence is civically expected. Other events (committees, hearings) run
+  // in parallel, making total-event attendance misleading.
+  const enriched: EnrichedDeputy[] = deputies.map((d) => ({
+    ...d,
+    ceapTotal: ceapMap.get(d.name.toUpperCase().trim()) ?? undefined,
+    attendanceRate: totalPlenarySessions > 0 && plenaryMap.has(d.id)
+      ? Math.round(((plenaryMap.get(d.id) ?? 0) / totalPlenarySessions) * 100)
+      : undefined,
+  }))
 
   return (
     <>
@@ -46,7 +84,11 @@ export default async function DeputadosPage() {
       {failed.has("Deputados") ? (
         <DataFetchError label="a lista de deputados" />
       ) : (
-        <DeputiesSearchList deputies={deputies} />
+        <DeputiesSearchList
+          deputies={enriched}
+          initialSort={query.sort}
+          initialDir={query.dir as "asc" | "desc" | undefined}
+        />
       )}
     </>
   )

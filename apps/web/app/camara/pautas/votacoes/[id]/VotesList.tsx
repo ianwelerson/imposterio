@@ -32,6 +32,7 @@ export function VotesList({ votes }: VotesListProps) {
       cell: (row: CamaraIndividualVote) => (
         <Link
           href={`/camara/${row.deputyId}`}
+          prefetch={false}
           className="flex items-center gap-2"
         >
           {row.photoUrl && (

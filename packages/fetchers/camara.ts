@@ -34,13 +34,15 @@
  * - Detail: `nomeCivil` → `fullName`, `dataNascimento` → `birthDate`, etc.
  */
 
+import { inflateRaw } from "node:zlib"
+import { promisify } from "node:util"
 import { cachedFetch, ApiError, redis } from "./lib/cache"
 import { ENDPOINTS } from "./lib/endpoints"
 import { TTL } from "./lib/ttl"
 import type {
   Deputy, DeputyDetail, DeputyExpense, DeputyCommittee, DeputyCaucus,
   DeputySpeech, DeputyEvent, DeputyPreviousMandate, DeputyStatusHistory, DeputyProfession,
-  DeputyVotingRecord, DeputyOccupation, DeputyLeadershipHistory, DeputyMandate,
+  DeputyVotingRecord, DeputyOccupation, DeputyMandate,
   CaucusDetail, CaucusMember,
   CamaraProposition, CamaraPropositionAuthor, CamaraPropositionTheme,
   CamaraPropositionProgress, CamaraVotingSession, CamaraIndividualVote,
@@ -235,16 +237,6 @@ interface CamaraOccupationRaw {
   entidadeUF: string | null
   anoInicio: number | null
   anoFim: number | null
-}
-
-/** Shape of a leadership history entry from GET /deputados/{id}/historicoLideres. */
-interface CamaraLeaderHistoryRaw {
-  idLegislatura: number
-  titulo: string
-  siglaPartidoBloco: string
-  uriPartidoBloco: string | null
-  dataInicio: string
-  dataFim: string | null
 }
 
 /** Shape of a Câmara mandate from GET /deputados/{id}/mandatos. */
@@ -1705,8 +1697,18 @@ interface CamaraAttendanceRaw {
 export interface DeputyAttendanceSummary {
   /** Deputy ID in the Câmara API. */
   deputyId: string
-  /** Number of events this deputy attended in the year. */
+  /** Number of events this deputy attended in the year (all types). */
   eventsAttended: number
+  /**
+   * Number of plenary sessions this deputy attended in the year.
+   * Only counts events whose type matches the plenary patterns:
+   * "Sessão Deliberativa", "Sessão Não Deliberativa", "Sessão Solene",
+   * "Sessão Preparatória". This is the civically meaningful metric —
+   * plenary sessions are where voting happens and deputies are expected
+   * to be present. Other events (committees, hearings) often run in
+   * parallel, making total event attendance misleading.
+   */
+  plenaryEventsAttended: number
 }
 
 /**
@@ -1792,14 +1794,18 @@ export async function getDeputyAttendanceBulk(
     }
   }
 
-  // Aggregate: count unique events and events per deputy
+  // Aggregate: count unique events and events per deputy (total + plenary)
   const uniqueEvents = new Set<number>()
   const deputyCounts = new Map<string, number>()
+  const deputyPlenaryCounts = new Map<string, number>()
 
   for (const r of raw.dados) {
     uniqueEvents.add(r.idEvento)
     const id = String(r.idDeputado)
     deputyCounts.set(id, (deputyCounts.get(id) ?? 0) + 1)
+    if (plenaryEventIds.has(r.idEvento)) {
+      deputyPlenaryCounts.set(id, (deputyPlenaryCounts.get(id) ?? 0) + 1)
+    }
   }
 
   const summary: AttendanceBulkSummary = {
@@ -1808,6 +1814,7 @@ export async function getDeputyAttendanceBulk(
     deputies: Array.from(deputyCounts.entries()).map(([deputyId, eventsAttended]) => ({
       deputyId,
       eventsAttended,
+      plenaryEventsAttended: deputyPlenaryCounts.get(deputyId) ?? 0,
     })),
   }
 
@@ -1817,6 +1824,151 @@ export async function getDeputyAttendanceBulk(
       await redis.set(cacheKey, JSON.stringify(summary), { ex: TTL.CAMARA_DEPUTY_ATTENDANCE })
     } catch {
       // Cache write failure is non-fatal — data is still returned
+    }
+  }
+
+  return Object.assign(summary, { _source: url })
+}
+
+// ── Bulk CEAP expenses ───────────────────────────────────────────────
+
+/** Per-deputy CEAP total from the bulk file. */
+export interface CeapBulkDeputy {
+  /**
+   * Normalized uppercase deputy name — used as the join key between the bulk
+   * file and the API, since the bulk file uses a different ID scheme
+   * (`numeroDeputadoID`) than the API (`id`).
+   */
+  name: string
+  /** Deputy's party abbreviation. */
+  party: string
+  /** Deputy's UF (state). */
+  uf: string
+  /** Total CEAP spending for the year (BRL). */
+  total: number
+}
+
+/** Aggregated summary from the bulk CEAP expenses file. */
+export interface CeapBulkSummary {
+  /** Per-deputy totals. */
+  deputies: CeapBulkDeputy[]
+}
+
+/** Raw record from the Câmara CEAP bulk JSON file (www.camara.leg.br/cotas/). */
+interface CeapBulkRaw {
+  numeroDeputadoID: number
+  nomeParlamentar: string
+  siglaPartido: string
+  siglaUF: string
+  /** Net value — may be a number or a numeric string depending on the year. */
+  valorLiquido: number | string
+}
+
+/**
+ * Fetches the bulk CEAP expenses file for a year and aggregates per-deputy totals.
+ *
+ * The Câmara publishes a ZIP-compressed JSON file with all CEAP expense records
+ * for a given year. The uncompressed JSON can be 50–100MB+ for recent years.
+ * We decompress, aggregate into per-deputy totals, and cache the small summary
+ * in Redis.
+ *
+ * @param year - Calendar year (e.g. 2024)
+ * @returns Per-deputy CEAP totals
+ * @throws {ApiError} When the bulk file is unavailable
+ */
+export async function getCeapBulkSummary(
+  year: number,
+): Promise<WithSource<CeapBulkSummary>> {
+  const url = ENDPOINTS.CAMARA_BULK_EXPENSES(year)
+  // v2: changed from deputyId-keyed to name-keyed summary
+  const cacheKey = `cam:ceap:bulk:v2:${year}`
+  const currentYear = new Date().getFullYear()
+  const ttl = year === currentYear ? TTL.CAMARA_CEAP_BULK : TTL.CAMARA_CEAP_BULK_HISTORY
+
+  // Check Redis for cached summary
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed?.deputies && Array.isArray(parsed.deputies)) {
+          return { ...parsed, _source: url } as WithSource<CeapBulkSummary>
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
+  // Fetch ZIP bulk file (can be 2–10MB compressed, 50–100MB decompressed)
+  const res = await fetch(url, { cache: "no-store" })
+  if (!res.ok) throw new ApiError(res.status, url)
+
+  // Extract JSON from single-entry ZIP. The Câmara ZIP files use a data
+  // descriptor (bit 3 of general purpose flags), so the compressed size in the
+  // local file header is 0. Read the actual size from the Central Directory.
+  const zipBuf = Buffer.from(await res.arrayBuffer())
+
+  // Locate End of Central Directory record (signature 0x06054b50)
+  let eocdOffset = zipBuf.length - 22
+  while (eocdOffset >= 0 && zipBuf.readUInt32LE(eocdOffset) !== 0x06054b50) {
+    eocdOffset--
+  }
+  if (eocdOffset < 0) throw new ApiError(500, url)
+
+  // Central Directory offset → read compressed size from its file header
+  const cdOffset = zipBuf.readUInt32LE(eocdOffset + 16)
+  const compressedSize = zipBuf.readUInt32LE(cdOffset + 20)
+
+  // Local file header: data starts after 30-byte fixed header + filename + extra
+  const fnLen = zipBuf.readUInt16LE(26)
+  const extraLen = zipBuf.readUInt16LE(28)
+  const dataOffset = 30 + fnLen + extraLen
+  const compressed = zipBuf.subarray(dataOffset, dataOffset + compressedSize)
+
+  const inflate = promisify(inflateRaw)
+  const decompressed = await inflate(compressed)
+  const raw = JSON.parse(decompressed.toString("utf-8")) as { dados: CeapBulkRaw[] }
+
+  // Aggregate per-deputy totals
+  const byDeputy = new Map<string, { name: string; party: string; uf: string; total: number }>()
+
+  for (const r of raw.dados) {
+    const id = String(r.numeroDeputadoID ?? 0)
+    if (id === "0") continue
+
+    const amount = typeof r.valorLiquido === "string" ? parseFloat(r.valorLiquido) : r.valorLiquido
+    if (Number.isNaN(amount)) continue
+
+    const existing = byDeputy.get(id)
+    if (existing) {
+      existing.total += amount
+    } else {
+      byDeputy.set(id, {
+        name: r.nomeParlamentar,
+        party: r.siglaPartido,
+        uf: r.siglaUF,
+        total: amount,
+      })
+    }
+  }
+
+  const summary: CeapBulkSummary = {
+    deputies: Array.from(byDeputy.values()).map((d) => ({
+      name: d.name.toUpperCase().trim(),
+      party: d.party,
+      uf: d.uf,
+      total: d.total,
+    })),
+  }
+
+  // Cache summary in Redis
+  if (redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(summary), { ex: ttl })
+    } catch {
+      // Non-fatal
     }
   }
 
@@ -2621,6 +2773,115 @@ export async function getDeputadoProposicoes(
 }
 
 /**
+ * Fetches propositions authored by a deputy filtered to a specific year.
+ *
+ * Uses `dataApresentacaoInicio` and `dataApresentacaoFim` API params to
+ * restrict results to propositions presented within the given year. Cached
+ * separately from the full-mandate fetch under key `proposicoes:{id}:{year}`.
+ *
+ * @param id - Deputy's numeric ID in the Câmara API
+ * @param year - Year to filter propositions by presentation date
+ * @returns Propositions presented in the given year, with `_source` injected
+ *
+ * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Proposições/get_proposicoes
+ */
+export async function getDeputadoProposicoesByYear(
+  id: string,
+  year: number,
+): Promise<WithSource<CamaraProposition[]>> {
+  const combinedKey = `proposicoes:${id}:year:${year}`
+  const sourceUrl = `${ENDPOINTS.CAMARA_PROPOSITIONS}?idDeputadoAutor=${id}&dataApresentacaoInicio=${year}-01-01&dataApresentacaoFim=${year}-12-31`
+
+  // Check combined-result cache first
+  if (redis) {
+    try {
+      const cached = await redis.get(combinedKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (Array.isArray(parsed)) {
+          console.log(`[cache HIT]  ${combinedKey} (${(parsed as CamaraProposition[]).length} results)`)
+          return Object.assign(parsed as CamaraProposition[], { _source: sourceUrl })
+        }
+        await redis.del(combinedKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(combinedKey).catch(() => {})
+    }
+  }
+
+  // Try year-filtered API call first; fall back to fetching all + filtering by year
+  let propositions: CamaraProposition[]
+  let usedSource = sourceUrl
+
+  try {
+    const base = ENDPOINTS.CAMARA_PROPOSITIONS
+    const params = new URLSearchParams({
+      idDeputadoAutor: id,
+      dataApresentacaoInicio: `${year}-01-01`,
+      dataApresentacaoFim: `${year}-12-31`,
+      ordem: "DESC",
+      ordenarPor: "ano",
+      itens: "100",
+    })
+
+    const firstPageUrl = `${base}?${params.toString()}`
+    const firstPage = await cachedFetch<CamaraListResponse<CamaraPropositionRaw>>(
+      firstPageUrl,
+      TTL.CAMARA_DEPUTY_PROPOSITIONS,
+    )
+    usedSource = firstPage._source
+
+    const allRaw: CamaraPropositionRaw[] = [...firstPage.dados]
+
+    const lastPageNum = extractLastPage(firstPage.links)
+
+    if (lastPageNum > 1) {
+      const maxPages = 10
+      const pagesToFetch = Math.min(lastPageNum, maxPages)
+      const pagePromises: Promise<CamaraListResponse<CamaraPropositionRaw> & { _source: string }>[] = []
+      for (let p = 2; p <= pagesToFetch; p++) {
+        const pageParams = new URLSearchParams(params)
+        pageParams.set("pagina", String(p))
+        const pageUrl = `${base}?${pageParams.toString()}`
+        pagePromises.push(
+          cachedFetch<CamaraListResponse<CamaraPropositionRaw>>(
+            pageUrl,
+            TTL.CAMARA_DEPUTY_PROPOSITIONS,
+          ),
+        )
+      }
+      const pages = await Promise.all(pagePromises)
+      for (const page of pages) {
+        allRaw.push(...page.dados)
+      }
+    }
+
+    propositions = allRaw.map(mapRawToProposition)
+  } catch (err) {
+    // Date-filtered API call failed — fall back to fetching all propositions
+    // and filtering by year client-side
+    console.warn(`[proposicoes] year-filtered fetch failed for deputy ${id}, year ${year}:`, err)
+    const all = await getDeputadoProposicoes(id)
+    usedSource = all._source
+    propositions = (all as CamaraProposition[]).filter((p) => p.year === year)
+  }
+
+  // Cache combined result — empty arrays get a shorter 10min TTL to avoid
+  // hammering the API, while non-empty results get 1h
+  const ttl = propositions.length === 0 ? 60 * 10 : 60 * 60
+  if (redis) {
+    try {
+      const ok = await redis.set(combinedKey, JSON.stringify(propositions), { ex: ttl })
+      console.log(`[proposicoes] cached ${combinedKey}: ${propositions.length} results, ttl=${ttl}s, redis=${ok}`)
+    } catch (err) {
+      console.warn(`[proposicoes] cache write failed for ${combinedKey}:`, err)
+    }
+  }
+
+  return Object.assign(propositions, { _source: usedSource })
+}
+
+/**
  * Fetches the professional occupations declared by a deputy.
  *
  * Ocupações represent the professional activities a deputy has exercised
@@ -2647,41 +2908,17 @@ export async function getDeputadoOcupacoes(
 }
 
 /**
- * Fetches the leadership history of a deputy.
- *
- * Tracks positions as party leader (Líder), vice-leader (Vice-Líder),
- * government leader, minority leader, and bloc coordinator throughout
- * their mandates. Essential for understanding a deputy's political influence.
- *
- * @param id - Deputy's numeric ID in the Câmara API
- * @returns List of leadership positions sorted by start date (newest first),
- *          with `_source` injected
- *
- * @see https://dadosabertos.camara.leg.br/swagger/api.html#/Deputados/get_deputados__id__historicoLideres
- */
-export async function getDeputadoHistoricoLideres(
-  id: string,
-): Promise<WithSource<DeputyLeadershipHistory[]>> {
-  const url = ENDPOINTS.CAMARA_DEPUTY_LEADER_HISTORY(id)
-  const response = await cachedFetch<CamaraListResponse<CamaraLeaderHistoryRaw>>(
-    url,
-    TTL.CAMARA_DEPUTY_LEADER_HISTORY,
-  )
-
-  const history: DeputyLeadershipHistory[] = response.dados
-    .map(mapRawToLeaderHistory)
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-
-  return Object.assign(history, { _source: response._source })
-}
-
-/**
  * Fetches the Câmara mandates (elected terms) of a deputy.
  *
  * Unlike `getDeputyPreviousMandates()` which returns external mandates from
  * TSE data (vereador, prefeito, etc.), this function returns the deputy's
  * terms specifically within the Câmara dos Deputados — including the current
  * and any previous Câmara legislatures.
+ *
+ * **Warning:** As of March 2026, this endpoint is intermittently unavailable
+ * for some deputies — callers should wrap in try/catch and gracefully degrade
+ * when it fails. The deputy's current legislature is always available via the
+ * `ultimoStatus` field from the detail endpoint as a fallback.
  *
  * @param id - Deputy's numeric ID in the Câmara API
  * @returns List of Câmara mandates sorted by start year (newest first),
@@ -2772,17 +3009,6 @@ function mapRawToOccupation(raw: CamaraOccupationRaw): DeputyOccupation {
     uf: raw.entidadeUF || undefined,
     startYear: raw.anoInicio ?? undefined,
     endYear: raw.anoFim ?? undefined,
-  }
-}
-
-/** Maps a raw leadership history entry to the public DeputyLeadershipHistory type. */
-function mapRawToLeaderHistory(raw: CamaraLeaderHistoryRaw): DeputyLeadershipHistory {
-  return {
-    role: raw.titulo,
-    party: raw.siglaPartidoBloco,
-    legislature: raw.idLegislatura,
-    startDate: raw.dataInicio,
-    endDate: raw.dataFim || undefined,
   }
 }
 

@@ -119,12 +119,15 @@ export function aggregateAttendanceByParty(
   summary: AttendanceBulkSummary,
   deputies: Deputy[],
 ): CountItem[] {
-  if (summary.totalEvents === 0) return []
+  // Use plenary sessions only — they are the civically relevant metric.
+  // Other events (committees, hearings) run in parallel, making total counts misleading.
+  const totalPlenary = summary.totalPlenarySessions ?? 0
+  if (totalPlenary === 0) return []
 
-  // Build a lookup: deputyId → eventsAttended
-  const deputyEvents = new Map<string, number>()
+  // Build a lookup: deputyId → plenary events attended
+  const deputyPlenary = new Map<string, number>()
   for (const d of summary.deputies) {
-    deputyEvents.set(d.deputyId, d.eventsAttended)
+    deputyPlenary.set(d.deputyId, d.plenaryEventsAttended)
   }
 
   // Group deputies by party
@@ -141,15 +144,55 @@ export function aggregateAttendanceByParty(
     if (members.length < 5) continue
 
     const totalAttended = members.reduce(
-      (sum, id) => sum + (deputyEvents.get(id) ?? 0),
+      (sum, id) => sum + (deputyPlenary.get(id) ?? 0),
       0,
     )
-    const avgRate = Math.round((totalAttended / members.length / summary.totalEvents) * 100)
+    const avgRate = Math.round((totalAttended / members.length / totalPlenary) * 100)
     assertValidPercent(avgRate, `attendance rate for party ${party}`)
     result.push({ name: party, value: avgRate })
   }
 
   return result.sort((a, b) => b.value - a.value).slice(0, 15)
+}
+
+/** Approval rate breakdown by proposition type. */
+export interface ApprovalByType {
+  /** Proposition type code (e.g. "PL", "PEC"). */
+  type: string
+  /** Total voting sessions for this type. */
+  total: number
+  /** Number of approved sessions. */
+  approved: number
+  /** Approval rate as percentage (0–100). */
+  rate: number
+}
+
+/**
+ * Aggregates voting session approval rates broken down by proposition type.
+ *
+ * Groups sessions by `propositions[0]?.typeCode`, then computes the approval
+ * rate for each type. Only includes types with at least 2 sessions.
+ */
+export function aggregateApprovalByType(sessions: CamaraVotingSession[]): ApprovalByType[] {
+  const groups = new Map<string, { total: number; approved: number }>()
+
+  for (const s of sessions) {
+    const type = s.propositions?.[0]?.typeCode ?? "Outro"
+    const entry = groups.get(type) ?? { total: 0, approved: 0 }
+    entry.total++
+    if (s.approved === true) entry.approved++
+    groups.set(type, entry)
+  }
+
+  return Array.from(groups.entries())
+    .filter(([, v]) => v.total >= 2)
+    .map(([type, v]) => ({
+      type,
+      total: v.total,
+      approved: v.approved,
+      rate: Math.round((v.approved / v.total) * 100),
+    }))
+    .sort((a, b) => b.total - a.total)
 }
 
 /**

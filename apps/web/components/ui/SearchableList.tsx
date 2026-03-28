@@ -53,6 +53,20 @@ interface SearchableListProps<T> {
   children: (filteredItems: T[]) => ReactNode
   /** Number of items per page. @default 20 */
   pageSize?: number
+  /**
+   * Optional sort function applied after filtering and before pagination.
+   * Receives the filtered array and should return a new sorted array.
+   */
+  sortFn?: (items: T[]) => T[]
+  /** Initial search query (e.g. from URL). */
+  initialQuery?: string
+  /** Initial dropdown filter values keyed by filter label (e.g. from URL). */
+  initialFilters?: Record<string, string>
+  /**
+   * Callback fired when the search query or any filter changes.
+   * Useful for syncing state back to the URL.
+   */
+  onStateChange?: (state: { query: string; filters: Record<string, string> }) => void
 }
 
 /**
@@ -66,11 +80,17 @@ export function SearchableList<T>({
   extraControls,
   children,
   pageSize = 20,
+  sortFn,
+  initialQuery = "",
+  initialFilters = {},
+  onStateChange,
 }: SearchableListProps<T>) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialQuery)
   const [page, setPage] = useState(1)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(initialFilters)
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const stateChangeRef = useRef(onStateChange)
+  stateChangeRef.current = onStateChange
 
   const resetPage = () => setPage(1)
 
@@ -84,14 +104,17 @@ export function SearchableList<T>({
         track("search", { query: value.trim(), results: -1 })
       }, 800)
     }
+    stateChangeRef.current?.({ query: value, filters: activeFilters })
   }
 
   const handleFilter = (label: string, value: string) => {
-    setActiveFilters((prev) => ({ ...prev, [label]: value }))
+    const next = { ...activeFilters, [label]: value }
+    setActiveFilters(next)
     resetPage()
     if (value) {
       track("filter", { name: label, value })
     }
+    stateChangeRef.current?.({ query, filters: next })
   }
 
   // Extract unique options for each filter from the data
@@ -123,8 +146,8 @@ export function SearchableList<T>({
       }
     }
 
-    return result
-  }, [items, query, searchAccessor, filters, activeFilters])
+    return sortFn ? sortFn(result) : result
+  }, [items, query, searchAccessor, filters, activeFilters, sortFn])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, totalPages)

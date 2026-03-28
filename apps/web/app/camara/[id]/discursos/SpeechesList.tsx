@@ -13,7 +13,8 @@
 
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useState, useMemo, type ReactNode } from "react"
+import Link from "next/link"
 import { SearchableList, DataTable, SourcePill } from "@/components/ui"
 import type { DeputySpeech } from "@imposterio/types"
 
@@ -21,10 +22,33 @@ interface SpeechesListProps {
   speeches: DeputySpeech[]
   sourceUrl: string
   yearSelector?: ReactNode
+  /** Pre-set keyword filter from URL (e.g. from tag cloud click). */
+  initialKeyword?: string
+  /** Deputy ID for building keyword filter links. */
+  deputyId?: string
+  /** Selected year for building keyword filter links. */
+  selectedYear?: number
 }
 
-export function SpeechesList({ speeches, sourceUrl, yearSelector }: SpeechesListProps) {
+export function SpeechesList({
+  speeches,
+  sourceUrl,
+  yearSelector,
+  initialKeyword,
+  deputyId,
+  selectedYear,
+}: SpeechesListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [keywordFilter, setKeywordFilter] = useState<string | null>(initialKeyword ?? null)
+
+  /** Speeches filtered by keyword when a keyword filter is active. */
+  const filteredSpeeches = useMemo(() => {
+    if (!keywordFilter) return speeches
+    const kw = keywordFilter.toLowerCase()
+    return speeches.filter((s) =>
+      s.keywords?.toLowerCase().includes(kw),
+    )
+  }, [speeches, keywordFilter])
 
   const toggle = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id))
@@ -77,28 +101,59 @@ export function SpeechesList({ speeches, sourceUrl, yearSelector }: SpeechesList
   ]
 
   return (
-    <SearchableList
-      items={speeches}
-      searchAccessor={(s) => `${s.summary} ${s.keywords ?? ""}`}
-      filters={[
-        { label: "Tipo de discurso", accessor: (s) => s.type, allLabel: "Todos os tipos" },
-      ]}
-      extraControls={yearSelector}
-      pageSize={20}
-      placeholder="Buscar por tema ou palavra-chave..."
-    >
-      {(paged) => (
-        <DataTable
-          columns={columns}
-          data={paged}
-          rowKey={(r) => r.startTime}
-          expandedRowKey={expandedId}
-          renderExpanded={(r) => (
-            <SpeechDetail speech={r} sourceUrl={sourceUrl} />
-          )}
-        />
+    <>
+      {/* Active keyword filter badge */}
+      {keywordFilter && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-xs text-gray-500">Filtrando por:</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+            {keywordFilter}
+            <button
+              type="button"
+              onClick={() => setKeywordFilter(null)}
+              className="ml-0.5 rounded-full p-0.5 hover:bg-indigo-100 transition-colors"
+              aria-label="Remover filtro"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </span>
+          <span className="text-xs text-gray-400">
+            ({filteredSpeeches.length} de {speeches.length})
+          </span>
+        </div>
       )}
-    </SearchableList>
+
+      <SearchableList
+        items={filteredSpeeches}
+        searchAccessor={(s) => `${s.summary} ${s.keywords ?? ""}`}
+        filters={[
+          { label: "Tipo de discurso", accessor: (s) => s.type, allLabel: "Todos os tipos" },
+        ]}
+        extraControls={yearSelector}
+        pageSize={20}
+        placeholder="Buscar por tema ou palavra-chave..."
+      >
+        {(paged) => (
+          <DataTable
+            columns={columns}
+            data={paged}
+            rowKey={(r) => r.startTime}
+            expandedRowKey={expandedId}
+            renderExpanded={(r) => (
+              <SpeechDetail
+                speech={r}
+                sourceUrl={sourceUrl}
+                deputyId={deputyId}
+                selectedYear={selectedYear}
+                onKeywordClick={setKeywordFilter}
+              />
+            )}
+          />
+        )}
+      </SearchableList>
+    </>
   )
 }
 
@@ -106,9 +161,15 @@ export function SpeechesList({ speeches, sourceUrl, yearSelector }: SpeechesList
 function SpeechDetail({
   speech,
   sourceUrl,
+  deputyId,
+  selectedYear,
+  onKeywordClick,
 }: {
   speech: DeputySpeech
   sourceUrl: string
+  deputyId?: string
+  selectedYear?: number
+  onKeywordClick?: (keyword: string) => void
 }) {
   const mediaLinks = [
     speech.textUrl && { label: "Texto oficial", url: speech.textUrl },
@@ -128,14 +189,27 @@ function SpeechDetail({
           <div>
             <dt className="text-xs font-medium text-gray-500">Palavras-chave</dt>
             <dd className="mt-1 flex flex-wrap gap-1">
-              {speech.keywords.split(",").map((kw) => (
-                <span
-                  key={kw.trim()}
-                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
-                >
-                  {kw.trim()}
-                </span>
-              ))}
+              {speech.keywords.split(",").map((kw) => {
+                const trimmed = kw.trim()
+                if (!trimmed) return null
+                return onKeywordClick ? (
+                  <button
+                    key={trimmed}
+                    type="button"
+                    onClick={() => onKeywordClick(trimmed.toLowerCase())}
+                    className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+                  >
+                    {trimmed}
+                  </button>
+                ) : (
+                  <span
+                    key={trimmed}
+                    className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                  >
+                    {trimmed}
+                  </span>
+                )
+              })}
             </dd>
           </div>
         )}

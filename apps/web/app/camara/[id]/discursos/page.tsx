@@ -20,7 +20,7 @@ const FIRST_SPEECH_YEAR = 2019
 
 interface SpeechesPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ ano?: string }>
+  searchParams: Promise<{ ano?: string; keyword?: string }>
 }
 
 export default async function SpeechesPage({ params, searchParams }: SpeechesPageProps) {
@@ -72,6 +72,9 @@ export default async function SpeechesPage({ params, searchParams }: SpeechesPag
       <SpeechesList
         speeches={speeches}
         sourceUrl={speeches._source}
+        initialKeyword={query.keyword}
+        deputyId={id}
+        selectedYear={selectedYear}
         yearSelector={
           <div className="w-full sm:w-auto sm:min-w-[100px]">
             <label className="mb-1 block text-xs font-medium text-gray-500">Ano</label>

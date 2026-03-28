@@ -23,6 +23,8 @@ export interface CategoryExpense {
 export interface SupplierExpense {
   label: string
   value: number
+  /** Supplier's CPF or CNPJ document number (from supplierDocument). */
+  document?: string
 }
 
 /**
@@ -71,16 +73,25 @@ export function aggregateByCategory(
  * @param limit    - Maximum number of suppliers to return. @default 10
  */
 export function aggregateBySupplier(
-  expenses: Array<{ supplierName: string; value: number }>,
+  expenses: Array<{ supplierName: string; supplierDocument?: string; value: number }>,
   limit = 10,
 ): SupplierExpense[] {
-  const bySupplier = new Map<string, number>()
+  const bySupplier = new Map<string, { total: number; document?: string }>()
   for (const e of expenses) {
     if (!e.supplierName) continue
-    bySupplier.set(e.supplierName, (bySupplier.get(e.supplierName) ?? 0) + e.value)
+    const existing = bySupplier.get(e.supplierName)
+    if (existing) {
+      existing.total += e.value
+      // Keep the first non-empty document found for this supplier
+      if (!existing.document && e.supplierDocument) {
+        existing.document = e.supplierDocument
+      }
+    } else {
+      bySupplier.set(e.supplierName, { total: e.value, document: e.supplierDocument })
+    }
   }
   return Array.from(bySupplier.entries())
-    .map(([label, value]) => ({ label, value }))
+    .map(([label, { total, document }]) => ({ label, value: total, document }))
     .sort((a, b) => b.value - a.value)
     .slice(0, limit)
 }

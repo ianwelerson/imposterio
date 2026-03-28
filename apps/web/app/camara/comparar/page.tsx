@@ -271,6 +271,7 @@ export default async function ComparisonPage({ searchParams }: PageProps) {
                       <th key={m.id} className="py-3 px-4 text-center">
                         <Link
                           href={`/camara/${m.id}?ano=${selectedYear}`}
+                          prefetch={false}
                           className="group inline-flex flex-col items-center gap-2"
                         >
                           {m.photoUrl ? (

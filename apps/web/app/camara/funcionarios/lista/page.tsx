@@ -27,7 +27,17 @@ const EMPTY_SUMMARY: StaffBulkSummary = {
   lastUpdated: "",
 }
 
-export default async function FuncionariosListaPage() {
+interface PageProps {
+  searchParams: Promise<{
+    q?: string
+    grupo?: string
+    lotacao?: string
+    parlamentar?: string
+  }>
+}
+
+export default async function FuncionariosListaPage({ searchParams }: PageProps) {
+  const query = await searchParams
   const errors: PageError[] = []
   const failed = new Set<string>()
 
@@ -72,7 +82,15 @@ export default async function FuncionariosListaPage() {
       {failed.has("Funcionários") ? (
         <DataFetchError label="os funcionários" />
       ) : (
-        <StaffSearchList members={staff.members} />
+        <StaffSearchList
+          members={staff.members}
+          initialQuery={query.q}
+          initialFilters={{
+            ...(query.grupo ? { Grupo: query.grupo } : {}),
+            ...(query.lotacao ? { Lotação: query.lotacao } : {}),
+            ...(query.parlamentar ? { Parlamentar: query.parlamentar } : {}),
+          }}
+        />
       )}
     </>
   )

@@ -158,18 +158,18 @@ describe("aggregateAttendanceByParty", () => {
       totalEvents: 100,
       totalPlenarySessions: 50,
       deputies: [
-        { deputyId: "bp0", eventsAttended: 80 },
-        { deputyId: "bp1", eventsAttended: 60 },
-        { deputyId: "bp2", eventsAttended: 70 },
-        { deputyId: "bp3", eventsAttended: 90 },
-        { deputyId: "bp4", eventsAttended: 50 },
-        { deputyId: "bp5", eventsAttended: 50 },
+        { deputyId: "bp0", eventsAttended: 80, plenaryEventsAttended: 40 },
+        { deputyId: "bp1", eventsAttended: 60, plenaryEventsAttended: 30 },
+        { deputyId: "bp2", eventsAttended: 70, plenaryEventsAttended: 35 },
+        { deputyId: "bp3", eventsAttended: 90, plenaryEventsAttended: 45 },
+        { deputyId: "bp4", eventsAttended: 50, plenaryEventsAttended: 25 },
+        { deputyId: "bp5", eventsAttended: 50, plenaryEventsAttended: 25 },
       ],
     }
 
     const result = aggregateAttendanceByParty(summary, bigPartyDeputies)
-    // Average: (80+60+70+90+50+50)/6 = 400/6 = 66.67 per deputy
-    // Rate: 66.67 / 100 * 100 = 66.67 → rounds to 67%
+    // Average plenary: (40+30+35+45+25+25)/6 = 200/6 = 33.33 per deputy
+    // Rate: 33.33 / 50 * 100 = 66.67 → rounds to 67%
     expect(result.length).toBe(1)
     expect(result[0].name).toBe("BIG")
     expect(result[0].value).toBe(67)
@@ -184,8 +184,8 @@ describe("aggregateAttendanceByParty", () => {
       totalEvents: 100,
       totalPlenarySessions: 50,
       deputies: [
-        { deputyId: "1", eventsAttended: 50 },
-        { deputyId: "2", eventsAttended: 50 },
+        { deputyId: "1", eventsAttended: 50, plenaryEventsAttended: 25 },
+        { deputyId: "2", eventsAttended: 50, plenaryEventsAttended: 25 },
       ],
     }
     expect(aggregateAttendanceByParty(summary, deputies)).toEqual([])
@@ -203,12 +203,12 @@ describe("aggregateAttendanceByParty", () => {
   it("limits to top 15 parties", () => {
     // Create 16 parties each with 5 members
     const deputies: Deputy[] = []
-    const summaryDeputies: { deputyId: string; eventsAttended: number }[] = []
+    const summaryDeputies: { deputyId: string; eventsAttended: number; plenaryEventsAttended: number }[] = []
     for (let p = 0; p < 16; p++) {
       for (let d = 0; d < 5; d++) {
         const id = `p${p}d${d}`
         deputies.push({ id, name: id, party: `PARTY${p}`, uf: "SP", legislature: 57 })
-        summaryDeputies.push({ deputyId: id, eventsAttended: 50 })
+        summaryDeputies.push({ deputyId: id, eventsAttended: 50, plenaryEventsAttended: 25 })
       }
     }
     const summary: AttendanceBulkSummary = {
@@ -228,12 +228,12 @@ describe("aggregateAttendanceByParty", () => {
       totalEvents: 100,
       totalPlenarySessions: 50,
       deputies: [
-        { deputyId: "bp0", eventsAttended: 50 },
-        // bp1-bp4 not in summary → 0 events
+        { deputyId: "bp0", eventsAttended: 50, plenaryEventsAttended: 25 },
+        // bp1-bp4 not in summary → 0 plenary events
       ],
     }
     const result = aggregateAttendanceByParty(summary, bigParty)
-    // Average: (50+0+0+0+0)/5 = 10 events per deputy, 10/100*100 = 10%
+    // Average plenary: (25+0+0+0+0)/5 = 5 per deputy, 5/50*100 = 10%
     expect(result[0].value).toBe(10)
   })
 })

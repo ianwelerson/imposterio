@@ -56,7 +56,6 @@ export const ENDPOINTS = {
   CAMARA_DEPUTY_MANDATES: (id: string) => `${BASE_URLS.CAMARA}/deputados/${id}/mandatosExternos`,
   CAMARA_DEPUTY_PROFESSIONS: (id: string) => `${BASE_URLS.CAMARA}/deputados/${id}/profissoes`,
   CAMARA_DEPUTY_OCCUPATIONS: (id: string) => `${BASE_URLS.CAMARA}/deputados/${id}/ocupacoes`,
-  CAMARA_DEPUTY_LEADER_HISTORY: (id: string) => `${BASE_URLS.CAMARA}/deputados/${id}/historicoLideres`,
   CAMARA_DEPUTY_CAMARA_MANDATES: (id: string) => `${BASE_URLS.CAMARA}/deputados/${id}/mandatos`,
   CAMARA_FRENTE: (id: string) => `${BASE_URLS.CAMARA}/frentes/${id}`,
   CAMARA_FRENTE_MEMBERS: (id: string) => `${BASE_URLS.CAMARA}/frentes/${id}/membros`,

@@ -3,15 +3,15 @@
  * @description Client component for the unified Presença section on the deputy detail page.
  *
  * Renders:
- * 1. CalendarHeatmap for ALL events + LineChart for hours per week (side by side)
- * 2. CalendarHeatmap for plenary sessions + CalendarHeatmap for non-plenary (side by side)
- * 3. PieChart (doughnut) for event type distribution + LineChart for events by month (side by side)
+ * 1. Toggleable CalendarHeatmap (all / plenary / non-plenary) + LineChart for hours per week
+ * 2. PieChart (doughnut) for event type distribution + LineChart for events by month
  *
  * All chart data is pre-aggregated server-side in attendance-utils.ts and activity-utils.ts.
  */
 
 "use client"
 
+import { useState } from "react"
 import { ChartCard, CalendarHeatmap, PieChart, LineChart } from "@/components/charts"
 import type { DailyAttendance, AttendanceByType, WeeklyHours } from "./presenca/attendance-utils"
 import type { MonthlyCount } from "./activity-utils"
@@ -35,6 +35,22 @@ interface AttendanceOverviewChartsProps {
   sourceUrl: string
   /** Source URL for events REST API data. */
   eventsSourceUrl?: string
+  /** Set of ISO date strings marking parliamentary recess days (for heatmap annotation). */
+  recessDays?: Set<string>
+}
+
+type HeatmapView = "all" | "plenary" | "nonPlenary"
+
+const HEATMAP_VIEWS: Array<{ key: HeatmapView; label: string }> = [
+  { key: "all", label: "Todos" },
+  { key: "plenary", label: "Plenárias" },
+  { key: "nonPlenary", label: "Demais" },
+]
+
+const HEATMAP_SUBTITLES: Record<HeatmapView, string> = {
+  all: "Todos os eventos: sessões plenárias, comissões, audiências, seminários e outros",
+  plenary: "Sessões Deliberativas, Solenes e Preparatórias",
+  nonPlenary: "Comissões, audiências, seminários e demais eventos",
 }
 
 export function AttendanceOverviewCharts({
@@ -47,7 +63,10 @@ export function AttendanceOverviewCharts({
   year,
   sourceUrl,
   eventsSourceUrl,
+  recessDays,
 }: AttendanceOverviewChartsProps) {
+  const [heatmapView, setHeatmapView] = useState<HeatmapView>("all")
+
   /** Map DailyAttendance to the { date, value } shape expected by CalendarHeatmap. */
   const toHeatmapData = (days: DailyAttendance[]) =>
     days.map((d) => ({ date: d.date, value: d.count }))
@@ -60,19 +79,46 @@ export function AttendanceOverviewCharts({
   /** Map WeeklyHours to the { label, hours } shape expected by LineChart. */
   const hoursLineData = hoursPerWeek.map((w) => ({ label: w.label, hours: w.value }))
 
+  /** Active heatmap data based on current toggle selection. */
+  const activeHeatmapData =
+    heatmapView === "plenary"
+      ? toHeatmapData(plenaryByDay)
+      : heatmapView === "nonPlenary"
+        ? toHeatmapData(nonPlenaryByDay)
+        : toHeatmapData(allByDay)
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* Row 1: days with activity heatmap + hours per week line chart */}
+      {/* Row 1: toggleable heatmap + hours per week line chart */}
       <ChartCard
         title="Dias com atividade"
-        subtitle="Todos os eventos: sessões plenárias, comissões, audiências, seminários e outros"
+        subtitle={HEATMAP_SUBTITLES[heatmapView]}
         sourceUrl={sourceUrl}
       >
+        {/* Segmented toggle */}
+        <div className="mb-3 inline-flex rounded-lg bg-gray-100 p-0.5">
+          {HEATMAP_VIEWS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setHeatmapView(key)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                heatmapView === key
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <CalendarHeatmap
-          data={toHeatmapData(allByDay)}
+          data={activeHeatmapData}
           year={year}
           emptyLabel="Sem presença registrada"
           formatValue={(v) => `${v} evento${v !== 1 ? "s" : ""}`}
+          recessDays={recessDays}
         />
       </ChartCard>
 
@@ -102,32 +148,7 @@ export function AttendanceOverviewCharts({
         </ChartCard>
       )}
 
-      {/* Row 2: plenary vs non-plenary heatmaps */}
-      <ChartCard
-        title="Presença em sessões plenárias"
-        subtitle="Sessões Deliberativas, Solenes e Preparatórias"
-        sourceUrl={sourceUrl}
-      >
-        <CalendarHeatmap
-          data={toHeatmapData(plenaryByDay)}
-          year={year}
-          emptyLabel="Sem presença registrada"
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Presença em demais eventos"
-        subtitle="Comissões, audiências, seminários e demais eventos"
-        sourceUrl={sourceUrl}
-      >
-        <CalendarHeatmap
-          data={toHeatmapData(nonPlenaryByDay)}
-          year={year}
-          emptyLabel="Sem presença registrada"
-        />
-      </ChartCard>
-
-      {/* Row 3: event type doughnut + events by month line chart */}
+      {/* Row 2: event type doughnut + events by month line chart */}
       <ChartCard
         title="Presença por tipo de evento"
         subtitle="Distribuição da presença entre sessões, comissões, audiências e outros"

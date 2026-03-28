@@ -12,7 +12,8 @@
  * votes. All fetched data includes `_source`.
  */
 
-import { getVotingSessionVotes } from "@imposterio/fetchers/camara"
+import { getVotingSessionVotes, getVotingSessionOrientations } from "@imposterio/fetchers/camara"
+import { redis } from "@imposterio/fetchers/lib/cache"
 import type { DeputyVotingRecord } from "@imposterio/types"
 import { safePercent } from "@/lib/calc"
 
@@ -40,10 +41,14 @@ export interface VotingAlignmentResult {
   partyAlignmentPercent: number
   /** Percentage of votes aligned with the winning side (0–100). */
   winningSidePercent: number
+  /** Percentage of votes aligned with the government orientation (0–100). */
+  governmentAlignmentPercent: number
   /** Total number of votes analyzed. */
   totalVotes: number
   /** Votes where the party majority could be determined. */
   votesWithPartyData: number
+  /** Votes where the government orientation could be determined. */
+  votesWithGovernmentData: number
   /** Votes where the deputy diverged from their party. */
   divergentVotes: DivergentVote[]
 }
@@ -92,11 +97,13 @@ function getPartyMajority(
  * @param votes - Deputy's voting record (from `getDeputyVotingHistory`)
  * @param party - Deputy's current party abbreviation
  * @param maxSessions - Maximum sessions to analyze (default 50, to limit API calls)
+ * @param deputyId - Deputy's numeric ID, used for the Redis cache key
+ * @param year - Year being analyzed, used for the Redis cache key
  * @returns Alignment analysis with divergent vote details
  *
  * @example
  * ```typescript
- * const alignment = await analyzeVotingAlignment(votes, "PT")
+ * const alignment = await analyzeVotingAlignment(votes, "PT", 50, "74646", 2026)
  * console.log(alignment.partyAlignmentPercent) // 87
  * console.log(alignment.divergentVotes.length) // 5
  * ```
@@ -105,35 +112,82 @@ export async function analyzeVotingAlignment(
   votes: DeputyVotingRecord[],
   party: string,
   maxSessions = 50,
+  deputyId?: string,
+  year?: number,
 ): Promise<VotingAlignmentResult> {
+  // Check cached alignment result (reduces 40+ Redis reads to 1 on warm loads)
+  const cacheKey = deputyId && year ? `voting-alignment:${deputyId}:${year}` : null
+  if (cacheKey && redis) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
+        if (parsed && typeof parsed === "object" && "partyAlignmentPercent" in parsed) {
+          console.log(`[cache HIT]  ${cacheKey}`)
+          return parsed as VotingAlignmentResult
+        }
+        await redis.del(cacheKey).catch(() => {})
+      }
+    } catch {
+      await redis.del(cacheKey).catch(() => {})
+    }
+  }
+
   const cappedVotes = votes.slice(0, maxSessions)
 
   let partyAligned = 0
   let winningSideAligned = 0
+  let governmentAligned = 0
   let votesWithPartyData = 0
+  let votesWithGovernmentData = 0
   const divergentVotes: DivergentVote[] = []
 
-  // Fetch session votes in batches of 10 to avoid overwhelming the API
+  // Fetch session votes and orientations in batches of 10 to avoid overwhelming the API
   const BATCH_SIZE = 10
 
   for (let i = 0; i < cappedVotes.length; i += BATCH_SIZE) {
     const batch = cappedVotes.slice(i, i + BATCH_SIZE)
 
-    const batchResults = await Promise.all(
-      batch.map((v) =>
-        getVotingSessionVotes(v.sessionId).catch(() => []),
+    const [batchVotes, batchOrientations] = await Promise.all([
+      Promise.all(
+        batch.map((v) =>
+          getVotingSessionVotes(v.sessionId).catch(() => []),
+        ),
       ),
-    )
+      Promise.all(
+        batch.map((v) =>
+          getVotingSessionOrientations(v.sessionId).catch(() => []),
+        ),
+      ),
+    ])
 
     for (let j = 0; j < batch.length; j++) {
       const record = batch[j]
-      const sessionVotes = batchResults[j]
+      const sessionVotes = batchVotes[j]
+      const orientations = batchOrientations[j]
 
       // Winning-side alignment
       if (record.approved !== null) {
         const votedYes = record.vote === "Sim"
         if ((record.approved && votedYes) || (!record.approved && !votedYes)) {
           winningSideAligned++
+        }
+      }
+
+      // Government alignment (from orientations)
+      if (Array.isArray(orientations) && orientations.length > 0) {
+        const govOrientation = orientations.find(
+          (o) => o.type === "Governo" || o.name.includes("Gov"),
+        )
+        if (govOrientation) {
+          votesWithGovernmentData++
+          // "Liberado" means any vote is aligned with the government
+          if (
+            govOrientation.orientation === "Liberado" ||
+            govOrientation.orientation === record.vote
+          ) {
+            governmentAligned++
+          }
         }
       }
 
@@ -165,11 +219,22 @@ export async function analyzeVotingAlignment(
 
   const votesWithOutcome = cappedVotes.filter((v) => v.approved !== null).length
 
-  return {
+  const result: VotingAlignmentResult = {
     partyAlignmentPercent: safePercent(partyAligned, votesWithPartyData),
     winningSidePercent: safePercent(winningSideAligned, votesWithOutcome),
+    governmentAlignmentPercent: safePercent(governmentAligned, votesWithGovernmentData),
     totalVotes: cappedVotes.length,
     votesWithPartyData,
+    votesWithGovernmentData,
     divergentVotes,
   }
+
+  // Cache the computed alignment result for 1h (replaces 40+ per-vote reads with 1)
+  if (cacheKey && redis) {
+    try {
+      await redis.set(cacheKey, JSON.stringify(result), { ex: 60 * 60 })
+    } catch {}
+  }
+
+  return result
 }

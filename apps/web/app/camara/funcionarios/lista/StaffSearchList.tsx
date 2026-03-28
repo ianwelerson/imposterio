@@ -15,6 +15,8 @@
 
 "use client"
 
+import { useCallback, useRef } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { SearchableList, DataTable, Badge } from "@/components/ui"
 import type { CamaraStaffMember } from "@imposterio/types"
@@ -22,6 +24,10 @@ import type { CamaraStaffMember } from "@imposterio/types"
 interface StaffSearchListProps {
   /** All staff member records. */
   members: CamaraStaffMember[]
+  /** Initial search query from URL. */
+  initialQuery?: string
+  /** Initial filter values from URL, keyed by filter label. */
+  initialFilters?: Record<string, string>
 }
 
 /**
@@ -48,18 +54,54 @@ function getParliamentarianName(m: CamaraStaffMember): string {
 
 /**
  * Returns the link target for a staff member row.
- * Parliamentary group members with a deputy URI link to the deputy profile;
+ * "Parlamentar" group members with a deputy URI link to the deputy profile;
+ * "Secretário Parlamentar" group members link to their own funcionário page;
  * all others link to the staff detail page.
  */
 function getStaffHref(member: CamaraStaffMember): string {
+  if (member.group.includes("Secretário")) {
+    return `/camara/funcionarios/${member.id}`
+  }
   const deputyId = extractDeputyId(member.departmentUri)
-  if (deputyId) {
+  if (deputyId && member.group === "Parlamentar") {
     return `/camara/${deputyId}`
   }
   return `/camara/funcionarios/${member.id}`
 }
 
-export function StaffSearchList({ members }: StaffSearchListProps) {
+/** URL param keys for each filter label. */
+const FILTER_PARAM_MAP: Record<string, string> = {
+  Grupo: "grupo",
+  Lotação: "lotacao",
+  Parlamentar: "parlamentar",
+}
+
+export function StaffSearchList({ members, initialQuery, initialFilters }: StaffSearchListProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  /** Sync filter state to URL query params (debounced for search). */
+  const handleStateChange = useCallback(
+    ({ query, filters }: { query: string; filters: Record<string, string> }) => {
+      clearTimeout(debounceRef.current)
+
+      const update = () => {
+        const params = new URLSearchParams()
+        if (query.trim()) params.set("q", query.trim())
+        for (const [label, value] of Object.entries(filters)) {
+          const param = FILTER_PARAM_MAP[label]
+          if (param && value) params.set(param, value)
+        }
+        const qs = params.toString()
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      }
+
+      // Debounce search query updates by 300ms to avoid excessive URL changes
+      debounceRef.current = setTimeout(update, 300)
+    },
+    [router, pathname],
+  )
   const columns = [
     {
       header: "Nome",
@@ -126,12 +168,13 @@ export function StaffSearchList({ members }: StaffSearchListProps) {
       align: "right" as const,
       cell: (r: CamaraStaffMember) => {
         const deputyId = extractDeputyId(r.departmentUri)
+        const isDeputyLink = deputyId && r.group === "Parlamentar"
         return (
           <Link
             href={getStaffHref(r)}
             className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
           >
-            {deputyId ? "Ver deputado →" : "Detalhes →"}
+            {isDeputyLink ? "Ver deputado →" : "Ver funcionário →"}
           </Link>
         )
       },
@@ -149,6 +192,9 @@ export function StaffSearchList({ members }: StaffSearchListProps) {
       ]}
       pageSize={20}
       placeholder="Buscar por nome, cargo, lotação ou função..."
+      initialQuery={initialQuery}
+      initialFilters={initialFilters}
+      onStateChange={handleStateChange}
     >
       {(paged) => (
         <DataTable columns={columns} data={paged} rowKey={(r) => r.id} />

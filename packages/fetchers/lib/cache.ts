@@ -181,6 +181,9 @@ export async function cachedFetch<T>(
         // primitives, nulls, or error markers that may have been stored by
         // a previous buggy write or a corrupt partial store.
         if (parsed && typeof parsed === "object") {
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[cache HIT]  ${key.length > 80 ? key.slice(0, 80) + "…" : key}`)
+          }
           return { ...parsed, _source: url }
         }
         // Invalid entry (primitive, null, or error shape) — evict it
@@ -194,7 +197,19 @@ export async function cachedFetch<T>(
     }
   }
 
-  const res = await fetch(url, options)
+  // Bypass Next.js fetch cache — caching is handled by Redis. Without this,
+  // Next.js may serve stale responses from its own data cache layer, causing
+  // Redis cache misses to go unnoticed and TTLs to effectively be ignored.
+  const fetchOptions: RequestInit = {
+    ...options,
+    cache: "no-store" as RequestCache,
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[cache MISS] ${key.length > 80 ? key.slice(0, 80) + "…" : key}`)
+  }
+
+  const res = await fetch(url, fetchOptions)
   if (!res.ok) {
     throw new ApiError(res.status, url)
   }

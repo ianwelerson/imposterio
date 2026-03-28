@@ -22,18 +22,19 @@
  */
 
 import Link from "next/link"
-import Image from "next/image"
 import {
-  Acronym, StatCard, DataTable,
-  SectionHeader, AvatarInitials, Badge, ToastTrigger, DataFetchError,
+  StatCard, DataTable,
+  SectionHeader, Badge, ToastTrigger, DataFetchError,
 } from "@/components/ui"
 import { CamaraGameCard } from "./CamaraGameCard"
 import { CamaraCharts } from "./CamaraCharts"
+import { TopDeputiesTable, type TopDeputy } from "./TopDeputiesTable"
 import {
   getDeputiesList,
   getPropositions,
   getVotingSessions,
   getDeputyAttendanceBulk,
+  getCeapBulkSummary,
 } from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import type { CamaraProposition, CamaraVotingSession } from "@imposterio/types"
@@ -46,6 +47,7 @@ import {
   aggregatePropositionsByMonth,
   aggregateVotingSessionsByMonth,
   aggregateAttendanceByParty,
+  aggregateApprovalByType,
 } from "./camara-utils"
 
 /** Proposition/voting data is available from 2019 onward (57th legislature). */
@@ -74,11 +76,12 @@ export default async function CamaraPage({ searchParams }: PageProps) {
   const errors: PageError[] = []
   const failed = new Set<string>()
 
-  const [deputies, propositions, votingSessions, attendance] = await Promise.all([
+  const [deputies, propositions, votingSessions, attendance, ceapBulk] = await Promise.all([
     collectErrors(() => getDeputiesList(), emptySourced([]), errors, "Deputados", failed),
     collectErrors(() => getPropositions({ year: selectedYear, typeCode: "PL,PEC,PLP,MP,PDL" }), emptySourced([]), errors, "Proposições", failed),
     collectErrors(() => getVotingSessions(yearStart, yearEnd), emptySourced([]), errors, "Votações", failed),
     collectErrors(() => getDeputyAttendanceBulk(selectedYear), emptySourced({ totalEvents: 0, totalPlenarySessions: 0, deputies: [] }), errors, "Presença em eventos", failed),
+    collectErrors(() => getCeapBulkSummary(selectedYear), emptySourced({ deputies: [] }), errors, "CEAP Bulk", failed),
   ])
 
   // ── Aggregations ──────────────────────────────────────────────────
@@ -90,6 +93,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
   const propositionsByMonth = aggregatePropositionsByMonth(propositions)
   const votesByMonth = aggregateVotingSessionsByMonth(votingSessions)
   const attendanceByParty = aggregateAttendanceByParty(attendance, deputies)
+  const approvalByType = aggregateApprovalByType(votingSessions)
 
   const totalVotes = votingSessions.length
   const approvedVotes = votingSessions.filter((v) => v.approved === true).length
@@ -99,8 +103,30 @@ export default async function CamaraPage({ searchParams }: PageProps) {
 
   const largestParty = byParty[0]
 
-  // Top 8 deputies (alphabetical — CEAP sorting needs bulk data)
-  const topDeputies = deputies.slice(0, 8)
+  // Build CEAP and attendance lookup maps for enriched deputies
+  // CEAP bulk uses name as join key (different ID scheme than the API)
+  const ceapMap = new Map<string, number>()
+  for (const d of ceapBulk.deputies) {
+    ceapMap.set(d.name, d.total)
+  }
+
+  const attendanceMap = new Map<string, number>()
+  if (attendance.totalEvents > 0) {
+    for (const d of attendance.deputies) {
+      const rate = Math.round((d.eventsAttended / attendance.totalEvents) * 100)
+      attendanceMap.set(d.deputyId, rate)
+    }
+  }
+
+  const enrichedDeputies: TopDeputy[] = deputies.map((d) => ({
+    id: d.id,
+    name: d.name,
+    party: d.party,
+    uf: d.uf,
+    photoUrl: d.photoUrl,
+    ceapTotal: ceapMap.get(d.name.toUpperCase().trim()),
+    attendanceRate: attendanceMap.get(d.id),
+  }))
 
   // Latest 5 propositions
   const latestPropositions = [...propositions]
@@ -113,49 +139,6 @@ export default async function CamaraPage({ searchParams }: PageProps) {
     .slice(0, 5)
 
   // ── Column definitions ────────────────────────────────────────────
-
-  const deputyColumns = [
-    {
-      header: "Deputado(a)",
-      cell: (row: (typeof deputies)[number]) => (
-        <Link href={`/camara/${row.id}?ano=${selectedYear}`} className="flex items-center gap-3 hover:opacity-80">
-          {row.photoUrl ? (
-            <Image
-              src={row.photoUrl}
-              alt={row.name}
-              width={32}
-              height={32}
-              className="h-8 w-8 shrink-0 rounded-full bg-gray-100 object-cover"
-              unoptimized
-            />
-          ) : (
-            <AvatarInitials initials={row.name.split(" ").map((w) => w[0]).slice(0, 2).join("")} />
-          )}
-          <span className="font-medium text-gray-900">{row.name}</span>
-        </Link>
-      ),
-    },
-    {
-      header: "Partido",
-      cell: (row: (typeof deputies)[number]) => <span className="text-gray-600">{row.party}</span>,
-    },
-    {
-      header: "UF",
-      cell: (row: (typeof deputies)[number]) => <span className="text-gray-600">{row.uf}</span>,
-    },
-    {
-      header: "",
-      align: "right" as const,
-      cell: (row: (typeof deputies)[number]) => (
-        <Link
-          href={`/camara/${row.id}?ano=${selectedYear}`}
-          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-        >
-          Ver perfil →
-        </Link>
-      ),
-    },
-  ]
 
   const propColumns = [
     {
@@ -309,6 +292,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
           propositionsSourceUrl={propositions._source}
           votesSourceUrl={votingSessions._source}
           attendanceSourceUrl={attendance._source}
+          approvalByType={approvalByType}
         />
       </section>
 
@@ -322,7 +306,7 @@ export default async function CamaraPage({ searchParams }: PageProps) {
         {failed.has("Deputados") ? (
           <DataFetchError label="a lista de deputados" />
         ) : (
-          <DataTable columns={deputyColumns} data={topDeputies} rowKey={(r) => r.id} />
+          <TopDeputiesTable deputies={enrichedDeputies} year={selectedYear} />
         )}
       </section>
 

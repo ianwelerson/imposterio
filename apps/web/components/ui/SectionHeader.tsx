@@ -1,10 +1,7 @@
 /**
  * @file SectionHeader.tsx
- * @description Reusable section heading with optional action link.
- *
- * Used to introduce content sections on dashboard and detail pages.
- * Renders a heading with an optional "see all" or action link aligned
- * to the right, following a consistent pattern across all pages.
+ * @description Reusable section heading with optional action link and colored
+ * left-border accent for visual section differentiation.
  */
 
 import Link from "next/link"
@@ -24,28 +21,24 @@ interface SectionHeaderProps {
     /** Route path for the Next.js Link. */
     href: string
   }
+  /**
+   * Optional Tailwind border-color class for the left accent bar
+   * (e.g. "border-amber-400", "border-blue-400"). Creates a visual anchor
+   * for spatial memory while scrolling.
+   */
+  accent?: string
 }
 
 /**
- * Renders a section heading with an optional right-aligned action link.
- *
- * @param title  - Section heading text
- * @param action - Optional link with label and href
- *
- * @example
- * ```tsx
- * <SectionHeader
- *   title="Maiores gastos"
- *   action={{ label: "Ver todos", href: "/camara" }}
- * />
- * ```
+ * Renders a section heading with an optional right-aligned action link
+ * and optional colored left-border accent.
  */
-export function SectionHeader({ title, description, sourceUrl, action }: SectionHeaderProps) {
+export function SectionHeader({ title, description, sourceUrl, action, accent }: SectionHeaderProps) {
   return (
-    <div className="mb-5">
+    <div className={`mb-5 ${accent ? `border-l-[3px] pl-3 ${accent}` : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base font-semibold tracking-tight text-gray-900 sm:text-lg">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">{title}</h2>
           {sourceUrl && (
             <a
               href={sourceUrl}

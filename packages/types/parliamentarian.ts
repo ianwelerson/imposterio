@@ -235,20 +235,6 @@ export interface DeputyOccupation {
   endYear?: number
 }
 
-/** A leadership position entry from GET /deputados/{id}/historicoLideres. */
-export interface DeputyLeadershipHistory {
-  /** Leadership role: "Líder", "Vice-Líder", "Líder do Governo", etc. */
-  role: string
-  /** Party or bloc abbreviation. */
-  party: string
-  /** Legislature number. */
-  legislature: number
-  /** ISO date when the leadership started. */
-  startDate: string
-  /** ISO date when the leadership ended (null if current). */
-  endDate?: string
-}
-
 /** A Câmara mandate (elected term) from GET /deputados/{id}/mandatos. */
 export interface DeputyMandate {
   /** Legislature number (e.g. 57 for 2023–2027). */

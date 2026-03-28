@@ -46,6 +46,8 @@ interface DeputyExpenseChartsProps {
   categoryBySupplier: CategorySupplierResult
   /** Source URL for the expenses API call. */
   sourceUrl?: string
+  /** Set of ISO date strings marking parliamentary recess days (for heatmap annotation). */
+  recessDays?: Set<string>
 }
 
 const MONTH_LABELS = [
@@ -63,6 +65,7 @@ export function DeputyExpenseCharts({
   dailyExpenses,
   categoryBySupplier,
   sourceUrl,
+  recessDays,
 }: DeputyExpenseChartsProps) {
   // Year-over-year comparison data — 12 months, filling gaps with 0
   const comparisonData = MONTH_LABELS.map((label, i) => {
@@ -146,6 +149,7 @@ export function DeputyExpenseCharts({
               data={dailyExpenses}
               year={year}
               formatValue={formatBRL}
+              recessDays={recessDays}
             />
           </ChartCard>
         </div>
@@ -179,6 +183,30 @@ export function DeputyExpenseCharts({
             formatValue={formatBRL}
           />
         </ChartCard>
+      )}
+
+      {/* Supplier verification links — Portal da Transparência CEIS/CNEP */}
+      {bySupplier.some((s) => s.document) && (
+        <div className="lg:col-span-2 px-1">
+          <p className="mb-1.5 text-xs text-gray-400">
+            Verificar fornecedores no Portal da Transparência:
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {bySupplier
+              .filter((s) => s.document)
+              .map((s) => (
+                <a
+                  key={s.document}
+                  href={`https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&cnpjCpf=${s.document}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 underline decoration-gray-300 hover:text-gray-600 transition-colors"
+                >
+                  {s.label}
+                </a>
+              ))}
+          </div>
+        </div>
       )}
 
       {/* Row 4: Category × Supplier stacked bar — full width */}

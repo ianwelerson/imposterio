@@ -323,3 +323,33 @@ Format based on [ADR (Architecture Decision Records)](https://adr.github.io/).
 **Decision:** Created a server-side HTML scraper at `apps/web/lib/scrapers/verba-gabinete.ts` that fetches the transparency page with query parameters (`legislatura`, `ano`, `deputado`) and parses monthly spending data (staff count, total spent, ceiling) from the HTML table rows using regex. Results are cached in Redis under `verba-gabinete:{id}:{year}` with a 24h TTL. The scraper follows the same cache validation and `_source` injection patterns as `cachedFetch()` but operates on raw HTML instead of JSON API responses.
 
 **Consequences:** This is the first and only scraper in the codebase — all other data comes from structured JSON APIs. HTML scraping is inherently fragile: if the Câmara redesigns the transparency page or changes the table structure, this scraper will silently fail or return incorrect data. Mitigations: (1) the parser throws explicitly when no data rows are found, rather than returning empty results; (2) error responses are never cached; (3) the `_source` URL is preserved so users can manually verify at the official page. If the Câmara ever publishes this data via their Open Data API, this scraper should be replaced with a standard `cachedFetch()` fetcher.
+
+---
+
+## 2026-03-28 — Removed Lideranças (leadership history) feature
+
+**Context:** The `GET /deputados/{id}/historicoLideres` endpoint on the Câmara Open Data API has been returning 404 consistently since at least March 2026. The endpoint is no longer listed in the current Swagger documentation, suggesting it was intentionally removed by the API maintainers rather than being temporarily unavailable.
+
+**Decision:** The Lideranças feature was fully removed from the codebase: fetcher function `getDeputadoHistoricoLideres`, its raw type `CamaraLeaderHistoryRaw`, mapper `mapRawToLeaderHistory`, public type `DeputyLeadershipHistory`, endpoint constant `CAMARA_DEPUTY_LEADER_HISTORY`, TTL constant, barrel export, and all UI references in the deputy detail page (timeline in "Carreira política" section). No fallback or alternative data source was introduced — the data simply does not exist anymore.
+
+**Consequences:** The "Cargos de liderança" subsection no longer appears on the deputy detail page. If the Câmara reinstates the endpoint in the future, the feature can be re-added following the standard fetcher → type → page pattern. The removal is clean — no dead code or commented-out references remain.
+
+---
+
+## 2026-03-28 — Graceful degradation for Mandatos endpoint
+
+**Context:** The `GET /deputados/{id}/mandatos` endpoint on the Câmara Open Data API is intermittently unavailable, returning errors for some deputies. Unlike the Lideranças endpoint (fully removed), this endpoint still appears in the Swagger documentation and works for many deputies, so removing it entirely would lose valuable data.
+
+**Decision:** The `getDeputadoMandatos` call is wrapped in a standalone try/catch that returns `null` on failure, rather than using the `collectErrors()` pattern which would show a toast. When the result is `null`, the "Mandatos na Câmara" subsection within "Carreira política" is silently hidden — no error message is shown since the data is supplementary and its absence does not meaningfully degrade the page. A JSDoc warning was added to the fetcher function documenting the endpoint's unreliability. The deputy's current legislature is still shown via `ultimoStatus` (from the reliable detail endpoint), so the most important mandate information remains available.
+
+**Consequences:** Users see a slightly shorter "Carreira política" section when the endpoint fails, but no error toasts or broken UI. The section condition check still shows the section if other data (previous mandates, occupations, status history) is available. If the endpoint stabilizes, the data will automatically reappear with no code changes needed.
+
+---
+
+## 2026-03-28 — cachedFetch uses cache: 'no-store' to bypass Next.js fetch cache
+
+**Context:** Pages were loading slowly on every request as if Redis caching was not working. Investigation confirmed that cache keys are deterministic, TTLs are correct, and the Redis singleton is properly shared. The root cause was Next.js 14's patched `fetch()` — in the App Router, `fetch()` is intercepted with its own data cache layer. Without explicit `cache: 'no-store'`, Next.js may apply its own caching heuristics that interfere with the Redis cache layer, causing unpredictable behavior where sometimes the external API is called redundantly and other times stale Next.js-cached data is served, bypassing Redis TTL expiry.
+
+**Decision:** Added `cache: 'no-store'` to the `fetch()` call inside `cachedFetch()`. This disables Next.js's built-in fetch data cache, ensuring that caching is handled exclusively by Redis with its well-defined TTLs. Also added development-only `[cache HIT]` / `[cache MISS]` console logging to make cache behavior visible during development, so future regressions are immediately detectable.
+
+**Consequences:** All API calls go through the Redis cache layer exclusively. Next.js still handles route-level caching (ISR, dynamic segments), but individual `fetch()` calls are always fresh when Redis misses. The `cache: 'no-store'` is set on every `cachedFetch` call, including those that already had custom `options` — the spread ensures user-provided options take precedence if needed. Debug logging is gated behind `NODE_ENV === "development"` and does not affect production.

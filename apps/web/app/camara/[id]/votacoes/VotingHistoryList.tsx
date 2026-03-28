@@ -54,6 +54,16 @@ export function VotingHistoryList({ votes, sourceUrl, selectedYear, yearSelector
       ),
     },
     {
+      header: "Proposição",
+      className: "whitespace-nowrap",
+      cell: (r: DeputyVotingRecord) => {
+        const prop = r.propositions?.[0]
+        if (!prop) return <span className="text-gray-400">—</span>
+        const label = `${prop.typeCode} ${prop.number}/${prop.year}`
+        return <span className="text-sm text-gray-700">{label}</span>
+      },
+    },
+    {
       header: "Voto",
       className: "whitespace-nowrap",
       cell: (r: DeputyVotingRecord) => (

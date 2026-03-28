@@ -23,6 +23,8 @@ interface CalendarHeatmapProps {
   formatValue?: (value: number) => string
   /** Label shown in tooltip when the day has zero value. Defaults to "Sem gastos". */
   emptyLabel?: string
+  /** Set of ISO date strings (YYYY-MM-DD) marking parliamentary recess days. */
+  recessDays?: Set<string>
 }
 
 /** 5-level color scale from gray (no spend) to deep indigo (max spend). */
@@ -57,6 +59,7 @@ export function CalendarHeatmap({
   year,
   formatValue,
   emptyLabel = "Sem gastos",
+  recessDays,
 }: CalendarHeatmapProps) {
   const [tooltip, setTooltip] = useState<{
     x: number
@@ -64,6 +67,7 @@ export function CalendarHeatmap({
     date: string
     value: number
     below: boolean
+    isRecess: boolean
   } | null>(null)
 
   const { grid, maxValue, weeks, monthPositions } = useMemo(() => {
@@ -135,6 +139,19 @@ export function CalendarHeatmap({
         role="img"
         aria-label={`Heatmap de gastos diários em ${year}`}
       >
+        {/* Recess stripe pattern */}
+        <defs>
+          <pattern
+            id="recess-stripes"
+            width={4}
+            height={4}
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <line x1={0} y1={0} x2={0} y2={4} stroke="#9ca3af" strokeWidth={1} strokeOpacity={0.35} />
+          </pattern>
+        </defs>
+
         {/* Month labels */}
         {monthPositions.map((m, i) => (
           <text
@@ -165,37 +182,56 @@ export function CalendarHeatmap({
         )}
 
         {/* Day cells */}
-        {grid.map((cell) => (
-          <rect
-            key={cell.date}
-            x={LEFT_PADDING + cell.week * CELL_STEP}
-            y={TOP_PADDING + cell.dow * CELL_STEP}
-            width={CELL_SIZE}
-            height={CELL_SIZE}
-            rx={2}
-            fill={getColor(cell.value, maxValue)}
-            onMouseEnter={(e) => {
-              const rect = (e.target as SVGRectElement).getBoundingClientRect()
-              const parent = (e.target as SVGRectElement).closest(".relative")?.getBoundingClientRect()
-              if (parent) {
-                const relTop = rect.top - parent.top
-                // Show tooltip below when near the top to avoid clipping
-                const showBelow = relTop < 50
-                setTooltip({
-                  x: rect.left - parent.left + rect.width / 2,
-                  y: showBelow
-                    ? rect.bottom - parent.top + 8
-                    : rect.top - parent.top - 8,
-                  date: cell.date,
-                  value: cell.value,
-                  below: showBelow,
-                })
-              }
-            }}
-            onMouseLeave={() => setTooltip(null)}
-            className="cursor-pointer transition-opacity hover:opacity-80"
-          />
-        ))}
+        {grid.map((cell) => {
+          const isRecess = recessDays?.has(cell.date) ?? false
+          const cx = LEFT_PADDING + cell.week * CELL_STEP
+          const cy = TOP_PADDING + cell.dow * CELL_STEP
+
+          return (
+            <g key={cell.date}>
+              <rect
+                x={cx}
+                y={cy}
+                width={CELL_SIZE}
+                height={CELL_SIZE}
+                rx={2}
+                fill={getColor(cell.value, maxValue)}
+                onMouseEnter={(e) => {
+                  const rect = (e.target as SVGRectElement).getBoundingClientRect()
+                  const parent = (e.target as SVGRectElement).closest(".relative")?.getBoundingClientRect()
+                  if (parent) {
+                    const relTop = rect.top - parent.top
+                    const showBelow = relTop < 50
+                    setTooltip({
+                      x: rect.left - parent.left + rect.width / 2,
+                      y: showBelow
+                        ? rect.bottom - parent.top + 8
+                        : rect.top - parent.top - 8,
+                      date: cell.date,
+                      value: cell.value,
+                      below: showBelow,
+                      isRecess,
+                    })
+                  }
+                }}
+                onMouseLeave={() => setTooltip(null)}
+                className="cursor-pointer transition-opacity hover:opacity-80"
+              />
+              {isRecess && (
+                <rect
+                  x={cx}
+                  y={cy}
+                  width={CELL_SIZE}
+                  height={CELL_SIZE}
+                  rx={2}
+                  fill="url(#recess-stripes)"
+                  opacity={0.6}
+                  className="pointer-events-none"
+                />
+              )}
+            </g>
+          )
+        })}
       </svg>
 
       {/* Legend */}
@@ -209,6 +245,21 @@ export function CalendarHeatmap({
           />
         ))}
         <span>Mais</span>
+        {recessDays && recessDays.size > 0 && (
+          <>
+            <span className="ml-2">|</span>
+            <svg width={10} height={10} className="rounded-sm">
+              <defs>
+                <pattern id="legend-recess" width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1={0} y1={0} x2={0} y2={4} stroke="#9ca3af" strokeWidth={1} strokeOpacity={0.5} />
+                </pattern>
+              </defs>
+              <rect width={10} height={10} fill="#f3f4f6" rx={1} />
+              <rect width={10} height={10} fill="url(#legend-recess)" rx={1} />
+            </svg>
+            <span>Recesso</span>
+          </>
+        )}
       </div>
 
       {/* Tooltip */}
@@ -229,6 +280,9 @@ export function CalendarHeatmap({
                 ? formatValue(tooltip.value)
                 : tooltip.value.toLocaleString("pt-BR")}
           </p>
+          {tooltip.isRecess && (
+            <p className="text-gray-400 italic">Recesso parlamentar</p>
+          )}
         </div>
       )}
     </div>

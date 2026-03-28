@@ -8,6 +8,12 @@
 import type { DeputySpeech, DeputyEvent, DeputyCommittee, DeputyVotingRecord } from "@imposterio/types"
 import { assertValidPercent, assertTwelveMonths } from "@/lib/calc"
 
+/** A keyword with its occurrence count, used for tag cloud rendering. */
+export interface KeywordCount {
+  keyword: string
+  count: number
+}
+
 export interface CountItem {
   name: string
   value: number
@@ -142,4 +148,36 @@ export function computeVoteAlignment(votes: DeputyVotingRecord[]): number {
 
   const result = Math.round((aligned.length / decided.length) * 100)
   return assertValidPercent(result, "vote alignment")
+}
+
+// ── Keyword aggregation ─────────────────────────────────────────────
+
+/**
+ * Aggregates keywords from speech records into a frequency-sorted list.
+ *
+ * Each speech's `keywords` field is a comma-separated string. This function
+ * splits, trims, lowercases, and counts occurrences across all speeches,
+ * returning the top `limit` keywords sorted by count descending.
+ *
+ * @param speeches - Array of deputy speech records
+ * @param limit - Maximum number of keywords to return (default 30)
+ * @returns Top keywords sorted by frequency descending
+ */
+export function aggregateSpeechKeywords(speeches: DeputySpeech[], limit = 30): KeywordCount[] {
+  const counts = new Map<string, number>()
+
+  for (const s of speeches) {
+    if (!s.keywords) continue
+    const parts = s.keywords.split(",")
+    for (const raw of parts) {
+      const keyword = raw.trim().toLowerCase()
+      if (keyword.length === 0) continue
+      counts.set(keyword, (counts.get(keyword) ?? 0) + 1)
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([keyword, count]) => ({ keyword, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
 }

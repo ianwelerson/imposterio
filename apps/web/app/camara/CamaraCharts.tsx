@@ -18,7 +18,7 @@
 "use client"
 
 import { ChartCard, BarChart, PieChart, LineChart } from "@/components/charts"
-import type { CountItem, MonthlyCount } from "./camara-utils"
+import type { CountItem, MonthlyCount, ApprovalByType } from "./camara-utils"
 
 interface CamaraChartsProps {
   /** Deputies grouped by party (sorted by caucus size). */
@@ -43,6 +43,8 @@ interface CamaraChartsProps {
   votesSourceUrl: string
   /** Source URL for attendance data. */
   attendanceSourceUrl: string
+  /** Approval rate by proposition type. */
+  approvalByType?: ApprovalByType[]
 }
 
 export function CamaraCharts({
@@ -57,6 +59,7 @@ export function CamaraCharts({
   propositionsSourceUrl,
   votesSourceUrl,
   attendanceSourceUrl,
+  approvalByType,
 }: CamaraChartsProps) {
   // Top 12 parties for readability
   const topParties = byParty.slice(0, 12).map((p) => ({
@@ -181,6 +184,25 @@ export function CamaraCharts({
           height={280}
         />
       </ChartCard>
+
+      {approvalByType && approvalByType.length > 0 && (
+        <ChartCard
+          title="Aprovação por tipo de proposição"
+          subtitle="Taxa de aprovação nas votações nominais por tipo"
+          sourceUrl={votesSourceUrl}
+        >
+          <BarChart
+            data={approvalByType.map((a) => ({
+              label: `${a.type} (${a.total})`,
+              value: a.rate,
+            }))}
+            horizontal
+            height={Math.max(200, approvalByType.length * 40)}
+            color="#10b981"
+            formatValue={(v) => `${v}%`}
+          />
+        </ChartCard>
+      )}
     </div>
   )
 }

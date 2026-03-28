@@ -161,6 +161,65 @@ export const FUNCIONARIOS_CARGOS: Record<string, FuncionarioCargo> = {
 } as const satisfies Record<string, FuncionarioCargo>
 
 /**
+ * Looks up a staff member's base salary info from the bulk file's cargo code.
+ *
+ * The bulk file uses formats like `SP01C`, `CNE07`, `Analista Legislativo/...`
+ * which don't match the constant keys directly. This function normalises:
+ * - `SP{NN}{suffix}` → `SP-{NN}` (extracts level, ignores C/S/U suffix)
+ * - `CNE{NN}` → `CNE-{NN}`
+ * - `Analista Legislativo/...` → salary range (min–max, no exact level available)
+ * - `Técnico Legislativo/...` → salary range (min–max, no exact level available)
+ *
+ * @param cargo - Raw cargo value from the bulk staff file
+ * @returns Matched entry with key and salary, or range for career positions, or null
+ */
+export function lookupCargoSalary(cargo: string): {
+  key: string
+  baseSalary: number
+  /** When exact level is unknown, provides the salary range for the career. */
+  range?: { min: number; max: number }
+  tabela: TabelaId
+} | null {
+  if (!cargo) return null
+
+  // SP positions: "SP01C" → "SP-01"
+  const spMatch = cargo.match(/^SP(\d{2})[CSU]?$/i)
+  if (spMatch) {
+    const key = `SP-${spMatch[1]}`
+    const entry = FUNCIONARIOS_CARGOS[key]
+    if (entry) return { key, baseSalary: entry.baseSalary, tabela: entry.tabela }
+  }
+
+  // CNE positions: "CNE07" → "CNE-07"
+  const cneMatch = cargo.match(/^CNE(\d{2})$/i)
+  if (cneMatch) {
+    const key = `CNE-${cneMatch[1]}`
+    const entry = FUNCIONARIOS_CARGOS[key]
+    if (entry) return { key, baseSalary: entry.baseSalary, tabela: entry.tabela }
+  }
+
+  // Career positions: only know the career, not the class/level
+  if (cargo.startsWith("Analista Legislativo")) {
+    return {
+      key: "Analista Legislativo",
+      baseSalary: 14_008.22,
+      range: { min: 14_008.22, max: 19_091.77 },
+      tabela: "I",
+    }
+  }
+  if (cargo.startsWith("Técnico Legislativo") || cargo.startsWith("Tecnico Legislativo")) {
+    return {
+      key: "Técnico Legislativo",
+      baseSalary: 8_825.18,
+      range: { min: 8_825.18, max: 15_464.33 },
+      tabela: "I",
+    }
+  }
+
+  return null
+}
+
+/**
  * Monthly "representação mensal" allowance for special-nature positions (CNE).
  * This is paid on top of the base salary in {@link FUNCIONARIOS_CARGOS}.
  *

@@ -63,6 +63,7 @@ export function AttendeesList({ attendees, sourceUrl }: AttendeesListProps) {
       cell: (r: EventAttendee) => (
         <Link
           href={`/camara/${r.deputyId}`}
+          prefetch={false}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <DeputyPhoto name={r.name} photoUrl={r.photoUrl} />
