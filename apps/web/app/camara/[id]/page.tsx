@@ -55,6 +55,7 @@ import { analyzeCeapConcentration } from "@/lib/analysis/ceap-concentration"
 import { analyzeVotingAlignment } from "@/lib/analysis/voting-alignment"
 import { analyzeLegislativeEfficiency } from "@/lib/analysis/legislative-efficiency"
 import { computeRealMandateCost } from "@/lib/analysis/real-mandate-cost"
+import { computeConfirmedCostToDate, computeCostPerOutput, computeChamberAvgCostPerVote } from "@/lib/analysis/cost-per-output"
 import { VERBA_DE_GABINETE_TOTAL } from "@/lib/constants/camara"
 import { analyzeCeapUtilization } from "@/lib/analysis/ceap-utilization"
 import { computeCeapRanking } from "@/lib/analysis/ceap-ranking"
@@ -66,6 +67,7 @@ import { AttendanceOverviewCharts } from "./AttendanceOverviewCharts"
 import { YearSelector } from "./YearSelector"
 import { RedFlagsCard, type RedFlag } from "./RedFlagsCard"
 import { RealMandateCostCard } from "./RealMandateCostCard"
+import { CostPerOutputSection } from "./CostPerOutputSection"
 import { PropositionSection } from "./PropositionSection"
 import { CaucusDetailSection } from "./CaucusDetailSection"
 import { SectionNav } from "./SectionNav"
@@ -291,8 +293,10 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
 
   // ── Real Mandate Cost ──────────────────────────────────────────────
   const isCurrentYear = selectedYear === new Date().getFullYear()
-  // Count months with actual CEAP data (months with value > 0)
-  const ceapMonthsCovered = currentMonthly.filter((m) => m.total > 0).length || (isCurrentYear ? 0 : 12)
+  // First and last months with actual CEAP data
+  const ceapMonthNumbers = currentMonthly.filter((m) => m.total > 0).map((m) => m.month)
+  const ceapFirstMonth = ceapMonthNumbers.length > 0 ? Math.min(...ceapMonthNumbers) : 1
+  const ceapLastMonth = ceapMonthNumbers.length > 0 ? Math.max(...ceapMonthNumbers) : 12
   // Verba scraper returns annual total only — no monthly breakdown available
   const verbaMonthsCovered = verbaGabinete.totalSpent > 0 ? (isCurrentYear ? new Date().getMonth() : 12) : 0
 
@@ -300,9 +304,9 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
     selectedYear,
     totalCeap,
     verbaGabinete.totalSpent,
-    staffCount.count,
     isCurrentYear,
-    ceapMonthsCovered,
+    ceapFirstMonth,
+    ceapLastMonth,
     verbaMonthsCovered,
     expenses._source ?? "",
     verbaGabinete._source ?? "",
@@ -356,9 +360,35 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
   const activeDays = countActiveDays(attendanceDetail)
   const hoursPerWeek = aggregateHoursPerWeek(events, selectedYear)
 
-  // Absence streak — uses the set of dates with any attendance
-  const attendedDateSet = new Set(attendanceDetail.map((e) => e.date.slice(0, 10)))
-  const longestAbsenceStreak = computeLongestAbsenceStreak(attendedDateSet, selectedYear)
+  // Absence streak — only counts absences from plenary sessions (deliberative
+  // and preparatory), not all events. Using all events would undercount
+  // absences since committee meetings run in parallel on most days.
+  const plenaryDateSet = new Set(plenaryEvents.map((e) => e.date.slice(0, 10)))
+  const longestAbsenceStreak = computeLongestAbsenceStreak(plenaryDateSet, selectedYear)
+
+  // ── Cost per output metrics ─────────────────────────────────────────
+  const salaryMonthsElapsed = isCurrentYear ? new Date().getMonth() + 1 : 12
+  const confirmedCostToDate = computeConfirmedCostToDate(
+    totalCeap,
+    verbaGabinete.totalSpent,
+    salaryMonthsElapsed,
+  )
+  const costPerOutput = computeCostPerOutput(
+    confirmedCostToDate,
+    activeDays,
+    votingHistory.length,
+    plenaryAttended,
+    propositionsYearly.length,
+    selectedYear,
+  )
+  const chamberAvgCostPerVote = ceapBulk.deputies.length > 0 && votingHistory.length > 0
+    ? await computeChamberAvgCostPerVote(
+        ceapBulk.deputies,
+        votingHistory.length,
+        salaryMonthsElapsed,
+        selectedYear,
+      )
+    : null
 
   // ── Red flags ─────────────────────────────────────────────────────
   const absenceCeap = analyzeAbsenceCeap(expenses, events, expenses._source ?? "")
@@ -547,6 +577,14 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
         {/* Custo Real do Mandato — inline within Resumo Geral */}
         <div className="mt-4">
           <RealMandateCostCard result={mandateCost} />
+          <CostPerOutputSection
+            metrics={costPerOutput.metrics}
+            confirmedCost={costPerOutput.confirmedCostToDate}
+            year={selectedYear}
+            propositionsCount={propositionsYearly.length}
+            chamberAvgCostPerVote={chamberAvgCostPerVote}
+            expenseSourceUrl={expenses._source}
+          />
         </div>
       </section>
 
@@ -579,10 +617,6 @@ export default async function DeputyDetailPage({ params, searchParams }: DeputyD
                     ? `Média nacional: ${formatCurrency(ceapBenchmark.nationalAverage)}. Este deputado gastou ${Math.abs(ceapBenchmark.vsNationalPercent).toFixed(0)}% ${ceapBenchmark.vsNationalPercent >= 0 ? "acima" : "abaixo"} da média.`
                     : "Cota para Exercício da Atividade Parlamentar — total gasto no ano."
                   }
-                />
-                <StatCard
-                  label={`Total (${selectedYear - 1})`}
-                  value={formatCurrency(prevYearTotal)}
                 />
                 <StatCard
                   label="Registros"

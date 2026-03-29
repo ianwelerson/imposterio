@@ -1718,7 +1718,7 @@ export interface DeputyAttendanceSummary {
 export interface AttendanceBulkSummary {
   /** Total number of unique events in the year. */
   totalEvents: number
-  /** Total number of plenary sessions (Sessões Deliberativas, Solenes, Preparatórias) in the year. */
+  /** Total number of mandatory plenary sessions (Sessão Deliberativa + Preparatória) in the year. */
   totalPlenarySessions: number
   /** Per-deputy attendance counts. */
   deputies: DeputyAttendanceSummary[]
@@ -1747,7 +1747,7 @@ export async function getDeputyAttendanceBulk(
   year: number
 ): Promise<WithSource<AttendanceBulkSummary>> {
   const url = ENDPOINTS.CAMARA_BULK_ATTENDANCE(year)
-  const cacheKey = `camara:attendance:summary:${year}`
+  const cacheKey = `attendance-plenary:summary:${year}`
 
   // Check Redis directly instead of cachedFetch to avoid fetching the raw
   // 5MB bulk file on cache miss (cachedFetch would fetch + store it).
@@ -1779,16 +1779,20 @@ export async function getDeputyAttendanceBulk(
 
   const raw = (await res.json()) as { dados: CamaraAttendanceRaw[] }
 
-  // Build event type lookup from events bulk file to identify plenary sessions
-  const PLENARY_PATTERNS = [
-    "Sessão Deliberativa", "Sessão Não Deliberativa",
-    "Sessão Solene", "Sessão Preparatória",
-  ]
+  // Build event type lookup from events bulk file to identify plenary sessions.
+  // Only deliberative and preparatory sessions count — these are where voting
+  // happens and attendance is expected. Ceremonial sessions ("Sessão Não
+  // Deliberativa Solene") are excluded via exact matching to avoid inflating
+  // the denominator.
+  const PLENARY_TYPES = new Set([
+    "Sessão Deliberativa",
+    "Sessão Preparatória",
+  ])
   const plenaryEventIds = new Set<number>()
   if (eventsRes.ok) {
     const rawEvents = (await eventsRes.json()) as { dados: CamaraEventBulkRaw[] }
     for (const e of rawEvents.dados) {
-      if (PLENARY_PATTERNS.some((p) => e.descricaoTipo.includes(p))) {
+      if (PLENARY_TYPES.has(e.descricaoTipo)) {
         plenaryEventIds.add(e.id)
       }
     }
@@ -2581,7 +2585,7 @@ export async function getDeputyAttendanceDetail(
   year: number,
 ): Promise<WithSource<DeputyAttendanceEvent[]>> {
   const attendanceUrl = ENDPOINTS.CAMARA_BULK_ATTENDANCE(year)
-  const cacheKey = `camara:attendance:detail:${year}:${deputyId}`
+  const cacheKey = `attendance-plenary:${deputyId}:${year}`
   const currentYear = new Date().getFullYear()
   const ttl = year < currentYear ? TTL.CAMARA_ATTENDANCE_HISTORY : TTL.CAMARA_DEPUTY_ATTENDANCE
 

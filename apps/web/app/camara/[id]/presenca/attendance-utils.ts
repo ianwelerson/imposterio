@@ -37,24 +37,29 @@ export interface WeeklyHours {
 }
 
 /**
- * Known plenary session type patterns in the Câmara events data.
- * Events with `eventType` matching any of these are considered plenary sessions.
+ * Plenary session types where deputy attendance is expected and civically
+ * meaningful. Only deliberative and preparatory sessions count — these are
+ * where voting happens and presence is mandatory.
+ *
+ * Excluded: "Sessão Não Deliberativa Solene" — ceremonial/honorary sessions
+ * where attendance is optional. The previous `.includes()` matching caused
+ * "Sessão Não Deliberativa" to match "Sessão Não Deliberativa Solene",
+ * inflating the denominator by ~50% and producing inaccurate attendance rates.
  */
-const PLENARY_PATTERNS = [
+const PLENARY_TYPES = new Set([
   "Sessão Deliberativa",
-  "Sessão Não Deliberativa",
-  "Sessão Solene",
   "Sessão Preparatória",
-]
+])
 
 /**
- * Checks whether an event is a plenary session based on its type.
+ * Checks whether an event is a mandatory plenary session based on its type.
+ * Uses exact matching to avoid false positives from ceremonial sessions.
  *
  * @param eventType - The event type string from the bulk data
- * @returns true if the event is a plenary session
+ * @returns true if the event is a mandatory plenary session
  */
 export function isPlenarySession(eventType: string): boolean {
-  return PLENARY_PATTERNS.some((p) => eventType.includes(p))
+  return PLENARY_TYPES.has(eventType)
 }
 
 /**

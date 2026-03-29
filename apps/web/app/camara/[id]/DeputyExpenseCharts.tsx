@@ -79,13 +79,25 @@ export function DeputyExpenseCharts({
     }
   })
 
-  // Only show months up to the latest with data
-  const lastMonthWithData = Math.max(
-    ...selectedYearMonthly.map((m) => m.month),
-    ...prevYearMonthly.map((m) => m.month),
-    1,
-  )
-  const visibleComparison = comparisonData.slice(0, lastMonthWithData)
+  // Show only months up to the latest with data in the selected year.
+  // For the current year this avoids a misleading flat line after the last
+  // data point; both lines are trimmed to the same range for fair comparison.
+  const lastCurrentMonth = selectedYearMonthly.length > 0
+    ? Math.max(...selectedYearMonthly.map((m) => m.month))
+    : 0
+  const lastPrevMonth = prevYearMonthly.length > 0
+    ? Math.max(...prevYearMonthly.map((m) => m.month))
+    : 0
+  const lastMonthWithData = Math.max(lastCurrentMonth, lastPrevMonth, 1)
+  // When current year has less data than previous year, cap to current year's
+  // last month so the comparison is apples-to-apples
+  const visibleUpTo = lastCurrentMonth > 0 && lastCurrentMonth < lastPrevMonth
+    ? lastCurrentMonth
+    : lastMonthWithData
+  const visibleComparison = comparisonData.slice(0, visibleUpTo)
+
+  const lastMonthName = MONTH_LABELS[visibleUpTo - 1] ?? "Dez"
+  const comparisonSubtitle = `Janeiro a ${lastMonthName.toLowerCase()} — comparativo ${year} vs ${year - 1}`
 
   const comparisonSeries = [
     { dataKey: "atual", name: `${year}`, color: "#4f46e5" },
@@ -111,7 +123,7 @@ export function DeputyExpenseCharts({
         <ChartCard
           sourceUrl={sourceUrl}
           title="Comparativo de gastos CEAP"
-          subtitle={`${year} vs ${year - 1} — acumulado mensal`}
+          subtitle={comparisonSubtitle}
         >
           <LineChart
             data={visibleComparison}

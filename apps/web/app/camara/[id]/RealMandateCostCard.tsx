@@ -5,7 +5,7 @@
  *
  * Two modes:
  * - Current year: shows confirmed amounts + projections for remaining months
- * - Past year: shows all amounts as confirmed (with staff always estimated)
+ * - Past year: shows all amounts as confirmed
  *
  * Confirmed values render in solid text; estimated values render muted with ~.
  */
@@ -49,6 +49,14 @@ export function RealMandateCostCard({ result }: RealMandateCostCardProps) {
         <span className="font-semibold text-gray-700">{formatBrl(monthlyAverage)}</span>/mês
       </p>
 
+      {/* Confirmed / Estimated subtotals */}
+      {estimatedTotal > 0 && (
+        <div className="mt-3 flex gap-4 text-xs text-gray-500">
+          <span>Confirmado: <span className="font-semibold text-gray-700">{formatBrl(confirmedTotal)}</span></span>
+          <span>Estimado: <span className="font-semibold text-gray-400">~ {formatBrl(estimatedTotal)}</span></span>
+        </div>
+      )}
+
       {/* Breakdown rows */}
       <div className="mt-5 divide-y divide-gray-100 rounded-lg border border-gray-100">
         {lines.map((line) => (
@@ -60,6 +68,16 @@ export function RealMandateCostCard({ result }: RealMandateCostCardProps) {
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-sm text-gray-600">{line.label}</span>
                 {line.sourceUrl && <SourcePill url={line.sourceUrl} />}
+                {line.tooltip && (
+                  <span className="group relative">
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-500 cursor-help">
+                      ?
+                    </span>
+                    <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-64 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      {line.tooltip}
+                    </span>
+                  </span>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 {line.attribution === "partial" ? (
@@ -85,17 +103,30 @@ export function RealMandateCostCard({ result }: RealMandateCostCardProps) {
         ))}
       </div>
 
+      {/* Grand total line */}
+      {estimatedTotal > 0 && (
+        <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
+          <span className="text-sm font-semibold text-gray-700">
+            Total estimado para {result.year}
+          </span>
+          <span className="text-sm font-bold tabular-nums text-gray-900">
+            {formatBrl(grandTotal)}
+          </span>
+        </div>
+      )}
+
       {/* Footer disclaimer */}
       <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
         {result.isCurrentYear ? (
           <>
-            Os valores marcados como estimativa são calculados com base nos dados
-            disponíveis até o momento. Gastos reais podem variar.
+            A Verba de Gabinete cobre salários de secretários parlamentares e demais
+            gastos do gabinete. Valores estimados são projetados com base na média
+            mensal dos dados disponíveis. Gastos reais podem variar.
           </>
         ) : (
           <>
-            Funcionários: valor estimado com base no salário mediano dos cargos.
-            O dado real é público mas não está disponível via API.
+            A Verba de Gabinete cobre salários de secretários parlamentares e demais
+            gastos do gabinete. Todos os valores são confirmados via fontes oficiais.
           </>
         )}
       </p>

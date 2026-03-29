@@ -9,7 +9,8 @@
  * Pure function — operates on pre-fetched expense and event data.
  */
 
-import type { DeputyExpense, DeputyEvent } from "@imposterio/types"
+import type { DeputyExpense } from "@imposterio/types"
+import type { DeputyAttendanceEvent } from "@imposterio/fetchers"
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -59,19 +60,20 @@ function formatBrl(value: number): string {
  * count.
  *
  * @param expenses - Deputy's full expense list for a given year
- * @param events - Deputy's plenary events for the same year
+ * @param plenaryEvents - Deputy's plenary attendance events (already filtered to
+ *   mandatory plenary types: Sessão Deliberativa, Sessão Preparatória)
  * @returns Ratio analysis with BRL/day cost and PT-BR interpretation
  *
  * @example
  * ```typescript
- * const result = analyzePresencePayRatio(expenses, events)
+ * const result = analyzePresencePayRatio(expenses, plenaryEvents)
  * console.log(result.costPerSession) // 2345.67
  * console.log(result.interpretation) // "Este deputado gastou R$ 2.345,67..."
  * ```
  */
 export function analyzePresencePayRatio(
   expenses: DeputyExpense[],
-  events: DeputyEvent[],
+  plenaryEvents: DeputyAttendanceEvent[],
 ): PresencePayRatioResult {
   // Sum travel/accommodation expenses
   let totalTravelSpend = 0
@@ -81,11 +83,11 @@ export function analyzePresencePayRatio(
     }
   }
 
-  // Count unique attendance days from events
+  // Count unique plenary attendance days
   const attendedDates = new Set<string>()
-  for (const event of events) {
-    if (event.startTime) {
-      attendedDates.add(event.startTime.slice(0, 10))
+  for (const event of plenaryEvents) {
+    if (event.date) {
+      attendedDates.add(event.date.slice(0, 10))
     }
   }
 

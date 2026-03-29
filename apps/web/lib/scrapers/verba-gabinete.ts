@@ -141,19 +141,24 @@ function parseVerbaGabineteHtml(
   year: number,
   sourceUrl: string,
 ): VerbaGabineteData {
-  // Step 1: The #verba section must exist
-  if (!html.includes('id="verba"') && !html.includes("id='verba'")) {
+  // Step 1: Locate the #verba section. The page has multiple sections (cota,
+  // verba, viagens) each with their own destaque paragraph. We slice the HTML
+  // from the #verba anchor to avoid matching the cota value. We can't use a
+  // simple <section>…</section> regex because the #verba section contains
+  // nested <section> elements that would cause a non-greedy match to stop early.
+  const verbaIdx = html.search(/id=["']verba["']/i)
+
+  if (verbaIdx === -1) {
     throw new Error("Verba de Gabinete: #verba section not found in response")
   }
 
-  // Step 2: Find the destaque paragraph with the total value.
-  // The page structure is:
-  //   <p class="gastos__resumo-texto">Em 2026, na legislatura 57, gasto d… com verba de gabinete:</p>
-  //   <p class="gastos__resumo-texto gastos__resumo-texto--destaque">R$ 238.027,77</p>
-  //
-  // We match the destaque paragraph by its class.
-  const destaquePattern = /<p[^>]*class=["'][^"']*gastos__resumo-texto--destaque[^"']*["'][^>]*>([\s\S]*?)<\/p>/i
-  const destaqueMatch = html.match(destaquePattern)
+  const verbaHtml = html.slice(verbaIdx)
+
+  // Step 2: Find the summary paragraph mentioning "verba de gabinete" and the
+  // destaque paragraph immediately after it. This two-step match ensures we
+  // grab the correct value even if the page has multiple destaque paragraphs.
+  const destaquePattern = /com verba de gabinete:[\s\S]*?<p[^>]*class=["'][^"']*gastos__resumo-texto--destaque[^"']*["'][^>]*>([\s\S]*?)<\/p>/i
+  const destaqueMatch = verbaHtml.match(destaquePattern)
 
   if (!destaqueMatch) {
     throw new Error(

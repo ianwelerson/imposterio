@@ -36,8 +36,8 @@ export const TTL = {
   CAMARA_DEPUTY_PROFESSIONS: 60 * 60 * 24 * 30,
   /** Individual event detail — 6h */
   CAMARA_EVENT_DETAIL: 60 * 60 * 6,
-  /** Deputy attendance from yearly bulk file — 6h */
-  CAMARA_DEPUTY_ATTENDANCE: 60 * 60 * 6,
+  /** Deputy attendance from yearly bulk file — 1h */
+  CAMARA_DEPUTY_ATTENDANCE: 60 * 60 * 1,
   /** Chamber staff/aides list — 24h */
   CAMARA_STAFF: 60 * 60 * 24,
   /** Bulk attendance for past years — 30d (historical, effectively static) */
