@@ -81,15 +81,113 @@ export const TTL = {
   /** Bulk CEAP expenses for past years — 30d (historical, static) */
   CAMARA_CEAP_BULK_HISTORY: 60 * 60 * 24 * 30,
 
-  // ── Senado Federal ──────────────────────────────────────────────────
-  /** List of all senators currently serving — 24h */
+  // ── Senado Federal — Senators ──────────────────────────────────────
+  /** List of all senators currently serving — 24h (81 senators, rarely changes) */
   SENADO_SENATORS_LIST: 60 * 60 * 24,
+  /** List of senators currently on leave (afastados) — 6h */
+  SENADO_SENATORS_ON_LEAVE: 60 * 60 * 6,
   /** Individual senator profile details — 24h */
   SENADO_SENATOR_DETAIL: 60 * 60 * 24,
-  /** Senator voting history — 3h (updated during sessions) */
-  SENADO_SENATOR_VOTES: 60 * 60 * 3,
-  /** Senator authored bills — 12h */
-  SENADO_SENATOR_BILLS: 60 * 60 * 12,
+  /** Senator mandates (terms) — 30d (historical, effectively static) */
+  SENADO_SENATOR_MANDATES: 60 * 60 * 24 * 30,
+  /** Senator party affiliations history — 30d (historical) */
+  SENADO_SENATOR_AFFILIATIONS: 60 * 60 * 24 * 30,
+  /** Senator leadership roles — 12h (changes occasionally) */
+  SENADO_SENATOR_LEADERSHIPS: 60 * 60 * 12,
+  /** Senator committee memberships — 24h */
+  SENADO_SENATOR_COMMITTEES: 60 * 60 * 24,
+  /** Senator chair/vice positions — 24h */
+  SENADO_SENATOR_POSITIONS: 60 * 60 * 24,
+  /** Senator leaves (licenças) — 6h */
+  SENADO_SENATOR_LEAVES: 60 * 60 * 6,
+  /** Senator academic history — 30d (static biographical) */
+  SENADO_SENATOR_ACADEMIC: 60 * 60 * 24 * 30,
+  /** Senator declared professions — 30d (rarely updated) */
+  SENADO_SENATOR_PROFESSIONS: 60 * 60 * 24 * 30,
+  /** Senator floor speeches — 12h */
+  SENADO_SENATOR_SPEECHES: 60 * 60 * 12,
+  /** Senator interjections (apartes) — 12h */
+  SENADO_SENATOR_INTERJECTIONS: 60 * 60 * 12,
+
+  // ── Senado Federal — Voting ────────────────────────────────────────
+  /** Voting endpoint — current year — 3h */
+  SENADO_VOTING: 60 * 60 * 3,
+  /** Voting endpoint — past years — 30d (historical) */
+  SENADO_VOTING_HISTORY: 60 * 60 * 24 * 30,
+  /** Single voting session detail — 12h (final after session ends) */
+  SENADO_VOTING_DETAIL: 60 * 60 * 12,
+  /** Bench orientation per voting — 12h */
+  SENADO_VOTING_ORIENTATION: 60 * 60 * 12,
+
+  // ── Senado Federal — Propositions (process API) ────────────────────
+  /** Process search results — 3h (updated during sessions) */
+  SENADO_PROCESS_SEARCH: 60 * 60 * 3,
+  /** Single process detail — 6h */
+  SENADO_PROCESS_DETAIL: 60 * 60 * 6,
+  /** Process authors lookup — 24h (rarely changes after submission) */
+  SENADO_PROCESS_AUTHORS: 60 * 60 * 24,
+
+  // ── Senado Federal — Plenary ───────────────────────────────────────
+  /** Plenary daily/monthly agenda — 1h (intra-day updates) */
+  SENADO_PLENARY_AGENDA: 60 * 60 * 1,
+  /** Plenary session results — current year — 6h */
+  SENADO_PLENARY_RESULT: 60 * 60 * 6,
+  /** Plenary session results — past years — 30d (historical) */
+  SENADO_PLENARY_RESULT_HISTORY: 60 * 60 * 24 * 30,
+  /** Legislatures list — 30d (changes rarely, every 4 years) */
+  SENADO_PLENARY_LEGISLATURES: 60 * 60 * 24 * 30,
+  /** Single plenary session detail — 6h */
+  SENADO_PLENARY_SESSION_DETAIL: 60 * 60 * 6,
+  /** Plenary speeches across senators — 6h */
+  SENADO_PLENARY_SPEECHES: 60 * 60 * 6,
+
+  // ── Senado Federal — Committees, parties, blocs, leadership ───────
+  /** Committee lists — 24h */
+  SENADO_COMMITTEES_LIST: 60 * 60 * 24,
+  /** Senado parties list — 24h */
+  SENADO_PARTIES: 60 * 60 * 24,
+  /** Senado parliamentary blocs — 24h */
+  SENADO_BLOCS: 60 * 60 * 24,
+  /** Leadership composition — 12h */
+  SENADO_LEADERSHIP_COMPOSITION: 60 * 60 * 12,
+
+  // ── Senado Federal — CEAPS (admin API) ─────────────────────────────
+  /** CEAPS bulk for current year — 6h (admin API updates daily) */
+  SENADO_CEAPS_BULK: 60 * 60 * 6,
+  /** CEAPS bulk for past years — 30d (historical, static) */
+  SENADO_CEAPS_BULK_HISTORY: 60 * 60 * 24 * 30,
+  /** CEAPS LAI CSV (legacy) — 30d (CSV is static) */
+  SENADO_CEAPS_LAI: 60 * 60 * 24 * 30,
+  /** Senator regional offices — 24h */
+  SENADO_OFFICES: 60 * 60 * 24,
+  /** Senator housing aid records — 24h */
+  SENADO_HOUSING_AID: 60 * 60 * 24,
+
+  // ── Senado Federal — Servants (Phase 4) ────────────────────────────
+  /** Servants list & headcount — 24h */
+  SENADO_SERVANTS_BULK: 60 * 60 * 24,
+  /** Servants remuneration (monthly) — 7d (published monthly) */
+  SENADO_SERVANTS_REMUNERATION: 60 * 60 * 24 * 7,
+
+  // ── Senado Federal — Contracts (Phase 8) ───────────────────────────
+  /** Contracts list (institutional) — 12h */
+  SENADO_CONTRACTS: 60 * 60 * 12,
+  /** Single contract amendments/items/payments — 12h */
+  SENADO_CONTRACT_DETAIL: 60 * 60 * 12,
+  /** Bids (licitações) list — 12h */
+  SENADO_BIDS: 60 * 60 * 12,
+  /** Contracting companies list — 24h (rarely changes intra-day) */
+  SENADO_CONTRACTING_COMPANIES: 60 * 60 * 24,
+  /** Purchase orders (notas de empenho) — 6h */
+  SENADO_PURCHASE_ORDERS: 60 * 60 * 6,
+  /** Outsourced workers list — 24h */
+  SENADO_OUTSOURCED_WORKERS: 60 * 60 * 24,
+
+  // ── Senado Federal — Attendance (composed) ─────────────────────────
+  /** Composed attendance bulk — current year — 1h (recomposed from monthly results) */
+  SENADO_ATTENDANCE_BULK: 60 * 60 * 1,
+  /** Composed attendance bulk — past years — 30d (historical) */
+  SENADO_ATTENDANCE_BULK_HISTORY: 60 * 60 * 24 * 30,
 
   // ── Portal da Transparencia ─────────────────────────────────────────
   /** Federal executive civil servants — 24h */

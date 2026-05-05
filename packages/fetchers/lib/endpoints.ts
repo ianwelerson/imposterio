@@ -19,8 +19,11 @@ export const BASE_URLS = {
   /** Senado Federal Open Data API (upper house of Congress) */
   SENADO: "https://legis.senado.leg.br/dadosabertos",
 
-  /** Senado administrative API (compensation data) */
+  /** Senado administrative API (compensation, CEAPS, servants) */
   SENADO_ADMIN: "https://adm.senado.gov.br/adm-dadosabertos",
+
+  /** Senado transparency portal (LAI CSV bulk files) */
+  SENADO_TRANSPARENCY: "https://www.senado.leg.br/transparencia/LAI/verba",
 
   /** Portal da Transparencia (federal executive transparency data) */
   TRANSPARENCIA: "https://api.portaldatransparencia.gov.br/api-de-dados",
@@ -90,15 +93,132 @@ export const ENDPOINTS = {
   CAMARA_BULK_PROCUREMENT_REQUESTS: (year: number) =>
     `${BASE_URLS.CAMARA_BULK}/licitacoesPedidos/json/licitacoesPedidos-${year}.json`,
 
-  // ── Senado Federal ──────────────────────────────────────────────────
+  // ── Senado Federal — Senators ──────────────────────────────────────
   SENADO_SENATORS: `${BASE_URLS.SENADO}/senador/lista/atual.json`,
+  SENADO_SENATORS_ON_LEAVE: `${BASE_URLS.SENADO}/senador/afastados.json`,
+  SENADO_SENATORS_BY_LEGISLATURE: (legislature: number) =>
+    `${BASE_URLS.SENADO}/senador/lista/legislatura/${legislature}.json`,
   SENADO_SENATOR: (id: string) => `${BASE_URLS.SENADO}/senador/${id}.json`,
-  SENADO_SENATOR_HISTORY: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/historico.json`,
-  SENADO_SENATOR_VOTES: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/votacoes.json`,
-  SENADO_SENATOR_BILLS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/autorias.json`,
+  SENADO_SENATOR_MANDATES: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/mandatos.json`,
+  SENADO_SENATOR_AFFILIATIONS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/filiacoes.json`,
+  SENADO_SENATOR_LEADERSHIPS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/liderancas.json`,
+  SENADO_SENATOR_COMMITTEES: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/comissoes.json`,
+  SENADO_SENATOR_POSITIONS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/cargos.json`,
+  SENADO_SENATOR_LEAVES: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/licencas.json`,
+  SENADO_SENATOR_ACADEMIC: (id: string) =>
+    `${BASE_URLS.SENADO}/senador/${id}/historicoAcademico.json`,
+  SENADO_SENATOR_PROFESSIONS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/profissao.json`,
   SENADO_SENATOR_SPEECHES: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/discursos.json`,
   SENADO_SENATOR_INTERJECTIONS: (id: string) => `${BASE_URLS.SENADO}/senador/${id}/apartes.json`,
+
+  // ── Senado Federal — Voting (modern unified API) ───────────────────
+  /**
+   * Modern voting endpoint. Accepts query params:
+   * `codigoParlamentar`, `dataInicio`, `dataFim`, `idProcesso`, `codigoSessaoVotacao`.
+   * Replaces deprecated `/senador/{id}/votacoes.json` (sunset 2026-02-01).
+   */
+  SENADO_VOTING: `${BASE_URLS.SENADO}/votacao`,
+  SENADO_VOTING_COMMITTEE_BY_PARLAMENTAR: (id: string) =>
+    `${BASE_URLS.SENADO}/votacaoComissao/parlamentar/${id}`,
+  SENADO_VOTING_COMMITTEE_BY_MATTER: (sigla: string, num: string, ano: string) =>
+    `${BASE_URLS.SENADO}/votacaoComissao/materia/${sigla}/${num}/${ano}`,
+  SENADO_VOTING_COMMITTEE_BY_COMMITTEE: (sigla: string) =>
+    `${BASE_URLS.SENADO}/votacaoComissao/comissao/${sigla}`,
+  SENADO_VOTING_ORIENTATION_DATE: (data: string) =>
+    `${BASE_URLS.SENADO}/plenario/votacao/orientacaoBancada/${data}`,
+  SENADO_VOTING_ORIENTATION_RANGE: (ini: string, fim: string) =>
+    `${BASE_URLS.SENADO}/plenario/votacao/orientacaoBancada/${ini}/${fim}`,
+
+  // ── Senado Federal — Propositions (modern process API) ─────────────
+  /**
+   * Modern process search. Accepts query params:
+   * `sigla`, `numero`, `ano`, `idProcesso`, `codigoParlamentarAutor`, `termo`.
+   * Replaces deprecated `/senador/{id}/autorias.json` and most `/materia/*`.
+   */
+  SENADO_PROCESS_SEARCH: `${BASE_URLS.SENADO}/processo`,
+  SENADO_PROCESS: (idProcesso: string) => `${BASE_URLS.SENADO}/processo/${idProcesso}`,
+  SENADO_PROCESS_RAPPORTEURSHIP: `${BASE_URLS.SENADO}/processo/relatoria`,
+  SENADO_PROCESS_DOCUMENTS: `${BASE_URLS.SENADO}/processo/documento`,
+  SENADO_PROCESS_AMENDMENTS: `${BASE_URLS.SENADO}/processo/emenda`,
+  SENADO_PROCESS_DEADLINES: `${BASE_URLS.SENADO}/processo/prazo`,
+
+  // ── Senado Federal — Plenary sessions & attendance ─────────────────
+  SENADO_PLENARY_AGENDA_DAY: (yyyymmdd: string) =>
+    `${BASE_URLS.SENADO}/plenario/agenda/dia/${yyyymmdd}`,
+  SENADO_PLENARY_AGENDA_MONTH: (yyyymm: string) =>
+    `${BASE_URLS.SENADO}/plenario/agenda/mes/${yyyymm}`,
+  SENADO_PLENARY_RESULT_DAY: (yyyymmdd: string) =>
+    `${BASE_URLS.SENADO}/plenario/resultado/${yyyymmdd}`,
+  SENADO_PLENARY_RESULT_MONTH: (yyyymm: string) =>
+    `${BASE_URLS.SENADO}/plenario/resultado/mes/${yyyymm}`,
+  SENADO_PLENARY_LEGISLATURES: `${BASE_URLS.SENADO}/plenario/lista/legislaturas`,
+  SENADO_PLENARY_SESSION_TYPES: `${BASE_URLS.SENADO}/plenario/tiposSessao`,
+  SENADO_PLENARY_ATTENDANCE_TYPES: `${BASE_URLS.SENADO}/plenario/lista/tiposComparecimento`,
+  SENADO_PLENARY_SPEECHES_RANGE: (ini: string, fim: string) =>
+    `${BASE_URLS.SENADO}/plenario/lista/discursos/${ini}/${fim}`,
+  SENADO_PLENARY_SESSION: (codigo: string) =>
+    `${BASE_URLS.SENADO}/plenario/encontro/${codigo}`,
+  SENADO_PLENARY_SESSION_AGENDA: (codigo: string) =>
+    `${BASE_URLS.SENADO}/plenario/encontro/${codigo}/pauta`,
+  SENADO_PLENARY_SESSION_RESULT: (codigo: string) =>
+    `${BASE_URLS.SENADO}/plenario/encontro/${codigo}/resultado`,
+  SENADO_PLENARY_SESSION_SUMMARY: (codigo: string) =>
+    `${BASE_URLS.SENADO}/plenario/encontro/${codigo}/resumo`,
+
+  // ── Senado Federal — Stenographic ──────────────────────────────────
+  SENADO_TAQUIGRAFIA_SESSION_NOTES: (idSessao: string) =>
+    `${BASE_URLS.SENADO}/taquigrafia/notas/sessao/${idSessao}`,
+  SENADO_TAQUIGRAFIA_SESSION_VIDEOS: (idSessao: string) =>
+    `${BASE_URLS.SENADO}/taquigrafia/videos/sessao/${idSessao}`,
+  SENADO_TAQUIGRAFIA_MEETING_NOTES: (idReuniao: string) =>
+    `${BASE_URLS.SENADO}/taquigrafia/notas/reuniao/${idReuniao}`,
+  SENADO_TAQUIGRAFIA_MEETING_VIDEOS: (idReuniao: string) =>
+    `${BASE_URLS.SENADO}/taquigrafia/videos/reuniao/${idReuniao}`,
+
+  // ── Senado Federal — Committees ────────────────────────────────────
   SENADO_PERMANENT_COMMITTEES: `${BASE_URLS.SENADO}/comissao/lista/permanente.json`,
+  SENADO_COMMITTEE_LIST: (tipo: string) =>
+    `${BASE_URLS.SENADO}/comissao/lista/${tipo}.json`,
+  SENADO_COMMITTEE_COLEGIADOS: `${BASE_URLS.SENADO}/comissao/lista/colegiados.json`,
+
+  // ── Senado Federal — Leadership ────────────────────────────────────
+  SENADO_LEADERSHIP_COMPOSITION: `${BASE_URLS.SENADO}/composicao/lideranca`,
+
+  // ── Senado Federal — CEAPS (admin API — preferred) ─────────────────
+  SENADO_CEAPS_BY_YEAR: (ano: number) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/senadores/despesas_ceaps/${ano}`,
+  SENADO_CEAPS_BY_YEAR_CSV: (ano: number) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/senadores/despesas_ceaps/${ano}/csv`,
+  SENADO_OFFICES: `${BASE_URLS.SENADO_ADMIN}/api/v1/senadores/escritorios`,
+  SENADO_HOUSING_AID: `${BASE_URLS.SENADO_ADMIN}/api/v1/senadores/auxilio-moradia`,
+
+  // ── Senado Federal — CEAPS (LAI CSV — historical fallback) ─────────
+  SENADO_CEAPS_LAI_CSV: (ano: number) =>
+    `${BASE_URLS.SENADO_TRANSPARENCY}/despesa_ceaps_${ano}.csv`,
+
+  // ── Senado Federal — Civil servants (Phase 4) ──────────────────────
+  SENADO_SERVANTS_BY_OFFICE: `${BASE_URLS.SENADO_ADMIN}/api/v1/servidores/servidores`,
+  SENADO_SERVANTS_REMUNERATION: (ano: number, mes: number) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/servidores/remuneracoes/${ano}/${mes}`,
+  SENADO_SERVANTS_HEADCOUNT: `${BASE_URLS.SENADO_ADMIN}/api/v1/servidores/quantitativos/pessoal`,
+
+  // ── Senado Federal — Contracts (institutional, Phase 8) ────────────
+  SENADO_CONTRACTS: `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/contratos`,
+  SENADO_CONTRACT_AMENDMENTS: (id: string) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/contratos/${id}/aditivos`,
+  SENADO_CONTRACT_OUTSOURCED: (id: string) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/contratos/terceirizados/${id}`,
+  SENADO_CONTRACT_PAYMENTS: (tipo: string, id: string) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/${tipo}/${id}/pagamentos`,
+  SENADO_CONTRACT_ITEMS: (tipo: string, id: string) =>
+    `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/${tipo}/${id}/itens`,
+  SENADO_BIDS: `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/licitacoes`,
+  SENADO_CONTRACTING_COMPANIES: `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/empresas`,
+  SENADO_PURCHASE_ORDERS: `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/notas_empenho`,
+  SENADO_OUTSOURCED_WORKERS: `${BASE_URLS.SENADO_ADMIN}/api/v1/contratacoes/terceirizados`,
+
+  // ── Senado Federal — Vetos ─────────────────────────────────────────
+  SENADO_VETOS_BY_YEAR: (ano: number) => `${BASE_URLS.SENADO}/materia/vetos/${ano}`,
 
   // ── Portal da Transparencia ─────────────────────────────────────────
   TRANSP_CIVIL_SERVANTS: `${BASE_URLS.TRANSPARENCIA}/servidores`,

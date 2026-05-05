@@ -19,7 +19,7 @@ import { track } from "@/lib/analytics"
 import { Sidebar } from "./Sidebar"
 
 /** Routes that are publicly visible without the "Coming soon" overlay. */
-const PUBLIC_PATHS = ["/sobre", "/camara", "/acha-justo"]
+const PUBLIC_PATHS = ["/sobre", "/camara", "/senado", "/acha-justo"]
 
 interface AppShellProps {
   /** Page content rendered in the main scrollable area. */

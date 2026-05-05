@@ -184,7 +184,7 @@ export async function cachedFetch<T>(
           if (process.env.NODE_ENV === "development") {
             console.log(`[cache HIT]  ${key.length > 80 ? key.slice(0, 80) + "…" : key}`)
           }
-          return { ...parsed, _source: url }
+          return attachSource(parsed, url)
         }
         // Invalid entry (primitive, null, or error shape) — evict it
         await redis.del(key).catch(() => {})
@@ -227,5 +227,23 @@ export async function cachedFetch<T>(
     }
   }
 
-  return { ...data, _source: url }
+  return attachSource(data, url)
+}
+
+/**
+ * Attaches a `_source` URL to an API response while preserving its prototype.
+ *
+ * For object responses, the field is added via spread (`{ ...data, _source }`).
+ * For top-level array responses, spreading would coerce the array into a
+ * plain object with numeric keys; `Object.assign` on a fresh copy preserves
+ * array semantics so callers can still iterate, `.map`, `.filter`, etc.
+ *
+ * Modern Senado endpoints (`/votacao`, `/processo`) return top-level arrays,
+ * which is why this distinction matters.
+ */
+function attachSource<T>(data: T, url: string): WithSource<T> {
+  if (Array.isArray(data)) {
+    return Object.assign([...data], { _source: url }) as unknown as WithSource<T>
+  }
+  return { ...(data as object), _source: url } as WithSource<T>
 }

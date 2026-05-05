@@ -1,124 +1,198 @@
 /**
  * @file SenadoCharts.tsx
- * @description Chart section for the Federal Senate (Senado) page.
+ * @description Chart section for the Federal Senate (Senado) overview page.
  *
- * Visualizations based on Senado Federal Open Data API:
- * - Legislative production trend (bills authored per month)
- * - Bills by type distribution (pie chart)
- * - Voting attendance by party (bar chart)
- * - Senators' authorship ranking (horizontal bar)
+ * Receives pre-aggregated data as props (computed server-side in
+ * `senado-utils.ts`) and renders chart primitives. All input is derived
+ * from real Senado API calls — no mock data.
  *
- * Data sources:
- * - GET /senador/{id}/autorias.json — authored bills
- * - GET /senador/{id}/votacoes.json — voting history
- * - GET /materia/distribuicao/autoria.json — authorship distribution
+ * Charts:
+ * - Monthly legislative production (area line) — propositions presented
+ * - Monthly voting sessions (area line) — `/votacao` aggregated
+ * - Attendance by party (bar) — `senado-utils.aggregateAttendanceByParty`
+ * - Senators by party (horizontal bar)
+ * - Senators by state (horizontal bar)
+ * - Propositions by type (pie)
+ * - Voting results (pie)
+ * - Approval rate by proposition type (horizontal bar)
  */
 
 "use client"
 
-import { ChartCard, LineChart, PieChart, BarChart } from "@/components/charts"
+import { ChartCard, BarChart, PieChart, LineChart } from "@/components/charts"
+import type { CountItem, MonthlyCount, ApprovalByType } from "./senado-utils"
 
-// -- Legislative production trend ---------------------------------------------
+interface SenadoChartsProps {
+  /** Senators grouped by party (sorted by caucus size). */
+  byParty: CountItem[]
+  /** Senators grouped by state (sorted by seat count). */
+  byUF: CountItem[]
+  /** Propositions grouped by type code. */
+  propositionsByType: CountItem[]
+  /** Voting sessions grouped by approval result. */
+  votesByResult: CountItem[]
+  /** Propositions grouped by month of presentation (12 buckets). */
+  propositionsByMonth: MonthlyCount[]
+  /** Voting sessions grouped by month (12 buckets). */
+  votesByMonth: MonthlyCount[]
+  /** Average attendance rate (%) by party. */
+  attendanceByParty: CountItem[]
+  /** Approval rate by proposition type. */
+  approvalByType?: ApprovalByType[]
+  /** Source URL for the senators list. */
+  senatorsSourceUrl: string
+  /** Source URL for the propositions search. */
+  propositionsSourceUrl: string
+  /** Source URL for the voting sessions endpoint. */
+  votesSourceUrl: string
+  /** Source URL for the attendance bulk summary. */
+  attendanceSourceUrl: string
+}
 
-const MONTHLY_BILLS_DATA = [
-  { label: "Out", materias: 42 },
-  { label: "Nov", materias: 38 },
-  { label: "Dez", materias: 18 },
-  { label: "Jan", materias: 12 },
-  { label: "Fev", materias: 35 },
-  { label: "Mar", materias: 52 },
-]
+export function SenadoCharts({
+  byParty,
+  byUF,
+  propositionsByType,
+  votesByResult,
+  propositionsByMonth,
+  votesByMonth,
+  attendanceByParty,
+  approvalByType,
+  senatorsSourceUrl,
+  propositionsSourceUrl,
+  votesSourceUrl,
+  attendanceSourceUrl,
+}: SenadoChartsProps) {
+  // Top 12 parties for chart readability.
+  const topParties = byParty.slice(0, 12).map((p) => ({ label: p.name, value: p.value }))
+  // Top 15 states.
+  const topUFs = byUF.slice(0, 15).map((u) => ({ label: u.name, value: u.value }))
 
-const BILLS_SERIES = [
-  { dataKey: "materias", name: "Matérias apresentadas", color: "#4f46e5" },
-]
+  const attendanceBars = attendanceByParty.map((a) => ({ label: a.name, value: a.value }))
 
-// -- Bills by type (pie) ------------------------------------------------------
+  const monthlyProductions = propositionsByMonth.map((m) => ({
+    label: m.label,
+    materias: m.value,
+  }))
 
-const BILLS_BY_TYPE = [
-  { name: "Projetos de Lei (PL)", value: 142 },
-  { name: "Requerimentos", value: 95 },
-  { name: "Emendas a PEC", value: 47 },
-  { name: "Indicações", value: 34 },
-  { name: "Projetos de Resolução", value: 20 },
-  { name: "Outros", value: 4 },
-]
+  const monthlyVotes = votesByMonth.map((m) => ({
+    label: m.label,
+    votacoes: m.value,
+  }))
 
-// -- Voting attendance by party (bar) -----------------------------------------
-
-const ATTENDANCE_BY_PARTY = [
-  { label: "PSD", value: 94 },
-  { label: "PT", value: 91 },
-  { label: "PL", value: 88 },
-  { label: "MDB", value: 85 },
-  { label: "PSDB", value: 83 },
-  { label: "PP", value: 80 },
-  { label: "PDT", value: 78 },
-]
-
-// -- Compensation vs bills authored comparison --------------------------------
-
-const COMPENSATION_VS_PRODUCTION = [
-  { label: "R. Tavares", remuneracao: 33.7, autorias: 14 },
-  { label: "A. Ribeiro", remuneracao: 33.7, autorias: 11 },
-  { label: "P. Guimarães", remuneracao: 33.7, autorias: 9 },
-  { label: "L. Mendonça", remuneracao: 33.7, autorias: 8 },
-  { label: "C. Montenegro", remuneracao: 33.7, autorias: 7 },
-  { label: "D. Borges", remuneracao: 33.7, autorias: 6 },
-]
-
-const COMP_SERIES = [
-  { dataKey: "autorias", name: "Projetos apresentados", color: "#4f46e5" },
-  { dataKey: "remuneracao", name: "Remuneração (R$ mil)", color: "#f59e0b" },
-]
-
-export function SenadoCharts() {
   return (
-    <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <ChartCard
         title="Produção legislativa mensal"
-        subtitle="Matérias apresentadas por mês — fonte: Dados Abertos do Senado"
+        subtitle="Proposições apresentadas por mês no ano"
+        sourceUrl={propositionsSourceUrl}
+        action={{ label: "Ver todas", href: "/senado/pautas/lista" }}
       >
         <LineChart
-          data={MONTHLY_BILLS_DATA}
-          series={BILLS_SERIES}
+          data={monthlyProductions}
+          series={[{ dataKey: "materias", name: "Matérias", color: "#4f46e5" }]}
           area
           height={280}
         />
       </ChartCard>
 
       <ChartCard
-        title="Distribuição por tipo de matéria"
-        subtitle="Proporção entre tipos de proposições legislativas"
-      >
-        <PieChart
-          data={BILLS_BY_TYPE}
-          height={280}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Presença em votações por partido"
-        subtitle="Média de presença em sessões de votação (%)"
-      >
-        <BarChart
-          data={ATTENDANCE_BY_PARTY}
-          height={280}
-          color="#10b981"
-          formatValue={(v) => `${v}%`}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Remuneração vs produtividade"
-        subtitle="Remuneração mensal (R$ mil) × projetos apresentados por senador"
+        title="Votações por mês"
+        subtitle="Sessões de votação realizadas por mês no ano"
+        sourceUrl={votesSourceUrl}
+        action={{ label: "Ver todas", href: "/senado/pautas/votacoes" }}
       >
         <LineChart
-          data={COMPENSATION_VS_PRODUCTION}
-          series={COMP_SERIES}
+          data={monthlyVotes}
+          series={[{ dataKey: "votacoes", name: "Votações", color: "#10b981" }]}
+          area
           height={280}
         />
       </ChartCard>
+
+      {attendanceBars.length > 0 && (
+        <ChartCard
+          title="Presença em plenário por partido"
+          subtitle="Taxa média de presença dos senadores em sessões deliberativas (%)"
+          sourceUrl={attendanceSourceUrl}
+        >
+          <BarChart
+            data={attendanceBars}
+            height={320}
+            color="#10b981"
+            formatValue={(v) => `${v}%`}
+          />
+        </ChartCard>
+      )}
+
+      <ChartCard
+        title="Senadores por partido"
+        subtitle="Tamanho das bancadas no Senado"
+        sourceUrl={senatorsSourceUrl}
+        action={{ label: "Ver todos os partidos", href: "/partidos" }}
+      >
+        <BarChart
+          data={topParties}
+          horizontal
+          height={320}
+          formatValue={(v) => `${v} senadores`}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Senadores por estado"
+        subtitle="Distribuição de cadeiras por UF (3 por estado)"
+        sourceUrl={senatorsSourceUrl}
+        action={{ label: "Ver todos os estados", href: "/estados" }}
+      >
+        <BarChart
+          data={topUFs}
+          horizontal
+          height={320}
+          formatValue={(v) => `${v} senadores`}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Proposições por tipo"
+        subtitle="PL, PEC, MP e demais matérias apresentadas no ano"
+        sourceUrl={propositionsSourceUrl}
+      >
+        <PieChart
+          data={propositionsByType}
+          height={280}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Resultado das votações"
+        subtitle="Sessões de votação nominal no ano"
+        sourceUrl={votesSourceUrl}
+      >
+        <PieChart
+          data={votesByResult}
+          height={280}
+        />
+      </ChartCard>
+
+      {approvalByType && approvalByType.length > 0 && (
+        <ChartCard
+          title="Aprovação por tipo de matéria"
+          subtitle="Taxa de aprovação nas votações nominais por tipo"
+          sourceUrl={votesSourceUrl}
+        >
+          <BarChart
+            data={approvalByType.map((a) => ({
+              label: `${a.type} (${a.total})`,
+              value: a.rate,
+            }))}
+            horizontal
+            height={Math.max(200, approvalByType.length * 40)}
+            color="#10b981"
+            formatValue={(v) => `${v}%`}
+          />
+        </ChartCard>
+      )}
     </div>
   )
 }

@@ -200,8 +200,10 @@ const CACHE_GROUPS: CacheGroup[] = [
     items: [
       { label: "Lista de senadores", ttl: TTL.SENADO_SENATORS_LIST },
       { label: "Perfil do senador", ttl: TTL.SENADO_SENATOR_DETAIL },
-      { label: "Votações", ttl: TTL.SENADO_SENATOR_VOTES },
-      { label: "Autorias", ttl: TTL.SENADO_SENATOR_BILLS },
+      { label: "Mandatos", ttl: TTL.SENADO_SENATOR_MANDATES },
+      { label: "Filiações partidárias", ttl: TTL.SENADO_SENATOR_AFFILIATIONS },
+      { label: "Votações (API unificada)", ttl: TTL.SENADO_VOTING },
+      { label: "Proposições (API unificada)", ttl: TTL.SENADO_PROCESS_SEARCH },
     ],
   },
   {

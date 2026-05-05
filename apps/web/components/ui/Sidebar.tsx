@@ -39,7 +39,7 @@ interface NavSection {
 }
 
 /** Routes that are publicly visible without the "Coming soon" overlay. */
-const PUBLIC_PATHS = ["/sobre", "/camara", "/acha-justo"]
+const PUBLIC_PATHS = ["/sobre", "/camara", "/senado", "/acha-justo"]
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -79,6 +79,9 @@ const NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Senadores", href: "/senado/senadores" },
           { label: "Pauta Legislativa", href: "/senado/pautas" },
+          { label: "Contratações", href: "/senado/contratacoes" },
+          { label: "Servidores", href: "/senado/servidores" },
+          { label: "Comparar", href: "/senado/comparar" },
         ],
       },
     ],

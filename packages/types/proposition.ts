@@ -290,3 +290,102 @@ export interface CamaraVoteOrientation {
   /** Type: "Partido", "Bloco", "Governo", "Minoria". */
   type: string
 }
+
+// ── Senado-specific proposition sub-resources ─────────────────────────
+
+/**
+ * A rapporteurship record from `GET /processo/relatoria?idProcesso=`.
+ *
+ * Senate propositions can be assigned to multiple rapporteurs in different
+ * committees over their lifecycle. Each record captures one rapporteur
+ * appointment with its committee, role, and date range.
+ */
+export interface RapporteurshipRecord {
+  /** Senator's name. */
+  rapporteur: string
+  /** Senator's `CodigoParlamentar` for linking to their detail page. */
+  rapporteurId?: string
+  /** Senator's party at the time of the appointment. */
+  rapporteurParty?: string
+  /** Senator's state at the time of the appointment. */
+  rapporteurUf?: string
+  /** Committee abbreviation (e.g. "CCJ", "CAE"). */
+  committeeAbbreviation: string
+  /** Full committee name. */
+  committeeName: string
+  /** Role of the rapporteurship (e.g. "Relator", "Relator Revisor", "Substituto"). */
+  role: string
+  /** ISO date when the rapporteurship started. */
+  startDate?: string
+  /** ISO date when the rapporteurship ended (undefined if active). */
+  endDate?: string
+}
+
+/**
+ * A document attached to a Senate proposition from
+ * `GET /processo/documento?idProcesso=`.
+ *
+ * Documents include the original bill text, substitute texts, opinions,
+ * reports, and other formal pieces of the legislative process.
+ */
+export interface PropositionDocument {
+  /** Senado document ID (`idDocumento`). */
+  id: string
+  /** Document type description (e.g. "Texto inicial", "Parecer"). */
+  type: string
+  /** Full document title. */
+  title?: string
+  /** ISO date when the document was filed. */
+  date?: string
+  /** Author / signatory name. */
+  author?: string
+  /** Direct URL to the document PDF or HTML. */
+  url?: string
+}
+
+/**
+ * A formal amendment to a Senate proposition from
+ * `GET /processo/emenda?idProcesso=`.
+ */
+export interface PropositionAmendment {
+  /** Senado amendment ID. */
+  id: string
+  /** Amendment number/identifier (e.g. "EMENDA Nº 12 - PLEN"). */
+  identifier: string
+  /** ISO date the amendment was filed. */
+  date?: string
+  /** Author name. */
+  author?: string
+  /** Author party. */
+  authorParty?: string
+  /** Free-form description / amendment summary. */
+  description?: string
+  /** Direct URL to the amendment text. */
+  url?: string
+}
+
+/**
+ * An aggregated voting session from the Senado `GET /votacao` endpoint.
+ *
+ * The endpoint returns one record per (session, senator) tuple, so the
+ * fetcher aggregates them by `codigoSessaoVotacao` to surface session-level
+ * metadata along with optional individual votes and a tally.
+ */
+export interface SenadoVotingSession {
+  /** Session ID (`codigoSessaoVotacao`). */
+  id: string
+  /** ISO date of the voting session. */
+  date: string
+  /** Description of what was voted (`descricaoVotacao`). */
+  description: string
+  /** Whether the session resulted in approval (true), rejection (false), or no result. */
+  approved: boolean | null
+  /** Identifier of the affected matter (e.g. "PL 1234/2024"), when present. */
+  matterIdentifier?: string
+  /** Linkable matter ID for navigation to `/processo/{id}`. */
+  matterId?: string
+  /** Aggregated yes/no/abstention/absent counts. */
+  voteTally?: VoteTally
+  /** Per-senator votes; only populated for the per-session detail call. */
+  votes?: PropositionVote[]
+}

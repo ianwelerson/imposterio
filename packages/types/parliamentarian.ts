@@ -308,7 +308,12 @@ export interface StaffMember {
 
 // ── Senators (Senado Federal) ────────────────────────────────────────
 
-/** A senator as returned by GET /senador/lista/atual.json. */
+/**
+ * A senator as returned by GET /senador/lista/atual.json.
+ *
+ * Mirrors the field shape of `Deputy` for cross-institution UI reuse.
+ * The Senado API exposes 81 senators per legislature.
+ */
 export interface Senator {
   id: string
   name: string
@@ -316,33 +321,368 @@ export interface Senator {
   uf: string
   photoUrl?: string
   email?: string
+  legislature: number
 }
 
-/** Detailed senator profile from GET /senador/{id}.json. */
+/**
+ * Detailed senator profile from GET /senador/{id}.json.
+ *
+ * Mirrors `DeputyDetail` field-for-field where the Senado API exposes equivalents,
+ * so detail-page components can be parameterized over a discriminated union of
+ * deputy/senator without per-institution branching.
+ */
 export interface SenatorDetail extends Senator {
   fullName: string
   birthDate?: string
   birthPlace?: string
+  /** "M" or "F" from the API `Sexo` field. */
+  sex?: string
+  /** Current situation — e.g. "Em exercício", "Afastado", "Suplente em exercício". */
+  situation?: string
+  /** Office description (e.g. "Anexo I — Bloco A — 17º andar"). */
+  office?: string
+  /** Office phone number from the gabinete data. */
+  phone?: string
+  /** Declared profession (e.g. "Advogado"). */
   profession?: string
-  termStart: string
-  termEnd: string
-  legislature: number
+  /** ISO date the current term started. */
+  termStart?: string
+  /** ISO date the current term ends. */
+  termEnd?: string
+  /** Personal website URL (`UrlPaginaParlamentar`). */
+  websiteUrl?: string
 }
 
-/** A bill authored by a senator from GET /senador/{id}/autorias.json. */
-export interface SenatorBill {
+/**
+ * A senate mandate (term) from GET /senador/{id}/mandatos.json.
+ *
+ * Senate terms run 8 years and overlap legislatures. A senator may have
+ * multiple mandates across their career, each tagged with a UF and party.
+ */
+export interface SenatorMandate {
+  /** Mandate ID in the Senado API (`CodigoMandato`). */
+  id: string
+  /** Type of participation: "Titular", "Suplente", etc. */
+  participation: string
+  /** State the senator was elected from. */
+  uf: string
+  /** Primary legislature number associated with this mandate. */
+  primaryLegislature?: number
+  /** Year the mandate started. */
+  startYear: number
+  /** Year the mandate ends (or ended). */
+  endYear: number
+  /** Party at time of election (if available in the response). */
+  party?: string
+}
+
+/**
+ * A party affiliation entry from GET /senador/{id}/filiacoes.json.
+ *
+ * Captures party-switch history. Active affiliation has `endDate` undefined.
+ */
+export interface SenatorAffiliation {
+  /** Party abbreviation (e.g. "PT", "PL"). */
+  party: string
+  /** Full party name. */
+  partyName?: string
+  /** ISO date when affiliation started. */
+  startDate: string
+  /** ISO date when affiliation ended (undefined for the current affiliation). */
+  endDate?: string
+}
+
+/**
+ * A senator's vote on a specific session, from `GET /votacao` filtered by
+ * `codigoParlamentar`. Mirrors `DeputyVotingRecord` so cross-institution
+ * components (vote tables, alignment charts) work without per-source forks.
+ */
+export interface SenatorVotingRecord {
+  /** Session ID in the Senado API (`CodigoSessaoVotacao`). */
+  sessionId: string
+  /** ISO datetime of the voting session. */
   date: string
-  type: string
+  /** Description of what was voted. */
   description: string
-  status: string
+  /**
+   * Whether the measure was approved overall (true), rejected (false),
+   * or has no recorded result (null).
+   */
+  approved: boolean | null
+  /** How the senator voted ("Sim", "Não", "Abstenção", "Obstrução", etc.). */
+  vote: string
+  /** Identifier of the affected matter (e.g. "PL 1234/2024"), when present. */
+  matterIdentifier?: string
+  /** ID of the affected matter (linkable to `GET /processo/{id}`). */
+  matterId?: string
 }
 
-/** A senator's vote from GET /senador/{id}/votacoes.json. */
-export interface SenatorVote {
+/**
+ * A floor speech from `GET /senador/{id}/discursos.json`.
+ *
+ * Maps closely to `DeputySpeech` but the Senado API exposes fewer fields
+ * (no audio/video URLs, no transcript) on the listing endpoint — those
+ * require a per-pronunciamento detail call we do not make in Phase 2.
+ */
+export interface SenatorSpeech {
+  /** Pronunciamento ID (`CodigoPronunciamento`). */
+  id: string
+  /** ISO date of the speech (we collapse `DataPronunciamento` to date-only). */
   date: string
-  proposalId: string
-  proposalDescription: string
-  vote: string
+  /** Type of speech (e.g. "BREVES COMUNICAÇÕES", "DISCURSO"). */
+  type: string
+  /** Brief summary of the speech content. */
+  summary?: string
+  /** URL to the official text record. */
+  textUrl?: string
+  /** URL to the published session record. */
+  sessionUrl?: string
+  /** Topic/matter discussed (assunto). */
+  topic?: string
+}
+
+/**
+ * A committee membership from `GET /senador/{id}/comissoes.json`.
+ *
+ * Mirrors `DeputyCommittee` so committee tables/charts can be reused.
+ */
+export interface SenatorCommittee {
+  /** Committee ID in the Senado API. */
+  id: string
+  /** Committee abbreviation (e.g. "CCJ", "CAE", "CRE"). */
+  abbreviation: string
+  /** Full committee name. */
+  name: string
+  /** Type: "PERMANENTE", "ESPECIAL", "CPI", etc. */
+  type: string
+  /** Senator's role: "Titular", "Suplente". */
+  role: string
+  /** ISO date when membership started. */
+  startDate: string
+  /** ISO date when membership ended (undefined if active). */
+  endDate?: string
+}
+
+/**
+ * A committee chair / vice-chair role from `GET /senador/{id}/cargos.json`.
+ *
+ * The Senado distinguishes "membership" (cargo de membro) from "directing
+ * positions" (presidente, vice-presidente). This type captures the latter.
+ */
+export interface SenatorPosition {
+  /** Position ID in the Senado API. */
+  id: string
+  /** Position name (e.g. "Presidente", "Vice-Presidente", "Suplente"). */
+  name: string
+  /** Committee abbreviation where the position is held. */
+  committeeAbbreviation: string
+  /** Full committee name. */
+  committeeName: string
+  /** ISO date when the position started. */
+  startDate: string
+  /** ISO date when the position ended (undefined if active). */
+  endDate?: string
+}
+
+/**
+ * A leadership role from `GET /senador/{id}/liderancas.json`.
+ *
+ * Senate leadership has no Câmara analog — Câmara uses "frentes parlamentares"
+ * for issue-area caucuses, while Senate uses formal leadership roles tied to
+ * party, bloc, government, or opposition.
+ */
+export interface SenatorLeadership {
+  /** Description of the leadership role (e.g. "Líder", "Vice-Líder"). */
+  role: string
+  /** Unit being led — party abbreviation, bloc name, "Governo", etc. */
+  unitAbbreviation: string
+  /** Full unit name. */
+  unitName?: string
+  /** Type of unit: "Partido", "Bloco", "Governo", "Maioria", "Minoria", etc. */
+  unitType?: string
+  /** ISO date when the leadership role started. */
+  startDate: string
+  /** ISO date when the leadership role ended (undefined if active). */
+  endDate?: string
+}
+
+/**
+ * A single CEAPS (Cota para o Exercício da Atividade Parlamentar dos
+ * Senadores) expense record from the Senado administrative API.
+ *
+ * Mirrors `DeputyExpense` field-for-field where the Senado source provides
+ * an equivalent. Fields the Senado feed does not expose (e.g. `valorGlosa`,
+ * `parcela`) are omitted rather than left as `0` to avoid suggesting a
+ * meaningful zero where the data simply does not exist.
+ */
+export interface SenatorExpense {
+  /** ISO date of the receipt (YYYY-MM-DD). */
+  date: string
+  /** Reference year. */
+  year: number
+  /** Reference month (1–12). */
+  month: number
+  /** The senator's API code (`codSenador`). */
+  senatorId: string
+  /** Senator display name (uppercased by the API). */
+  senatorName: string
+  /** Expense category (e.g. "Passagens aéreas, aquáticas e terrestres nacionais"). */
+  type: string
+  /** Supplier name. */
+  supplierName: string
+  /** Supplier CPF or CNPJ. */
+  supplierDocument?: string
+  /** Document number from the receipt. */
+  document?: string
+  /** Net value reimbursed, in BRL. */
+  value: number
+  /** Document type description (e.g. "Nota Fiscal", "Recibo"). */
+  documentType?: string
+  /** Internal document code (`codDocumento`). */
+  documentCode?: string
+  /** URL to the receipt/invoice scan when the API publishes one. */
+  documentUrl?: string
+  /** Free-form detail text. */
+  details?: string
+}
+
+/** A pre-aggregated per-senator entry for the CEAPS bulk summary. */
+export interface SenatorCeapsBulkEntry {
+  /** Senator API code. */
+  senatorId: string
+  /** Senator display name. */
+  senatorName: string
+  /** Total reimbursed for this senator in the given year (BRL). */
+  total: number
+  /** Number of expense records for this senator. */
+  expenseCount: number
+}
+
+/**
+ * Pre-aggregated CEAPS summary for a single year.
+ *
+ * Computed server-side after fetching the raw CEAPS bulk file from the
+ * admin API. Cached separately under a stable key so listing pages and
+ * benchmark calculations can reuse the same aggregation without
+ * re-walking the raw data on every request.
+ */
+export interface SenatorCeapsBulkSummary {
+  /** Reference year. */
+  year: number
+  /** Total CEAPS spending across all senators in the year (BRL). */
+  totalSpending: number
+  /** Total number of expense records in the year. */
+  expenseCount: number
+  /** Per-senator entries sorted by total spending descending. */
+  senators: SenatorCeapsBulkEntry[]
+}
+
+// ── Senate plenary attendance ────────────────────────────────────────
+
+/**
+ * A single Senate plenary session as returned by the monthly results endpoint.
+ *
+ * The Senado does not publish a per-senator attendance feed. Attendance is
+ * derived by walking each session's `Comparecimento` block and crediting the
+ * listed senators. Sessions without `Comparecimento` are still counted as
+ * sessions but carry an empty attendees list.
+ */
+export interface PlenarySession {
+  /** Senate session code (`CodigoSessao`). */
+  id: string
+  /** Session date in ISO format (YYYY-MM-DD). */
+  date: string
+  /** Session type abbreviation (e.g. "DON" — Deliberativa Ordinária Não). */
+  typeCode?: string
+  /** Full session type description (e.g. "Sessão Deliberativa Ordinária"). */
+  type: string
+  /** Whether this session is a deliberative one (where votes happen). */
+  isDeliberative: boolean
+  /** Senator IDs (`CodigoParlamentar`) credited as present at the session. */
+  attendeeIds: string[]
+}
+
+/**
+ * Per-senator attendance entry inside the bulk year summary.
+ *
+ * Computed by aggregating every plenary session in the year. `attended`
+ * counts deliberative sessions only; `percentage` is `attended /
+ * totalDeliberative`. Days are unique calendar days a senator was present
+ * on, regardless of how many sessions occurred that day.
+ */
+export interface SenatorAttendanceEntry {
+  /** Senator API code (`CodigoParlamentar`). */
+  senatorId: string
+  /** Number of deliberative sessions attended in the year. */
+  attended: number
+  /** Number of deliberative sessions missed in the year. */
+  missed: number
+  /** Attendance percentage (0–100), rounded to 2 decimals. */
+  percentage: number
+  /** Distinct ISO dates (YYYY-MM-DD) the senator was present at any session. */
+  attendedDates: string[]
+}
+
+/**
+ * Pre-aggregated attendance summary for a single year.
+ *
+ * Composed from twelve `/plenario/resultado/mes/{YYYYMM}` calls. Cached as
+ * a single Redis entry under `sen:attendance:{year}` so the listing page
+ * pays one Redis GET instead of twelve HTTP calls per request.
+ */
+export interface SenatorAttendanceBulkSummary {
+  /** Reference year. */
+  year: number
+  /** Total number of plenary sessions held in the year (all types). */
+  totalSessions: number
+  /** Total number of deliberative sessions in the year (denominator for percentage). */
+  totalDeliberative: number
+  /** Per-senator attendance entries. */
+  senators: SenatorAttendanceEntry[]
+}
+
+/**
+ * Per-session attendance record for a single senator.
+ *
+ * Used by the `/senado/[id]/presenca` route to render a chronological
+ * list of every plenary session in the year along with the senator's
+ * presence status.
+ */
+export interface SenatorAttendanceDay {
+  /** Session ID (`CodigoSessao`). */
+  sessionId: string
+  /** Session date in ISO format. */
+  date: string
+  /** Full session type description. */
+  type: string
+  /** Whether this session counts toward the deliberative attendance metric. */
+  isDeliberative: boolean
+  /** Whether the senator was credited as present. */
+  attended: boolean
+}
+
+/**
+ * Year-level attendance detail for a single senator.
+ *
+ * Includes every plenary session in the year (attended or not) plus the
+ * aggregated counts. Drives the per-senator attendance subroute and the
+ * Presença section on the detail page.
+ */
+export interface SenatorAttendanceDetail {
+  /** Senator API code. */
+  senatorId: string
+  /** Reference year. */
+  year: number
+  /** Per-session records sorted chronologically. */
+  sessions: SenatorAttendanceDay[]
+  /** Total deliberative sessions in the year (denominator). */
+  totalDeliberative: number
+  /** Deliberative sessions the senator attended. */
+  attended: number
+  /** Deliberative sessions the senator missed. */
+  missed: number
+  /** Attendance percentage (0–100), rounded to 2 decimals. */
+  percentage: number
 }
 
 // ── Shared types ─────────────────────────────────────────────────────

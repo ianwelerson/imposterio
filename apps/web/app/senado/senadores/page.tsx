@@ -2,83 +2,115 @@
  * @file page.tsx
  * @description Full listing of all federal senators (Senado Federal).
  *
- * Displays a table of all 81 senators with key metrics:
- * name, party, state, authored bills, voting attendance, committee count,
- * and a link to each senator's individual detail page.
+ * Displays a searchable, sortable, paginated table of every senator currently
+ * in exercise (typically 81). Built on real data from
+ * `https://legis.senado.leg.br/dadosabertos/senador/lista/atual.json`.
  *
- * Data source: https://legis.senado.leg.br/dadosabertos/senador/lista/atual.json
- * Currently renders static mock data — real integration pending.
+ * Each row is enriched with CEAPS spending (from the admin bulk file) and
+ * plenary attendance percentage (composed from twelve `/plenario/resultado/mes`
+ * calls and cached under `sen:attendance:bulk:{year}`).
  */
 
-import Link from "next/link"
-import { DataTable, AvatarInitials, SectionHeader } from "@/components/ui"
+import {
+  getSenatorsList,
+  getCeapsBulkSummary,
+  getSenatorAttendanceBulk,
+} from "@imposterio/fetchers"
+import type {
+  SenatorCeapsBulkSummary,
+  SenatorAttendanceBulkSummary,
+} from "@imposterio/types"
+import { ToastTrigger, DataFetchError } from "@/components/ui"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
+import { SenatorsSearchList, type EnrichedSenator } from "./SenatorsSearchList"
 
-interface SenatorRow {
-  id: string
-  initials: string
-  name: string
-  party: string
-  state: string
-  authoredBills: number
-  votingAttendance: string
-  committees: number
+interface SenadoresPageProps {
+  searchParams: Promise<{ sort?: string; dir?: string }>
 }
 
-const MOCK_SENATORS: SenatorRow[] = [
-  { id: "5672", initials: "RT", name: "Rodrigo Tavares", party: "PSD", state: "MG", authoredBills: 14, votingAttendance: "98%", committees: 4 },
-  { id: "5321", initials: "AF", name: "Ana Flávia Ribeiro", party: "PT", state: "SP", authoredBills: 11, votingAttendance: "95%", committees: 3 },
-  { id: "5890", initials: "PG", name: "Paulo Guimarães", party: "MDB", state: "RS", authoredBills: 9, votingAttendance: "87%", committees: 5 },
-  { id: "5104", initials: "LM", name: "Luiza Mendonça", party: "PL", state: "GO", authoredBills: 8, votingAttendance: "92%", committees: 2 },
-  { id: "5445", initials: "CM", name: "Caio Montenegro", party: "PSDB", state: "CE", authoredBills: 7, votingAttendance: "84%", committees: 3 },
-  { id: "5208", initials: "DB", name: "Daniela Borges", party: "PP", state: "BA", authoredBills: 6, votingAttendance: "91%", committees: 4 },
-  { id: "5733", initials: "EM", name: "Eduardo Martins", party: "UNIÃO", state: "PR", authoredBills: 12, votingAttendance: "93%", committees: 3 },
-  { id: "5156", initials: "RS", name: "Renata Silva", party: "PDT", state: "RJ", authoredBills: 5, votingAttendance: "79%", committees: 2 },
-  { id: "5489", initials: "MA", name: "Marcos Antônio Pereira", party: "REPUBLICANOS", state: "PA", authoredBills: 3, votingAttendance: "72%", committees: 1 },
-  { id: "5612", initials: "CV", name: "Carla Vasconcelos", party: "PSOL", state: "PE", authoredBills: 10, votingAttendance: "96%", committees: 3 },
-  { id: "5278", initials: "JB", name: "Jorge Batista Neto", party: "MDB", state: "AM", authoredBills: 4, votingAttendance: "68%", committees: 2 },
-  { id: "5834", initials: "FL", name: "Fernanda Lacerda", party: "PSD", state: "SC", authoredBills: 13, votingAttendance: "97%", committees: 5 },
-]
+export default async function SenadoresPage({ searchParams }: SenadoresPageProps) {
+  const query = await searchParams
+  const currentYear = new Date().getFullYear()
 
-const columns = [
-  {
-    header: "Senador(a)",
-    cell: (r: SenatorRow) => (
-      <div className="flex items-center gap-3">
-        <AvatarInitials initials={r.initials} />
-        <span className="font-medium text-gray-900">{r.name}</span>
-      </div>
-    ),
-  },
-  { header: "Partido", cell: (r: SenatorRow) => <span className="text-gray-600">{r.party}</span> },
-  { header: "UF", cell: (r: SenatorRow) => <span className="text-gray-600">{r.state}</span> },
-  { header: "Autorias", align: "right" as const, cell: (r: SenatorRow) => <span className="font-semibold text-gray-900">{r.authoredBills}</span> },
-  { header: "Presença", align: "right" as const, cell: (r: SenatorRow) => <span className="text-gray-600">{r.votingAttendance}</span> },
-  { header: "Comissões", align: "right" as const, cell: (r: SenatorRow) => <span className="text-gray-600">{r.committees}</span> },
-  {
-    header: "",
-    align: "center" as const,
-    cell: (r: SenatorRow) => (
-      <Link href={`/senado/${r.id}`} className="text-sm font-medium text-accent hover:text-accent-hover">
-        Ver mais →
-      </Link>
-    ),
-  },
-]
+  const errors: PageError[] = []
+  const failed = new Set<string>()
 
-export default function SenadoresPage() {
+  const [senators, ceapsBulk, attendanceBulk] = await Promise.all([
+    collectErrors(
+      () => getSenatorsList(),
+      emptySourced([]),
+      errors,
+      "Senadores",
+      failed,
+    ),
+    collectErrors(
+      () => getCeapsBulkSummary(currentYear),
+      emptySourced<SenatorCeapsBulkSummary>({
+        year: currentYear,
+        totalSpending: 0,
+        expenseCount: 0,
+        senators: [],
+      }),
+      errors,
+      "Gastos CEAPS",
+      failed,
+    ),
+    collectErrors(
+      () => getSenatorAttendanceBulk(currentYear),
+      emptySourced<SenatorAttendanceBulkSummary>({
+        year: currentYear,
+        totalSessions: 0,
+        totalDeliberative: 0,
+        senators: [],
+      }),
+      errors,
+      "Presença",
+      failed,
+    ),
+  ])
+
+  const ceapsBySenator = new Map(
+    ceapsBulk.senators.map((s) => [s.senatorId, s.total]),
+  )
+  const attendanceBySenator = new Map(
+    attendanceBulk.senators.map((s) => [s.senatorId, s.percentage]),
+  )
+
+  const enriched: EnrichedSenator[] = senators.map((s) => ({
+    ...s,
+    ceapsTotal: ceapsBySenator.get(s.id),
+    attendancePct: attendanceBySenator.get(s.id),
+  }))
+
   return (
     <>
-      <header className="pb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Senadores</h1>
-        <p className="mt-1 text-sm text-gray-500">Dados dos últimos 30 dias</p>
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+      <header className="mb-12">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-10 text-white sm:px-10 sm:py-14">
+          <a
+            href="/senado"
+            className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
+          >
+            ← Voltar ao Senado
+          </a>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Senadores Federais
+          </h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+            Senadores em exercício na legislatura atual — busque por nome, partido ou estado.
+          </p>
+        </div>
       </header>
 
-      <SectionHeader
-        title={`${MOCK_SENATORS.length} senadores em exercício`}
-        action={{ label: "← Voltar ao Senado", href: "/senado" }}
-      />
-
-      <DataTable columns={columns} data={MOCK_SENATORS} rowKey={(r) => r.id} />
+      {failed.has("Senadores") ? (
+        <DataFetchError label="a lista de senadores" />
+      ) : (
+        <SenatorsSearchList
+          senators={enriched}
+          initialSort={query.sort}
+          initialDir={query.dir as "asc" | "desc" | undefined}
+        />
+      )}
     </>
   )
 }

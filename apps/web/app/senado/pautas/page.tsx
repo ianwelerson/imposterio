@@ -2,20 +2,38 @@
  * @file page.tsx
  * @description Legislative agenda overview for the Senado Federal.
  *
- * Shows a year selector (URL-driven via ?ano=YYYY), StatCards filtered
- * by the selected year, year-comparison charts, and the latest 5
- * propositions of the selected year with a link to the full listing.
+ * Server component that fetches every proposition filed in the selected year
+ * (via the `/processo` endpoint) plus every voting session held in the same
+ * window (via the `/votacao` endpoint), aggregates them server-side, and
+ * renders a year-picker, summary StatCards, year-comparison charts, and a
+ * "latest 5 propositions" table.
  *
- * Currently renders static mock data for UI development.
- * Future integration: GET /plenario/lista/votacao/{ano}.json
+ * Data sources:
+ * - GET /processo?ano={year} → propositions
+ * - GET /votacao?dataInicio={YYYY0101}&dataFim={YYYY1231} → voting sessions
+ *
+ * Both calls are cached via the shared `cachedFetch` Redis layer, so the
+ * page rarely hits the upstream APIs after warmup.
  */
 
 import Link from "next/link"
-import { StatCard, SectionHeader, Badge, DataTable } from "@/components/ui"
-import type { Proposition, PropositionStatus } from "@imposterio/types"
-import { MOCK_PROPOSITIONS } from "./mock-data"
-import { PautasCharts } from "./PautasCharts"
+import { getSenadoPropositions, getSenadoVotingSessions } from "@imposterio/fetchers"
+import type {
+  Proposition,
+  PropositionStatus,
+  SenadoVotingSession,
+} from "@imposterio/types"
+import {
+  StatCard,
+  SectionHeader,
+  Badge,
+  DataTable,
+  ToastTrigger,
+  DataFetchError,
+} from "@/components/ui"
+import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
+import { PautasCharts } from "./PautasCharts"
 
 const STATUS_VARIANT: Record<PropositionStatus, "amber" | "green" | "red" | "gray"> = {
   "Em votação": "amber",
@@ -25,15 +43,26 @@ const STATUS_VARIANT: Record<PropositionStatus, "amber" | "green" | "red" | "gra
   "Arquivada": "gray",
 }
 
-const AVAILABLE_YEARS = [2026, 2025, 2024]
+const CURRENT_YEAR = new Date().getFullYear()
+const FIRST_YEAR = CURRENT_YEAR - 2
+const AVAILABLE_YEARS = Array.from(
+  { length: CURRENT_YEAR - FIRST_YEAR + 1 },
+  (_, i) => CURRENT_YEAR - i,
+)
 
-/** Aggregate yearly stats from propositions for the charts. */
+/** Aggregate per-year proposition counts for the comparison chart. */
 function buildYearlyStats(propositions: Proposition[]) {
-  const byYear = new Map<number, { total: number; approved: number; rejected: number; inProgress: number; archived: number }>()
+  const byYear = new Map<
+    number,
+    { total: number; approved: number; rejected: number; inProgress: number; archived: number }
+  >()
 
   for (const p of propositions) {
     const year = p.year ?? new Date(p.lastUpdate).getFullYear()
-    const entry = byYear.get(year) ?? { total: 0, approved: 0, rejected: 0, inProgress: 0, archived: 0 }
+    if (!Number.isFinite(year) || year === 0) continue
+    const entry =
+      byYear.get(year) ??
+      { total: 0, approved: 0, rejected: 0, inProgress: 0, archived: 0 }
     entry.total++
     if (p.status === "Aprovada") entry.approved++
     else if (p.status === "Rejeitada") entry.rejected++
@@ -47,35 +76,36 @@ function buildYearlyStats(propositions: Proposition[]) {
     .sort((a, b) => a.year - b.year)
 }
 
-/** Aggregate theme distribution for a given year. */
-function buildThemeDistribution(propositions: Proposition[], year: number) {
+/** Aggregate top themes for the selected year. */
+function buildThemeDistribution(propositions: Proposition[]) {
   const counts = new Map<string, number>()
   for (const p of propositions) {
-    const pYear = p.year ?? new Date(p.lastUpdate).getFullYear()
-    if (pYear !== year) continue
-    counts.set(p.theme, (counts.get(p.theme) ?? 0) + 1)
+    const theme = p.theme || "—"
+    counts.set(theme, (counts.get(theme) ?? 0) + 1)
   }
   return Array.from(counts.entries())
+    .filter(([name]) => name !== "—")
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
 }
 
-/** Build monthly activity data for line chart. */
-function buildMonthlyActivity(propositions: Proposition[], years: number[]) {
+/** Build the monthly activity series for the line chart. */
+function buildMonthlyActivity(
+  propositions: Proposition[],
+  year: number,
+): Array<{ label: string; [key: string]: number | string }> {
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-  const data: Array<{ label: string; [year: string]: number | string }> = months.map((label) => {
-    const entry: { label: string; [year: string]: number | string } = { label }
-    for (const y of years) entry[String(y)] = 0
-    return entry
-  })
+  const data = months.map((label) => ({ label, [String(year)]: 0 } as { label: string; [key: string]: number | string }))
 
   for (const p of propositions) {
-    const date = new Date(p.lastUpdate)
-    const year = p.year ?? date.getFullYear()
-    const month = date.getMonth()
-    if (years.includes(year)) {
-      ;(data[month][String(year)] as number)++
-    }
+    const ref = p.lastUpdate || p.presentedDate
+    if (!ref) continue
+    const date = new Date(ref)
+    if (Number.isNaN(date.getTime())) continue
+    if (date.getFullYear() !== year) continue
+    const m = date.getMonth()
+    ;(data[m][String(year)] as number)++
   }
 
   return data
@@ -87,28 +117,46 @@ interface PageProps {
 
 export default async function SenadoPautasPage({ searchParams }: PageProps) {
   const query = await searchParams
-  const selectedYear = Math.max(2024, Math.min(2026, Number(query.ano) || 2026))
+  const requested = Number(query.ano) || CURRENT_YEAR
+  const selectedYear = Math.max(FIRST_YEAR, Math.min(CURRENT_YEAR, requested))
 
-  const all = MOCK_PROPOSITIONS
+  const errors: PageError[] = []
+  const failed = new Set<string>()
 
-  // Filter propositions for the selected year
-  const yearFiltered = all.filter((p) => (p.year ?? new Date(p.lastUpdate).getFullYear()) === selectedYear)
+  const [propositions, votingSessions] = await Promise.all([
+    collectErrors(
+      () => getSenadoPropositions({ ano: selectedYear }),
+      emptySourced<Proposition[]>([]),
+      errors,
+      "Proposições",
+      failed,
+    ),
+    collectErrors(
+      () =>
+        getSenadoVotingSessions(
+          `${selectedYear}0101`,
+          `${selectedYear}1231`,
+        ),
+      emptySourced<SenadoVotingSession[]>([]),
+      errors,
+      "Votações",
+      failed,
+    ),
+  ])
 
-  // Stats for StatCards (filtered by year)
-  const voting = yearFiltered.filter((p) => p.status === "Em votação").length
-  const approved = yearFiltered.filter((p) => p.status === "Aprovada").length
-  const inProgress = yearFiltered.filter((p) => p.status === "Tramitando").length
-  const rejected = yearFiltered.filter((p) => p.status === "Rejeitada").length
+  const voting = propositions.filter((p) => p.status === "Em votação").length
+  const approved = propositions.filter((p) => p.status === "Aprovada").length
+  const inProgress = propositions.filter((p) => p.status === "Tramitando").length
+  const rejected = propositions.filter((p) => p.status === "Rejeitada").length
 
-  // Chart data (uses all years for comparison)
-  const chartYears = [2024, 2025, 2026]
-  const yearlyStats = buildYearlyStats(all)
-  const themeDistribution = buildThemeDistribution(all, selectedYear)
-  const monthlyActivity = buildMonthlyActivity(all, chartYears)
+  const yearlyStats = buildYearlyStats(propositions)
+  const themeDistribution = buildThemeDistribution(propositions)
+  const monthlyActivity = buildMonthlyActivity(propositions, selectedYear)
 
-  // Latest 5 propositions of the selected year
-  const latest5 = [...yearFiltered]
-    .sort((a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime())
+  const latest5 = [...propositions]
+    .sort((a, b) =>
+      (b.lastUpdate || "").localeCompare(a.lastUpdate || ""),
+    )
     .slice(0, 5)
 
   const columns = [
@@ -172,10 +220,14 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <header className="mb-4 flex items-center justify-between">
+      {errors.length > 0 && <ToastTrigger errors={errors} />}
+
+      <header className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Pauta Legislativa — Senado</h1>
-          <p className="mt-1 text-sm text-gray-500">Proposições em tramitação e votadas</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Proposições em tramitação e votadas — {selectedYear}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <YearSelector years={AVAILABLE_YEARS} selected={selectedYear} />
@@ -188,33 +240,71 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <section
-        className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="Indicadores da pauta"
-      >
-        <StatCard label="Em votação" value={String(voting)} badge={voting > 0 ? { text: "Agora", variant: "amber" } : undefined} />
-        <StatCard label="Aprovadas" value={String(approved)} badge={{ text: String(selectedYear), variant: "green" }} />
-        <StatCard label="Em tramitação" value={String(inProgress)} />
-        <StatCard label="Rejeitadas" value={String(rejected)} badge={rejected > 0 ? { text: String(selectedYear), variant: "red" } : undefined} />
-      </section>
+      {failed.has("Proposições") ? (
+        <DataFetchError label="as proposições" />
+      ) : (
+        <>
+          <section
+            className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Indicadores da pauta"
+          >
+            <StatCard
+              label="Em votação"
+              value={String(voting)}
+              badge={voting > 0 ? { text: "Agora", variant: "amber" } : undefined}
+            />
+            <StatCard
+              label="Aprovadas"
+              value={String(approved)}
+              badge={{ text: String(selectedYear), variant: "green" }}
+            />
+            <StatCard label="Em tramitação" value={String(inProgress)} />
+            <StatCard
+              label="Rejeitadas"
+              value={String(rejected)}
+              badge={
+                rejected > 0
+                  ? { text: String(selectedYear), variant: "red" }
+                  : undefined
+              }
+            />
+          </section>
 
-      <PautasCharts
-        yearlyStats={yearlyStats}
-        themeDistribution={themeDistribution}
-        monthlyActivity={monthlyActivity}
-        years={chartYears}
-      />
+          <PautasCharts
+            yearlyStats={yearlyStats}
+            themeDistribution={themeDistribution}
+            monthlyActivity={monthlyActivity}
+            years={[selectedYear]}
+          />
 
-      <SectionHeader
-        title={`Últimas proposições (${selectedYear})`}
-        action={{ label: "Ver todas", href: "/senado/pautas/lista" }}
-      />
+          <SectionHeader
+            title={`Últimas proposições (${selectedYear})`}
+            sourceUrl={propositions._source}
+            action={{ label: "Ver todas", href: "/senado/pautas/lista" }}
+          />
 
-      <DataTable
-        columns={columns}
-        data={latest5}
-        rowKey={(r) => r.id}
-      />
+          <DataTable columns={columns} data={latest5} rowKey={(r) => r.id} />
+
+          <div className="mt-10">
+            <SectionHeader
+              title={`Sessões de votação (${selectedYear})`}
+              sourceUrl={votingSessions._source}
+              action={{ label: "Ver todas", href: "/senado/pautas/votacoes" }}
+            />
+            {failed.has("Votações") ? (
+              <DataFetchError label="as sessões de votação" />
+            ) : votingSessions.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Nenhuma sessão de votação registrada em {selectedYear}.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600">
+                {votingSessions.length} sessões registradas em {selectedYear}.
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </>
   )
 }

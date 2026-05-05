@@ -1,0 +1,270 @@
+/**
+ * @file SenatorPicker.tsx
+ * @description Client component for selecting senators to compare.
+ *
+ * Renders exactly 3 slots in a fixed grid — filled slots show a mini profile
+ * card, empty slots show a search input with a filtered dropdown.
+ * Navigation is delegated to the parent (ComparisonControls) so all controls
+ * share a single useTransition and loading state.
+ */
+
+"use client"
+
+import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
+import { track } from "@/lib/analytics"
+
+interface SenatorOption {
+  id: string
+  name: string
+  party: string
+  uf: string
+  photoUrl?: string
+}
+
+interface SenatorPickerProps {
+  /** Full list of senators for search autocomplete. */
+  allSenators: SenatorOption[]
+  /** Currently selected senator IDs (from URL). */
+  selectedIds: string[]
+  /** Shared loading state from the parent transition. */
+  loading: boolean
+  /** Shared navigation function — updates URL params inside the parent's startTransition. */
+  navigate: (updater: (params: URLSearchParams) => void) => void
+}
+
+/** Fixed height for all picker slots to keep them aligned. */
+const SLOT_HEIGHT = "h-[72px]"
+
+export function SenatorPicker({ allSenators, selectedIds, loading, navigate }: SenatorPickerProps) {
+  const addSenator = (id: string) => {
+    if (selectedIds.length >= 3 || selectedIds.includes(id)) return
+    track("comparison_add", { deputy_id: id })
+    const newIds = [...selectedIds, id]
+    navigate((params) => params.set("ids", newIds.join(",")))
+  }
+
+  const removeSenator = (id: string) => {
+    track("comparison_remove", { deputy_id: id })
+    const newIds = selectedIds.filter((sid) => sid !== id)
+    navigate((params) => {
+      if (newIds.length > 0) {
+        params.set("ids", newIds.join(","))
+      } else {
+        params.delete("ids")
+      }
+    })
+  }
+
+  const selectedSenators = selectedIds
+    .map((id) => allSenators.find((s) => s.id === id))
+    .filter(Boolean) as SenatorOption[]
+
+  const slots: Array<{ type: "filled"; senator: SenatorOption } | { type: "search" } | { type: "empty" }> = []
+
+  for (let i = 0; i < 3; i++) {
+    if (i < selectedSenators.length) {
+      slots.push({ type: "filled", senator: selectedSenators[i] })
+    } else if (i === selectedSenators.length && selectedSenators.length < 3) {
+      slots.push({ type: "search" })
+    } else {
+      slots.push({ type: "empty" })
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {slots.map((slot, i) => {
+        if (slot.type === "filled") {
+          return (
+            <FilledSlot
+              key={slot.senator.id}
+              senator={slot.senator}
+              onRemove={() => removeSenator(slot.senator.id)}
+              loading={loading}
+            />
+          )
+        }
+        if (slot.type === "search") {
+          return (
+            <EmptySlot
+              key={`search-${i}`}
+              allSenators={allSenators}
+              excludeIds={selectedIds}
+              onSelect={addSenator}
+              loading={loading}
+            />
+          )
+        }
+        return (
+          <div
+            key={`empty-${i}`}
+            className={`flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 ${SLOT_HEIGHT}`}
+          >
+            <span className="text-xs text-gray-400">Selecione um senador</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FilledSlot({
+  senator,
+  onRemove,
+  loading,
+}: {
+  senator: SenatorOption
+  onRemove: () => void
+  loading: boolean
+}) {
+  return (
+    <div className={`relative flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white px-4 shadow-card ${SLOT_HEIGHT}`}>
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
+        </div>
+      )}
+      {senator.photoUrl ? (
+        <Image
+          src={senator.photoUrl}
+          alt={senator.name}
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-full bg-gray-100 object-cover"
+          unoptimized
+        />
+      ) : (
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
+          {senator.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-gray-900">{senator.name}</p>
+        <p className="text-xs text-gray-500">{senator.party} · {senator.uf}</p>
+      </div>
+      <button
+        onClick={onRemove}
+        disabled={loading}
+        className="ml-auto shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors disabled:opacity-40"
+        aria-label={`Remover ${senator.name}`}
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function EmptySlot({
+  allSenators,
+  excludeIds,
+  onSelect,
+  loading,
+}: {
+  allSenators: SenatorOption[]
+  excludeIds: string[]
+  onSelect: (id: string) => void
+  loading: boolean
+}) {
+  const [query, setQuery] = useState("")
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const excludeSet = new Set(excludeIds)
+  const filtered = query.length >= 2
+    ? allSenators
+        .filter((s) => !excludeSet.has(s.id))
+        .filter((s) => {
+          const q = query.toLowerCase()
+          return (
+            s.name.toLowerCase().includes(q) ||
+            s.party.toLowerCase().includes(q) ||
+            s.uf.toLowerCase().includes(q)
+          )
+        })
+        .slice(0, 8)
+    : []
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className={`relative ${SLOT_HEIGHT}`}>
+        {loading ? (
+          <div className={`flex items-center justify-center rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50/50 ${SLOT_HEIGHT}`}>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+              <span className="text-xs text-indigo-500">Carregando dados...</span>
+            </div>
+          </div>
+        ) : (
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setIsOpen(true)
+            }}
+            onFocus={() => query.length >= 2 && setIsOpen(true)}
+            placeholder="Buscar senador..."
+            className={`w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 px-4
+                       text-sm text-gray-900 placeholder:text-gray-400
+                       focus:border-indigo-400 focus:bg-white focus:outline-none transition-colors ${SLOT_HEIGHT}`}
+          />
+        )}
+      </div>
+
+      {isOpen && !loading && filtered.length > 0 && (
+        <ul className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200/80 bg-white shadow-elevated max-h-64 overflow-y-auto">
+          {filtered.map((s) => (
+            <li key={s.id}>
+              <button
+                onClick={() => {
+                  onSelect(s.id)
+                  setQuery("")
+                  setIsOpen(false)
+                }}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+              >
+                {s.photoUrl ? (
+                  <Image
+                    src={s.photoUrl}
+                    alt={s.name}
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 shrink-0 rounded-full bg-gray-100 object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-600">
+                    {s.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-gray-900">{s.name}</p>
+                  <p className="text-xs text-gray-500">{s.party} · {s.uf}</p>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {isOpen && !loading && query.length >= 2 && filtered.length === 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+          <p className="text-sm text-gray-500">Nenhum senador encontrado</p>
+        </div>
+      )}
+    </div>
+  )
+}
