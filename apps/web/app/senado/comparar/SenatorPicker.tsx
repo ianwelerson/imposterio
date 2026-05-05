@@ -39,13 +39,13 @@ const SLOT_HEIGHT = "h-[72px]"
 export function SenatorPicker({ allSenators, selectedIds, loading, navigate }: SenatorPickerProps) {
   const addSenator = (id: string) => {
     if (selectedIds.length >= 3 || selectedIds.includes(id)) return
-    track("comparison_add", { deputy_id: id })
+    track("comparison_add", { senator_id: id })
     const newIds = [...selectedIds, id]
     navigate((params) => params.set("ids", newIds.join(",")))
   }
 
   const removeSenator = (id: string) => {
-    track("comparison_remove", { deputy_id: id })
+    track("comparison_remove", { senator_id: id })
     const newIds = selectedIds.filter((sid) => sid !== id)
     navigate((params) => {
       if (newIds.length > 0) {
