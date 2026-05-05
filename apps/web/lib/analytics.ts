@@ -28,17 +28,17 @@ export interface AnalyticsEvents {
   /** User voted on a game card in "Acha Justo?". */
   game_vote: { fair: boolean; category: string; branch: string }
 
-  /** User added a deputy to the comparison page. */
-  comparison_add: { deputy_id: string }
+  /** User added a parliamentarian to the comparison page. */
+  comparison_add: { deputy_id: string } | { senator_id: string }
 
-  /** User removed a deputy from the comparison page. */
-  comparison_remove: { deputy_id: string }
+  /** User removed a parliamentarian from the comparison page. */
+  comparison_remove: { deputy_id: string } | { senator_id: string }
 
   /** User changed the year on the comparison page. */
   comparison_year: { year: string }
 
-  /** User clicked a deputy profile link from the comparison table. */
-  comparison_view_profile: { deputy_id: string }
+  /** User clicked a parliamentarian profile link from the comparison table. */
+  comparison_view_profile: { deputy_id: string } | { senator_id: string }
 
   /** User opened the mobile sidebar menu. */
   open_mobile_menu: Record<string, never>
@@ -46,8 +46,8 @@ export interface AnalyticsEvents {
   /** User clicked a navigation item in the sidebar. */
   navigate: { href: string; label: string }
 
-  /** User clicked the "Comparar" button on a deputy detail page. */
-  click_compare: { deputy_id: string }
+  /** User clicked the "Comparar" button on a parliamentarian detail page. */
+  click_compare: { deputy_id: string } | { senator_id: string }
 
   /** User expanded a table row to see more details. */
   expand_row: { id: string; table: string }
