@@ -123,39 +123,63 @@ imposterio/
 ### Instalação
 
 ```bash
-# Clone o repositório
+# 1. Clone o repositório
 git clone https://github.com/seu-usuario/imposterio.git
 cd imposterio
 
-# Instale as dependências
+# 2. Instale as dependências
 pnpm install
 
-# Configure as variáveis de ambiente
-cp apps/web/.env.example apps/web/.env.local
-# Edite .env.local com suas chaves
+# 3. Configure as variáveis de ambiente
+#    O arquivo de exemplo fica na raiz do repo. Copie para apps/web/.env.local
+#    (caminho lido pelo Next.js) e preencha com suas chaves.
+cp .env.example apps/web/.env.local
 
-# Rode as migrações
-pnpm db:migrate
+# 4. Gere o Prisma Client
+#    Necessário antes do primeiro `pnpm dev`, e novamente sempre que
+#    packages/db/schema.prisma mudar.
+pnpm --filter @imposterio/db db:generate
 
-# Inicie o servidor de desenvolvimento
+# 5. Aplique o schema do banco (escolha um)
+#    - Desenvolvimento (cria/atualiza migrações):
+pnpm --filter @imposterio/db db:migrate
+#    - Ou apenas sincroniza o schema sem criar migração:
+# pnpm --filter @imposterio/db db:push
+
+# 6. Inicie o servidor de desenvolvimento (web + worker via Turborepo)
 pnpm dev
 ```
 
+A aplicação web sobe em `http://localhost:3000` (ou na próxima porta livre, ex.: 3001).
+
 ### Variáveis de ambiente
 
+Lista mínima para subir o app — veja [`.env.example`](./.env.example) para o conjunto completo, com comentários e links para cada provedor.
+
 ```env
-# Redis (Upstash)
+# PostgreSQL (Neon) — votos do jogo + base QSA
+DATABASE_URL=
+
+# Redis (Upstash) — cache de todas as APIs públicas
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# PostgreSQL (Neon)
-DATABASE_URL=
-
-# Portal da Transparência
+# Portal da Transparência — chave gratuita (registro por e-mail)
 TRANSPARENCIA_API_KEY=
 
 # (Opcional) Chave pública DataJud/CNJ — disponível na wiki oficial
 DATAJUD_API_KEY=
+```
+
+### Scripts úteis
+
+```bash
+pnpm dev                                  # web + worker em modo desenvolvimento
+pnpm build                                # build de todos os apps
+pnpm test                                 # executa testes (Vitest)
+pnpm test:coverage                        # testes com cobertura
+pnpm lint                                 # lint em todo o monorepo
+pnpm --filter @imposterio/db db:studio    # abre Prisma Studio
 ```
 
 ---

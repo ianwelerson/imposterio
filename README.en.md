@@ -124,39 +124,63 @@ imposterio/
 ### Setup
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/your-username/imposterio.git
 cd imposterio
 
-# Install dependencies
+# 2. Install dependencies
 pnpm install
 
-# Set up environment variables
-cp apps/web/.env.example apps/web/.env.local
-# Edit .env.local with your keys
+# 3. Configure environment variables
+#    The example file lives at the repo root. Copy it to apps/web/.env.local
+#    (the path Next.js reads) and fill in your keys.
+cp .env.example apps/web/.env.local
 
-# Run database migrations
-pnpm db:migrate
+# 4. Generate the Prisma Client
+#    Required before the first `pnpm dev`, and again whenever
+#    packages/db/schema.prisma changes.
+pnpm --filter @imposterio/db db:generate
 
-# Start the development server
+# 5. Apply the database schema (pick one)
+#    - Development (creates/updates migrations):
+pnpm --filter @imposterio/db db:migrate
+#    - Or just sync the schema without creating a migration:
+# pnpm --filter @imposterio/db db:push
+
+# 6. Start the dev server (web + worker via Turborepo)
 pnpm dev
 ```
 
+The web app starts on `http://localhost:3000` (or the next free port, e.g. 3001).
+
 ### Environment variables
 
+Minimum set to boot the app — see [`.env.example`](./.env.example) for the full list, with comments and links for each provider.
+
 ```env
-# Redis (Upstash)
+# PostgreSQL (Neon) — game votes + QSA bulk
+DATABASE_URL=
+
+# Redis (Upstash) — cache for all public APIs
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# PostgreSQL (Neon)
-DATABASE_URL=
-
-# Portal da Transparência
+# Portal da Transparência — free key (email registration)
 TRANSPARENCIA_API_KEY=
 
 # (Optional) DataJud/CNJ public key — available in the official wiki
 DATAJUD_API_KEY=
+```
+
+### Useful scripts
+
+```bash
+pnpm dev                                  # web + worker in dev mode
+pnpm build                                # build all apps
+pnpm test                                 # run tests (Vitest)
+pnpm test:coverage                        # tests with coverage
+pnpm lint                                 # lint across the monorepo
+pnpm --filter @imposterio/db db:studio    # open Prisma Studio
 ```
 
 ---
