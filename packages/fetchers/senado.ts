@@ -60,6 +60,12 @@ import type {
   SenatorAttendanceBulkSummary,
   SenatorAttendanceDay,
   SenatorAttendanceDetail,
+  SenatorLeave,
+  SenatorAcademic,
+  SenatorProfessionEntry,
+  SenatorInterjection,
+  SenatorCommitteeVote,
+  SenadoVotingOrientation,
   Proposition,
   PropositionType,
   PropositionVote,
@@ -72,11 +78,24 @@ import type {
   SenadoContractsSummary,
   SenadoBid,
   SenadoContractor,
+  SenadoContractAmendment,
+  SenadoContractPayment,
+  SenadoOutsourcedWorker,
+  SenadoPurchaseOrder,
   SenadoServant,
   SenadoServantsSummary,
   SenadoServantHeadcountRow,
   SenadoServantRemuneration,
   SenadoRemunerationSummary,
+  SenadoOffice,
+  SenadoHousingAid,
+  SenadoHousingAidSummary,
+  SenadoVeto,
+  SenadoPartyEntry,
+  SenadoBloc,
+  SenadoLeadershipEntry,
+  SenadoAgendaItem,
+  SenadoTaquigrafia,
 } from "@imposterio/types"
 import type { WithSource } from "@imposterio/types"
 
@@ -2698,4 +2717,1070 @@ export async function getSenadoServantsRemuneration(
   }
 
   return Object.assign(summary, { _source: url })
+}
+
+// ── Senator leaves (Phase 9) ────────────────────────────────────────
+
+interface SenadoLeaveRaw {
+  CodigoLicenca?: string | number
+  TipoLicenca?: { DescricaoTipoLicenca?: string; SiglaTipoLicenca?: string }
+  DataInicio?: string
+  DataFim?: string
+  Texto?: string
+  Motivo?: string
+}
+
+interface SenadoLeavesRaw {
+  LicencaParlamentar?: {
+    Parlamentar?: {
+      Licencas?: { Licenca: SenadoLeaveRaw | SenadoLeaveRaw[] }
+    }
+  }
+}
+
+function mapRawToLeave(raw: SenadoLeaveRaw): SenatorLeave {
+  return {
+    id: String(raw.CodigoLicenca ?? ""),
+    type: raw.TipoLicenca?.DescricaoTipoLicenca ?? raw.TipoLicenca?.SiglaTipoLicenca ?? "Licença",
+    startDate: raw.DataInicio ?? "",
+    endDate: nonEmpty(raw.DataFim),
+    motive: nonEmpty(raw.Motivo ?? raw.Texto),
+  }
+}
+
+/**
+ * Fetches the formal leave history of a senator.
+ *
+ * The Senate registers official leaves (medical, parental, political mission,
+ * etc.) that legally exempt a senator from plenary attendance. Used to
+ * suppress false-positive low-attendance red flags.
+ *
+ * @param id - The senator's `CodigoParlamentar` in the Senado API.
+ * @returns Leaves sorted chronologically with `_source` injected.
+ *
+ * @throws {ApiError} When the API returns a non-2xx status.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/senador/{codigo}/licencas
+ */
+export async function getSenatorLeaves(
+  id: string,
+): Promise<WithSource<SenatorLeave[]>> {
+  const url = ENDPOINTS.SENADO_SENATOR_LEAVES(id)
+
+  const response = await cachedFetch<SenadoLeavesRaw>(
+    url,
+    TTL.SENADO_SENATOR_LEAVES,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = ensureArray(
+    response.LicencaParlamentar?.Parlamentar?.Licencas?.Licenca,
+  )
+  const leaves = rawList
+    .map(mapRawToLeave)
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : -1))
+
+  return Object.assign(leaves, { _source: response._source })
+}
+
+/**
+ * Returns true when the senator has a recorded leave that overlaps the
+ * given period. Used to qualify low-attendance red flags.
+ */
+export function hasLeaveOverlapping(
+  leaves: SenatorLeave[],
+  startISO: string,
+  endISO: string,
+): boolean {
+  for (const l of leaves) {
+    const ls = l.startDate
+    const le = l.endDate ?? "9999-12-31"
+    if (ls <= endISO && le >= startISO) return true
+  }
+  return false
+}
+
+// ── Senator academic history ────────────────────────────────────────
+
+interface SenadoAcademicRaw {
+  Curso?: string
+  Estabelecimento?: string
+  Local?: string
+  Grau?: string
+  AnoConclusao?: string | number
+}
+
+interface SenadoAcademicsRaw {
+  HistoricoAcademicoParlamentar?: {
+    Parlamentar?: {
+      HistoricoAcademico?: {
+        Curso: SenadoAcademicRaw | SenadoAcademicRaw[]
+      }
+    }
+  }
+}
+
+function mapRawToAcademic(raw: SenadoAcademicRaw): SenatorAcademic {
+  const yr = typeof raw.AnoConclusao === "string"
+    ? parseInt(raw.AnoConclusao, 10)
+    : raw.AnoConclusao
+  return {
+    course: raw.Curso ?? "",
+    institution: raw.Estabelecimento ?? "",
+    level: nonEmpty(raw.Grau),
+    conclusionYear: Number.isFinite(yr) && (yr ?? 0) > 0 ? (yr as number) : undefined,
+  }
+}
+
+/**
+ * Fetches a senator's formal-education history.
+ *
+ * @param id - The senator's `CodigoParlamentar`.
+ * @returns Academic entries with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/senador/{codigo}/historicoAcademico
+ */
+export async function getSenatorAcademic(
+  id: string,
+): Promise<WithSource<SenatorAcademic[]>> {
+  const url = ENDPOINTS.SENADO_SENATOR_ACADEMIC(id)
+  const response = await cachedFetch<SenadoAcademicsRaw>(
+    url,
+    TTL.SENADO_SENATOR_ACADEMIC,
+    { headers: SENADO_HEADERS },
+  )
+  const rawList = ensureArray(
+    response.HistoricoAcademicoParlamentar?.Parlamentar?.HistoricoAcademico?.Curso,
+  )
+  const items = rawList.map(mapRawToAcademic).filter((a) => a.course || a.institution)
+  return Object.assign(items, { _source: response._source })
+}
+
+// ── Senator professions (multi-entry) ───────────────────────────────
+
+interface SenadoProfessionRaw {
+  NomeProfissao?: string
+  IndicadorAtividadePrincipal?: string
+  IndicadorExercendoAtividade?: string
+}
+
+interface SenadoProfessionsRaw {
+  ProfissaoParlamentar?: {
+    Parlamentar?: {
+      Profissoes?: { Profissao: SenadoProfessionRaw | SenadoProfessionRaw[] }
+    }
+  }
+}
+
+function mapRawToProfession(raw: SenadoProfessionRaw): SenatorProfessionEntry {
+  return {
+    title: raw.NomeProfissao ?? "",
+    isPrincipal: (raw.IndicadorAtividadePrincipal ?? "").toUpperCase() === "SIM",
+    isActive: (raw.IndicadorExercendoAtividade ?? "").toUpperCase() === "SIM",
+  }
+}
+
+/**
+ * Fetches a senator's full declared-profession history.
+ *
+ * The detail endpoint exposes only the principal profession. This fetcher
+ * surfaces the complete multi-entry list, including past and concurrent
+ * professional activities.
+ *
+ * @param id - The senator's `CodigoParlamentar`.
+ * @returns Profession entries with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/senador/{codigo}/profissao
+ */
+export async function getSenatorProfessions(
+  id: string,
+): Promise<WithSource<SenatorProfessionEntry[]>> {
+  const url = ENDPOINTS.SENADO_SENATOR_PROFESSIONS(id)
+  const response = await cachedFetch<SenadoProfessionsRaw>(
+    url,
+    TTL.SENADO_SENATOR_PROFESSIONS,
+    { headers: SENADO_HEADERS },
+  )
+  const rawList = ensureArray(
+    response.ProfissaoParlamentar?.Parlamentar?.Profissoes?.Profissao,
+  )
+  const items = rawList.map(mapRawToProfession).filter((p) => p.title)
+  return Object.assign(items, { _source: response._source })
+}
+
+// ── Senator interjections (apartes) ─────────────────────────────────
+
+interface SenadoInterjectionRaw {
+  CodigoPronunciamento?: string | number
+  DataPronunciamento?: string
+  TextoResumo?: string
+  UrlTexto?: string
+  Indexacao?: string
+  NomeAutor?: string
+}
+
+interface SenadoInterjectionsRaw {
+  ApartesParlamentar?: {
+    Parlamentar?: {
+      Apartes?: { Aparte: SenadoInterjectionRaw | SenadoInterjectionRaw[] }
+    }
+  }
+}
+
+function mapRawToInterjection(raw: SenadoInterjectionRaw): SenatorInterjection {
+  return {
+    id: String(raw.CodigoPronunciamento ?? ""),
+    date: (raw.DataPronunciamento ?? "").slice(0, 10),
+    summary: nonEmpty(raw.TextoResumo),
+    textUrl: nonEmpty(raw.UrlTexto),
+    topic: nonEmpty(raw.Indexacao),
+    interruptedSpeaker: nonEmpty(raw.NomeAutor),
+  }
+}
+
+/**
+ * Fetches a senator's interjections (apartes) — short interventions made
+ * during another senator's speech. A meaningful proxy for floor engagement
+ * beyond formal speech counts.
+ *
+ * @param id   - The senator's `CodigoParlamentar`.
+ * @param year - Optional reference year (filters the date range).
+ * @returns Interjections with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/senador/{codigo}/apartes
+ */
+export async function getSenatorInterjections(
+  id: string,
+  year?: number,
+): Promise<WithSource<SenatorInterjection[]>> {
+  const base = ENDPOINTS.SENADO_SENATOR_INTERJECTIONS(id)
+  const url = year
+    ? `${base}?ano=${year}`
+    : base
+
+  const response = await cachedFetch<SenadoInterjectionsRaw>(
+    url,
+    TTL.SENADO_SENATOR_INTERJECTIONS,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = ensureArray(
+    response.ApartesParlamentar?.Parlamentar?.Apartes?.Aparte,
+  )
+  const items = rawList
+    .map(mapRawToInterjection)
+    .filter((i) => i.id)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+  return Object.assign(items, { _source: response._source })
+}
+
+// ── Committee voting (per parliamentarian) ──────────────────────────
+
+interface SenadoCommitteeVoteRaw {
+  codigoSessaoVotacao?: string | number
+  dataSessao?: string
+  siglaComissao?: string
+  nomeComissao?: string
+  descricaoVotacao?: string
+  voto?: string
+  siglaResultado?: string
+  identificacaoMateria?: string
+  codigoMateriaPrincipal?: string | number
+  materia?: { idProcesso?: string | number; identificacao?: string }
+}
+
+function mapRawToCommitteeVote(
+  raw: SenadoCommitteeVoteRaw,
+): SenatorCommitteeVote {
+  const matterId = raw.materia?.idProcesso ?? raw.codigoMateriaPrincipal
+  const matterIdentifier = raw.materia?.identificacao ?? raw.identificacaoMateria
+  return {
+    sessionId: String(raw.codigoSessaoVotacao ?? ""),
+    date: raw.dataSessao ?? "",
+    committeeAbbreviation: raw.siglaComissao ?? "",
+    committeeName: raw.nomeComissao ?? "",
+    description: raw.descricaoVotacao ?? matterIdentifier ?? "",
+    vote: raw.voto ?? "",
+    approved: resolveApproved(raw.siglaResultado),
+    matterIdentifier: nonEmpty(matterIdentifier),
+    matterId: matterId != null ? String(matterId) : undefined,
+  }
+}
+
+/**
+ * Fetches a senator's committee-level votes (votações em comissão).
+ *
+ * Plenary `/votacao` only returns floor votes; this endpoint exposes the
+ * substantive committee work where most policy is shaped.
+ *
+ * @param id   - The senator's `CodigoParlamentar`.
+ * @param year - Optional reference year (filters by session date).
+ * @returns Committee votes with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/votacaoComissao/parlamentar/{id}
+ */
+export async function getSenatorCommitteeVotes(
+  id: string,
+  year?: number,
+): Promise<WithSource<SenatorCommitteeVote[]>> {
+  const base = ENDPOINTS.SENADO_VOTING_COMMITTEE_BY_PARLAMENTAR(id)
+  const url = year
+    ? `${base}?dataInicio=${year}0101&dataFim=${year}1231`
+    : base
+
+  const ttl =
+    year && year < new Date().getFullYear()
+      ? TTL.SENADO_VOTING_HISTORY
+      : TTL.SENADO_VOTING
+
+  const response = await cachedFetch<SenadoCommitteeVoteRaw[]>(
+    url,
+    ttl,
+    { headers: SENADO_HEADERS },
+    `sen:cvotes:${id}:${year ?? "all"}`,
+  )
+
+  const records = response.map(mapRawToCommitteeVote)
+  return Object.assign(records, { _source: response._source })
+}
+
+// ── Plenary voting orientations (party leadership recommendations) ──
+
+interface SenadoOrientationRaw {
+  codigoSessaoVotacao?: string | number
+  dataSessao?: string
+  siglaPartido?: string
+  siglaBloco?: string
+  unidadeOrientadora?: string
+  orientacao?: string
+}
+
+function mapRawToOrientation(raw: SenadoOrientationRaw): SenadoVotingOrientation {
+  return {
+    sessionId: String(raw.codigoSessaoVotacao ?? ""),
+    date: raw.dataSessao ?? "",
+    unitAbbreviation:
+      raw.siglaPartido
+      ?? raw.siglaBloco
+      ?? raw.unidadeOrientadora
+      ?? "",
+    orientation: raw.orientacao ?? "",
+  }
+}
+
+/**
+ * Fetches party-leadership voting orientations for a date range.
+ *
+ * The Senate's leaders publish recommendations ("Sim", "Não", "Liberada",
+ * "Obstrução") for each plenary roll call. Cross-referencing senator votes
+ * against these orientations identifies "rebel votes" against own-party
+ * guidance — direct parity with Câmara's `getVotingSessionOrientations`.
+ *
+ * @param dataInicio - Range start in YYYYMMDD.
+ * @param dataFim    - Range end in YYYYMMDD.
+ * @returns Orientations with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/plenario/votacao/orientacaoBancada
+ */
+export async function getSenadoVotingOrientations(
+  dataInicio: string,
+  dataFim: string,
+): Promise<WithSource<SenadoVotingOrientation[]>> {
+  const url = ENDPOINTS.SENADO_VOTING_ORIENTATION_RANGE(dataInicio, dataFim)
+
+  const ttl = TTL.SENADO_VOTING_ORIENTATION
+
+  const response = await cachedFetch<SenadoOrientationRaw[]>(
+    url,
+    ttl,
+    { headers: SENADO_HEADERS },
+    `sen:orient:${dataInicio}:${dataFim}`,
+  )
+
+  const records = response.map(mapRawToOrientation).filter((o) => o.unitAbbreviation)
+  return Object.assign(records, { _source: response._source })
+}
+
+/**
+ * Computes the alignment percentage between a senator's votes and a given
+ * party/bloc's published orientation. Returns null when fewer than 3 votes
+ * have a comparable orientation (avoiding noisy single-digit denominators).
+ *
+ * @param votes        - Senator's plenary votes for the year.
+ * @param orientations - Party/bloc orientations for the same window.
+ * @param unitAbbr     - Party or bloc abbreviation to score against.
+ * @returns `{ aligned, total, percent, rebelSessions }` or null when total < 3.
+ */
+export function computePartyAlignment(
+  votes: SenatorVotingRecord[],
+  orientations: SenadoVotingOrientation[],
+  unitAbbr: string,
+): {
+  aligned: number
+  total: number
+  percent: number
+  rebelSessions: string[]
+} | null {
+  const orientByKey = new Map<string, string>()
+  for (const o of orientations) {
+    if (o.unitAbbreviation === unitAbbr) {
+      orientByKey.set(o.sessionId, o.orientation)
+    }
+  }
+  let aligned = 0
+  let total = 0
+  const rebel: string[] = []
+  for (const v of votes) {
+    const exp = orientByKey.get(v.sessionId)
+    if (!exp) continue
+    if (!["Sim", "Não", "Liberada"].includes(exp) && exp !== "Obstrução") continue
+    if (exp === "Liberada") continue
+    total++
+    const matches =
+      (exp === "Sim" && v.vote === "Sim")
+      || (exp === "Não" && v.vote === "Não")
+      || (exp === "Obstrução" && v.vote === "Obstrução")
+    if (matches) aligned++
+    else rebel.push(v.sessionId)
+  }
+  if (total < 3) return null
+  return {
+    aligned,
+    total,
+    percent: Math.round((aligned / total) * 100),
+    rebelSessions: rebel,
+  }
+}
+
+// ── Senator offices and housing aid (admin API) ─────────────────────
+
+interface SenadoOfficeRaw {
+  codigo?: number | string
+  codigoSenador?: number | string
+  nomeSenador?: string
+  endereco?: string
+  cidade?: string
+  uf?: string
+  telefone?: string
+  email?: string
+}
+
+/**
+ * Fetches all senator regional offices.
+ *
+ * Returns one entry per office per senator. Some senators have multiple
+ * offices across their state.
+ *
+ * @returns Offices with `_source` injected.
+ *
+ * @see https://adm.senado.gov.br/adm-dadosabertos/api/v1/senadores/escritorios
+ */
+export async function getSenadoOffices(): Promise<WithSource<SenadoOffice[]>> {
+  const url = ENDPOINTS.SENADO_OFFICES
+
+  const response = await cachedFetch<SenadoOfficeRaw[]>(
+    url,
+    TTL.SENADO_OFFICES,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const offices: SenadoOffice[] = rawList.map((o) => ({
+    id: String(o.codigo ?? ""),
+    senatorId: String(o.codigoSenador ?? ""),
+    senatorName: o.nomeSenador ?? "",
+    address: o.endereco ?? "",
+    city: o.cidade ?? "",
+    uf: o.uf ?? "",
+    phone: nonEmpty(o.telefone),
+    email: nonEmpty(o.email),
+  }))
+  return Object.assign(offices, { _source: response._source })
+}
+
+interface SenadoHousingAidRaw {
+  codigoSenador?: number | string
+  nomeSenador?: string
+  ano?: number | string
+  mes?: number | string
+  valor?: number | string
+  valorPago?: number | string
+}
+
+/**
+ * Fetches the housing-aid (auxílio-moradia) records and aggregates a
+ * per-senator summary for a given year.
+ *
+ * The Senate publishes housing-aid records in BRL per month per senator.
+ * Currently ranges from R$ 5,500 to R$ 10,000 per month per recipient.
+ * Surfaced on the senator detail page as a line in the Real Mandate Cost.
+ *
+ * @param year - Reference year. Defaults to the current calendar year.
+ * @returns Aggregated summary with raw rows and `_source` injected.
+ *
+ * @see https://adm.senado.gov.br/adm-dadosabertos/api/v1/senadores/auxilio-moradia
+ */
+export async function getSenadoHousingAid(
+  year: number = new Date().getFullYear(),
+): Promise<WithSource<SenadoHousingAidSummary>> {
+  const url = ENDPOINTS.SENADO_HOUSING_AID
+
+  const response = await cachedFetch<SenadoHousingAidRaw[]>(
+    url,
+    TTL.SENADO_HOUSING_AID,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const rows: SenadoHousingAid[] = rawList
+    .map((r) => ({
+      senatorId: String(r.codigoSenador ?? ""),
+      senatorName: r.nomeSenador ?? "",
+      year: Number(r.ano ?? 0),
+      month: Number(r.mes ?? 0),
+      amount: parseNumeric(r.valorPago ?? r.valor),
+    }))
+    .filter((r) => r.year === year && r.senatorId)
+
+  const bySenatorMap = new Map<
+    string,
+    { senatorId: string; senatorName: string; months: number; total: number }
+  >()
+  let totalAmount = 0
+  for (const r of rows) {
+    totalAmount += r.amount
+    const key = r.senatorId
+    const cur = bySenatorMap.get(key) ?? {
+      senatorId: r.senatorId,
+      senatorName: r.senatorName,
+      months: 0,
+      total: 0,
+    }
+    cur.months += 1
+    cur.total += r.amount
+    bySenatorMap.set(key, cur)
+  }
+  const bySenator = Array.from(bySenatorMap.values()).sort((a, b) => b.total - a.total)
+
+  const summary: SenadoHousingAidSummary = {
+    year,
+    totalAmount,
+    uniqueSenators: bySenator.length,
+    bySenator,
+    rows,
+  }
+  return Object.assign(summary, { _source: response._source })
+}
+
+// ── Per-senator cabinet / gabinete ──────────────────────────────────
+
+/**
+ * Fetches commissioned servants assigned to a specific senator's office.
+ *
+ * Walks the institution-wide `/servidores/servidores` list (cached) and
+ * filters by department code matching the senator's gabinete. Returns
+ * commissioned (cabinet) staff plus any officers requisitioned to the
+ * senator's office.
+ *
+ * @param senatorId - The senator's API code.
+ * @returns Cabinet staff entries with `_source` injected.
+ */
+export async function getSenadoSenatorCabinet(
+  senatorId: string,
+): Promise<WithSource<SenadoServant[]>> {
+  const bulk = await getSenadoServantsBulk()
+  // Senate gabinete department codes follow the pattern "GS<ID>" where
+  // ID is the senator's CodigoParlamentar (e.g. "GS5672"). Some codes
+  // also use "GAB<ID>". We accept either suffix-matching scheme.
+  const id = String(senatorId).trim()
+  const cabinet = bulk.members.filter((m) => {
+    const code = (m.departmentCode ?? "").toUpperCase()
+    return (
+      code.endsWith(id)
+      || code.endsWith(`GS${id}`)
+      || code.endsWith(`GAB${id}`)
+      || code.includes(`SEN${id}`)
+    )
+  })
+  return Object.assign(cabinet, { _source: bulk._source })
+}
+
+// ── Vetos ───────────────────────────────────────────────────────────
+
+interface SenadoVetoRaw {
+  codigoMateria?: string | number
+  identificacao?: string
+  numero?: string | number
+  ano?: string | number
+  data?: string
+  ementa?: string
+  tipoVeto?: string
+  situacaoAtual?: string
+  materiaOrigem?: { identificacao?: string }
+}
+
+interface SenadoVetosRaw {
+  ListaMaterias?: { Materia?: SenadoVetoRaw | SenadoVetoRaw[] }
+  /** Some payloads return a flat array. */
+  Materia?: SenadoVetoRaw | SenadoVetoRaw[]
+}
+
+function mapRawToVeto(raw: SenadoVetoRaw): SenadoVeto {
+  const number = typeof raw.numero === "string"
+    ? parseInt(raw.numero, 10)
+    : (raw.numero ?? 0)
+  const year = typeof raw.ano === "string" ? parseInt(raw.ano, 10) : (raw.ano ?? 0)
+  return {
+    id: String(raw.codigoMateria ?? ""),
+    identifier: raw.identificacao ?? `VET ${number || "?"}/${year || "?"}`,
+    year: Number.isFinite(year) ? (year as number) : 0,
+    number: Number.isFinite(number) ? (number as number) : 0,
+    publicationDate: nonEmpty(raw.data),
+    originMatter: nonEmpty(raw.materiaOrigem?.identificacao),
+    summary: nonEmpty(raw.ementa),
+    type: nonEmpty(raw.tipoVeto),
+    status: nonEmpty(raw.situacaoAtual),
+  }
+}
+
+/**
+ * Fetches presidential vetoes registered for a given year.
+ *
+ * Vetoes are a distinct constitutional workflow — Congress (joint session)
+ * deliberates whether to overturn each one. Surfaced on a dedicated
+ * `/senado/vetos` page.
+ *
+ * @param year - Calendar year of the vetoes.
+ * @returns Veto records with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/materia/vetos/{ano}
+ */
+export async function getSenadoVetos(
+  year: number,
+): Promise<WithSource<SenadoVeto[]>> {
+  const url = ENDPOINTS.SENADO_VETOS_BY_YEAR(year)
+
+  const response = await cachedFetch<SenadoVetosRaw | SenadoVetoRaw[]>(
+    url,
+    year < new Date().getFullYear() ? TTL.SENADO_VOTING_HISTORY : TTL.SENADO_VOTING,
+    { headers: SENADO_HEADERS },
+  )
+
+  let rawList: SenadoVetoRaw[] = []
+  if (Array.isArray(response)) {
+    rawList = response as SenadoVetoRaw[]
+  } else {
+    const rsp = response as SenadoVetosRaw
+    rawList = ensureArray(rsp.ListaMaterias?.Materia ?? rsp.Materia)
+  }
+  const vetos = rawList
+    .map(mapRawToVeto)
+    .filter((v) => v.id)
+    .sort((a, b) => (a.publicationDate ?? "").localeCompare(b.publicationDate ?? ""))
+    .reverse()
+
+  return Object.assign(vetos, { _source: response._source })
+}
+
+// ── Senate parties + blocs + leadership composition ─────────────────
+
+interface SenadoPartyRaw {
+  Sigla?: string
+  Nome?: string
+  NumeroSenadores?: string | number
+}
+
+interface SenadoPartiesRaw {
+  ListaPartidos?: {
+    Partidos?: { Partido: SenadoPartyRaw | SenadoPartyRaw[] }
+  }
+}
+
+/**
+ * Fetches the list of parties currently represented in the Senate, with
+ * official bench sizes published by the chamber.
+ *
+ * @returns Party entries with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/senador/partidos
+ */
+export async function getSenadoParties(): Promise<WithSource<SenadoPartyEntry[]>> {
+  const url = ENDPOINTS.SENADO_PARTIES
+
+  const response = await cachedFetch<SenadoPartiesRaw>(
+    url,
+    TTL.SENADO_PARTIES,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = ensureArray(response.ListaPartidos?.Partidos?.Partido)
+  const parties: SenadoPartyEntry[] = rawList.map((p) => ({
+    abbreviation: p.Sigla ?? "",
+    name: nonEmpty(p.Nome),
+    benchSize: typeof p.NumeroSenadores === "string"
+      ? parseInt(p.NumeroSenadores, 10) || undefined
+      : (p.NumeroSenadores as number | undefined),
+  })).filter((p) => p.abbreviation)
+  return Object.assign(parties, { _source: response._source })
+}
+
+interface SenadoBlocPartyRaw {
+  Sigla?: string
+  Nome?: string
+}
+
+interface SenadoBlocRaw {
+  CodigoBloco?: string | number
+  NomeBloco?: string
+  NomeApelido?: string
+  SiglaBloco?: string
+  DataCriacao?: string
+  Membros?: { Membro: SenadoBlocPartyRaw | SenadoBlocPartyRaw[] }
+}
+
+interface SenadoBlocsRaw {
+  ListaBlocoParlamentar?: {
+    Blocos?: { Bloco: SenadoBlocRaw | SenadoBlocRaw[] }
+  }
+}
+
+/**
+ * Fetches the list of parliamentary blocs in the Senate.
+ *
+ * @returns Bloc entries with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/dados/ListaBlocoParlamentar
+ */
+export async function getSenadoBlocs(): Promise<WithSource<SenadoBloc[]>> {
+  const url = ENDPOINTS.SENADO_BLOCS
+
+  const response = await cachedFetch<SenadoBlocsRaw>(
+    url,
+    TTL.SENADO_BLOCS,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = ensureArray(response.ListaBlocoParlamentar?.Blocos?.Bloco)
+  const blocs: SenadoBloc[] = rawList.map((b) => {
+    const partyList = ensureArray(b.Membros?.Membro).map((m) => m.Sigla ?? "").filter(Boolean)
+    return {
+      id: String(b.CodigoBloco ?? ""),
+      name: b.NomeApelido ?? b.NomeBloco ?? "",
+      abbreviation: nonEmpty(b.SiglaBloco),
+      creationDate: nonEmpty(b.DataCriacao),
+      parties: partyList,
+    }
+  }).filter((b) => b.id)
+  return Object.assign(blocs, { _source: response._source })
+}
+
+interface SenadoLeadershipCompositionEntryRaw {
+  codigoParlamentar?: string | number
+  nomeParlamentar?: string
+  siglaUnidade?: string
+  nomeUnidade?: string
+  tipoUnidade?: string
+  descricaoCargo?: string
+  dataInicio?: string
+}
+
+/**
+ * Fetches the active leadership composition (líderes, vice-líderes) across
+ * all parties, blocs, and government/opposition lines.
+ *
+ * @returns Leadership entries with `_source` injected.
+ *
+ * @see https://legis.senado.leg.br/dadosabertos/composicao/lideranca
+ */
+export async function getSenadoLeadershipComposition(): Promise<
+  WithSource<SenadoLeadershipEntry[]>
+> {
+  const url = ENDPOINTS.SENADO_LEADERSHIP_COMPOSITION
+
+  const response = await cachedFetch<SenadoLeadershipCompositionEntryRaw[]>(
+    url,
+    TTL.SENADO_LEADERSHIP_COMPOSITION,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const entries: SenadoLeadershipEntry[] = rawList.map((r) => ({
+    senatorId: String(r.codigoParlamentar ?? ""),
+    senatorName: r.nomeParlamentar ?? "",
+    unitAbbreviation: r.siglaUnidade ?? "",
+    unitName: nonEmpty(r.nomeUnidade),
+    unitType: nonEmpty(r.tipoUnidade),
+    role: r.descricaoCargo ?? "Liderança",
+    startDate: nonEmpty(r.dataInicio),
+  })).filter((e) => e.senatorId)
+  return Object.assign(entries, { _source: response._source })
+}
+
+// ── Contract drill-down: amendments + payments ──────────────────────
+
+interface SenadoContractAmendmentRaw {
+  codigo?: number | string
+  numero?: string
+  tipoAditivo?: string
+  dataAssinatura?: string
+  valorAcrescimo?: number | string
+  valorReducao?: number | string
+  novaDataFim?: string
+  objeto?: string
+}
+
+/**
+ * Fetches all amendments (aditivos) for a single contract.
+ *
+ * @param contractId - Internal contract ID from the contracts list.
+ * @returns Amendments with `_source` injected.
+ *
+ * @see https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/contratos/{id}/aditivos
+ */
+export async function getSenadoContractAmendments(
+  contractId: string,
+): Promise<WithSource<SenadoContractAmendment[]>> {
+  const url = ENDPOINTS.SENADO_CONTRACT_AMENDMENTS(contractId)
+
+  const response = await cachedFetch<SenadoContractAmendmentRaw[]>(
+    url,
+    TTL.SENADO_CONTRACT_DETAIL,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const items: SenadoContractAmendment[] = rawList.map((r) => {
+    const inc = parseNumeric(r.valorAcrescimo)
+    const dec = parseNumeric(r.valorReducao)
+    const valueImpact = inc - dec
+    return {
+      id: String(r.codigo ?? ""),
+      number: r.numero ?? "",
+      type: r.tipoAditivo ?? "Aditivo",
+      signatureDate: r.dataAssinatura ?? "",
+      valueImpact: valueImpact !== 0 ? valueImpact : undefined,
+      newEndDate: nonEmpty(r.novaDataFim),
+      object: nonEmpty(r.objeto),
+    }
+  })
+  return Object.assign(items, { _source: response._source })
+}
+
+interface SenadoContractPaymentRaw {
+  codigo?: number | string
+  observacao?: string
+  multa?: number | string
+  glosa?: number | string
+  descricaoDespesa?: string
+  valor?: number | string
+}
+
+/**
+ * Fetches payment history for a single contract or order (empenho).
+ *
+ * The contracts list does not expose total executed values — they must be
+ * computed by summing this endpoint per contract. The page surfaces the
+ * sum on the drill-down route.
+ *
+ * @param tipo - "contratos" or other contracting type sigla from the list.
+ * @param id   - Contract ID.
+ * @returns Payment rows with `_source` injected.
+ */
+export async function getSenadoContractPayments(
+  tipo: string,
+  id: string,
+): Promise<WithSource<SenadoContractPayment[]>> {
+  const url = ENDPOINTS.SENADO_CONTRACT_PAYMENTS(tipo, id)
+
+  const response = await cachedFetch<SenadoContractPaymentRaw[]>(
+    url,
+    TTL.SENADO_CONTRACT_DETAIL,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const payments: SenadoContractPayment[] = rawList.map((r) => ({
+    id: String(r.codigo ?? ""),
+    notes: r.observacao ?? "",
+    penalty: parseNumeric(r.multa),
+    deduction: parseNumeric(r.glosa),
+    expenseDescription: r.descricaoDespesa ?? "",
+    amount: parseNumeric(r.valor),
+  }))
+  return Object.assign(payments, { _source: response._source })
+}
+
+// ── Outsourced workers + purchase orders ────────────────────────────
+
+interface SenadoOutsourcedRaw {
+  codigo?: string | number
+  nome?: string
+  funcao?: string
+  cargo?: string
+  empresa?: string
+  unidadeLotacao?: string
+  ativo?: boolean | string
+  situacao?: string
+}
+
+/**
+ * Fetches the list of outsourced workers (terceirizados) at the Senate.
+ *
+ * @returns Outsourced worker entries with `_source` injected.
+ *
+ * @see https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/terceirizados
+ */
+export async function getSenadoOutsourcedWorkers(): Promise<
+  WithSource<SenadoOutsourcedWorker[]>
+> {
+  const url = ENDPOINTS.SENADO_OUTSOURCED_WORKERS
+
+  const response = await cachedFetch<SenadoOutsourcedRaw[]>(
+    url,
+    TTL.SENADO_OUTSOURCED_WORKERS,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const items: SenadoOutsourcedWorker[] = rawList.map((r) => {
+    const isActive =
+      typeof r.ativo === "boolean"
+        ? r.ativo
+        : (r.situacao ?? "").toUpperCase().includes("ATIVO")
+    return {
+      id: String(r.codigo ?? ""),
+      name: r.nome ?? "",
+      role: r.funcao ?? r.cargo ?? "",
+      companyName: r.empresa ?? "",
+      departmentName: nonEmpty(r.unidadeLotacao),
+      isActive,
+    }
+  })
+  return Object.assign(items, { _source: response._source })
+}
+
+interface SenadoPurchaseOrderRaw {
+  codigo?: string | number
+  numero?: string
+  data?: string
+  fornecedor?: string
+  cnpjFornecedor?: string
+  valor?: number | string
+  numeroContrato?: string
+  descricao?: string
+}
+
+/**
+ * Fetches purchase orders (notas de empenho) — committed values not yet
+ * paid out.
+ *
+ * @returns Purchase order entries with `_source` injected.
+ *
+ * @see https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/notas_empenho
+ */
+export async function getSenadoPurchaseOrders(): Promise<
+  WithSource<SenadoPurchaseOrder[]>
+> {
+  const url = ENDPOINTS.SENADO_PURCHASE_ORDERS
+
+  const response = await cachedFetch<SenadoPurchaseOrderRaw[]>(
+    url,
+    TTL.SENADO_PURCHASE_ORDERS,
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const items: SenadoPurchaseOrder[] = rawList.map((r) => ({
+    id: String(r.codigo ?? ""),
+    number: r.numero ?? "",
+    issueDate: r.data ?? "",
+    supplierName: r.fornecedor ?? "",
+    supplierDocument: nonEmpty(r.cnpjFornecedor),
+    amount: parseNumeric(r.valor),
+    contractNumber: nonEmpty(r.numeroContrato),
+    description: r.descricao ?? "",
+  }))
+  return Object.assign(items, { _source: response._source })
+}
+
+// ── Plenary agenda (forward-looking) ────────────────────────────────
+
+interface SenadoAgendaItemRaw {
+  Data?: string
+  data?: string
+  TipoSessao?: string
+  tipoSessao?: string
+  Materia?: { Identificacao?: string; IdProcesso?: string | number }
+  Descricao?: string
+  descricao?: string
+  identificacaoMateria?: string
+}
+
+/**
+ * Fetches the daily plenary agenda for a given calendar day.
+ *
+ * @param yyyymmdd - Date in YYYYMMDD format (e.g. "20260520").
+ */
+export async function getSenadoAgendaDay(
+  yyyymmdd: string,
+): Promise<WithSource<SenadoAgendaItem[]>> {
+  const url = ENDPOINTS.SENADO_PLENARY_AGENDA_DAY(yyyymmdd)
+  const response = await cachedFetch<SenadoAgendaItemRaw[]>(
+    url,
+    TTL.SENADO_PLENARY_AGENDA,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const items = rawList.map(mapRawToAgendaItem).filter((i) => i.date)
+  return Object.assign(items, { _source: response._source })
+}
+
+/**
+ * Fetches the monthly plenary agenda.
+ *
+ * @param yyyymm - Year-month in YYYYMM format (e.g. "202605").
+ */
+export async function getSenadoAgendaMonth(
+  yyyymm: string,
+): Promise<WithSource<SenadoAgendaItem[]>> {
+  const url = ENDPOINTS.SENADO_PLENARY_AGENDA_MONTH(yyyymm)
+  const response = await cachedFetch<SenadoAgendaItemRaw[]>(
+    url,
+    TTL.SENADO_PLENARY_AGENDA,
+    { headers: SENADO_HEADERS },
+  )
+
+  const rawList = Array.isArray(response) ? response : []
+  const items = rawList.map(mapRawToAgendaItem).filter((i) => i.date)
+  return Object.assign(items, { _source: response._source })
+}
+
+function mapRawToAgendaItem(raw: SenadoAgendaItemRaw): SenadoAgendaItem {
+  return {
+    date: raw.Data ?? raw.data ?? "",
+    sessionType: nonEmpty(raw.TipoSessao ?? raw.tipoSessao),
+    description: raw.Descricao ?? raw.descricao ?? "",
+    matterIdentifier: nonEmpty(raw.Materia?.Identificacao ?? raw.identificacaoMateria),
+    matterId: raw.Materia?.IdProcesso != null
+      ? String(raw.Materia.IdProcesso)
+      : undefined,
+  }
+}
+
+// ── Taquigrafia (transcripts + videos) ──────────────────────────────
+
+/**
+ * Returns links to the taquigrafia notes and video for a plenary session.
+ *
+ * The endpoints return raw transcript content (often very large); we
+ * surface only the canonical URLs as `_source` for the UI to deep-link.
+ */
+export function getSenadoTaquigrafiaUrls(
+  sessionId: string,
+  date?: string,
+  title?: string,
+): SenadoTaquigrafia {
+  return {
+    sessionId,
+    kind: "sessao",
+    date,
+    notesUrl: ENDPOINTS.SENADO_TAQUIGRAFIA_SESSION_NOTES(sessionId),
+    videoUrl: ENDPOINTS.SENADO_TAQUIGRAFIA_SESSION_VIDEOS(sessionId),
+    title,
+  }
 }

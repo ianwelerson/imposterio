@@ -68,7 +68,7 @@ imposterio/
 │   │   ├── app/
 │   │   │   ├── (home)/             # Home dashboard
 │   │   │   ├── camara/             # Chamber of Deputies ✅ WIRED TO REAL API
-│   │   │   ├── senado/             # Federal Senate
+│   │   │   ├── senado/             # Federal Senate ✅ WIRED TO REAL API (Phase 9 parity)
 │   │   │   ├── executivo/          # Federal Executive branch
 │   │   │   ├── judiciario/         # Judiciary branch
 │   │   │   ├── partidos/           # Political parties
@@ -160,6 +160,28 @@ Sections order:
    - CalendarHeatmap — daily intensity (pure SVG, responsive viewBox)
    - StackedBarChart — cross-tabulation (category × supplier)
    - PieChart — still available for simpler distributions
+```
+
+### Senado-specific patterns (parity expansion)
+
+```
+- Senator leaves (`/senador/{id}/licencas.json`) suppress the LOW_ATTENDANCE
+  red flag when an active leave overlaps the analyzed year. Use
+  `hasLeaveOverlapping(leaves, startISO, endISO)` to check.
+- Party voting orientations (`/plenario/votacao/orientacaoBancada/{ini}/{fim}`)
+  power the LOW_PARTY_ALIGNMENT red flag and the "Alinhamento com {party}" stat.
+  Use `computePartyAlignment(votes, orientations, party)` — returns null when
+  fewer than 3 comparable orientations exist (avoids noisy denominators).
+  "Liberada" orientations are excluded from the denominator by design.
+- Per-senator cabinet (`getSenadoSenatorCabinet`) is a heuristic filter on the
+  chamber-wide servants list — match `departmentCode` on `GS<id>`/`GAB<id>`/
+  `SEN<id>`. The admin API does not expose a direct senator→gabinete mapping.
+- Real Mandate Cost takes optional `housingAid` and `cabinetPayroll` inputs.
+  Housing aid lines are confirmed (one row per published month). Cabinet
+  payroll is estimated (chamber-wide commissioned payroll × 12 / 81).
+- Taquigrafia: `getSenadoTaquigrafiaUrls(sessionId, date?, title?)` returns
+  the canonical notes + video URLs without an HTTP call. The transcript
+  endpoints stream large content; deep-link instead of fetching.
 ```
 
 ### Listing page pattern (`camara/deputados/`)

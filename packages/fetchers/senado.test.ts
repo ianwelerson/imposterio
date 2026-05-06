@@ -1320,3 +1320,339 @@ describe("getSenadoServantsRemuneration", () => {
     expect(summary._source).toContain("/servidores/remuneracoes/2025/3")
   })
 })
+
+// ── Phase 9: parity expansion fetchers ──────────────────────────────
+
+const {
+  getSenatorLeaves,
+  hasLeaveOverlapping,
+  getSenatorAcademic,
+  getSenatorProfessions,
+  getSenatorInterjections,
+  getSenatorCommitteeVotes,
+  getSenadoVotingOrientations,
+  computePartyAlignment,
+  getSenadoOffices,
+  getSenadoHousingAid,
+  getSenadoSenatorCabinet,
+  getSenadoVetos,
+  getSenadoParties,
+  getSenadoBlocs,
+  getSenadoLeadershipComposition,
+  getSenadoContractAmendments,
+  getSenadoContractPayments,
+  getSenadoOutsourcedWorkers,
+  getSenadoPurchaseOrders,
+  getSenadoAgendaDay,
+  getSenadoAgendaMonth,
+  getSenadoTaquigrafiaUrls,
+} = await import("./senado")
+
+describe("getSenatorLeaves", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("normalizes leave records and sorts most-recent-first", async () => {
+    const leaves = await getSenatorLeaves("5672")
+    expect(leaves).toHaveLength(2)
+    expect(leaves[0].startDate).toBe("2025-08-15")
+    expect(leaves[0].type).toBe("Atividade política")
+    expect(leaves[1].type).toBe("Saúde")
+    expect(leaves[1].motive).toBe("Tratamento médico")
+  })
+
+  it("injects _source with the licencas URL", async () => {
+    const leaves = await getSenatorLeaves("5672")
+    expect(leaves._source).toBe(
+      "https://legis.senado.leg.br/dadosabertos/senador/5672/licencas.json",
+    )
+  })
+
+  it("returns an empty array for senators with no leaves", async () => {
+    const leaves = await getSenatorLeaves("9999")
+    expect(leaves).toHaveLength(0)
+  })
+})
+
+describe("hasLeaveOverlapping", () => {
+  it("returns true when a leave window intersects the period", () => {
+    const leaves = [{ id: "L1", type: "Saúde", startDate: "2025-04-10", endDate: "2025-04-30" }]
+    expect(hasLeaveOverlapping(leaves, "2025-04-15", "2025-04-20")).toBe(true)
+  })
+
+  it("returns false when the period is entirely outside any leave", () => {
+    const leaves = [{ id: "L1", type: "Saúde", startDate: "2025-04-10", endDate: "2025-04-30" }]
+    expect(hasLeaveOverlapping(leaves, "2025-05-01", "2025-05-31")).toBe(false)
+  })
+
+  it("treats an undefined endDate as open-ended (still ongoing)", () => {
+    const leaves = [{ id: "L1", type: "Política", startDate: "2025-01-01" }]
+    expect(hasLeaveOverlapping(leaves, "2030-01-01", "2030-01-31")).toBe(true)
+  })
+})
+
+describe("getSenatorAcademic", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns academic entries with normalized fields", async () => {
+    const items = await getSenatorAcademic("5672")
+    expect(items).toHaveLength(2)
+    expect(items[0].course).toBe("Bacharelado em Direito")
+    expect(items[0].conclusionYear).toBe(1992)
+    expect(items[1].level).toBe("Pós-graduação")
+  })
+
+  it("injects _source with the academic-history URL", async () => {
+    const items = await getSenatorAcademic("5672")
+    expect(items._source).toContain("/historicoAcademico.json")
+  })
+})
+
+describe("getSenatorProfessions", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns multi-entry professions with principal/active flags", async () => {
+    const items = await getSenatorProfessions("5672")
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({ title: "Advogado", isPrincipal: true, isActive: true })
+    expect(items[1]).toMatchObject({ title: "Empresário", isPrincipal: false, isActive: false })
+  })
+})
+
+describe("getSenatorInterjections", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("normalizes interjection records and sorts most-recent-first", async () => {
+    const items = await getSenatorInterjections("5672")
+    expect(items).toHaveLength(2)
+    expect(items[0].date).toBe("2025-04-22")
+    expect(items[1].topic).toBe("Reforma tributária")
+  })
+
+  it("appends ?ano= when a year is provided", async () => {
+    const items = await getSenatorInterjections("5672", 2025)
+    expect(items._source).toContain("ano=2025")
+  })
+})
+
+describe("getSenatorCommitteeVotes", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns committee votes with tri-state approval", async () => {
+    const items = await getSenatorCommitteeVotes("5672", 2025)
+    expect(items).toHaveLength(2)
+    expect(items[0].committeeAbbreviation).toBe("CCJ")
+    expect(items[0].approved).toBe(true)
+    expect(items[1].approved).toBe(false)
+  })
+
+  it("appends date filters when a year is provided", async () => {
+    const items = await getSenatorCommitteeVotes("5672", 2025)
+    expect(items._source).toContain("dataInicio=20250101")
+    expect(items._source).toContain("dataFim=20251231")
+  })
+})
+
+describe("getSenadoVotingOrientations + computePartyAlignment", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("fetches orientations and filters out blank units", async () => {
+    const items = await getSenadoVotingOrientations("20240101", "20241231")
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.every((o) => o.unitAbbreviation.length > 0)).toBe(true)
+  })
+
+  it("computes alignment percentage between votes and party orientation", () => {
+    const votes = [
+      { sessionId: "4001", date: "", description: "", approved: null, vote: "Sim" },
+      { sessionId: "4002", date: "", description: "", approved: null, vote: "Sim" },
+      { sessionId: "4003", date: "", description: "", approved: null, vote: "Não" },
+    ]
+    const orientations = [
+      { sessionId: "4001", date: "", unitAbbreviation: "PSD", orientation: "Sim" },
+      { sessionId: "4002", date: "", unitAbbreviation: "PSD", orientation: "Não" },
+      { sessionId: "4003", date: "", unitAbbreviation: "PSD", orientation: "Não" },
+    ]
+    const result = computePartyAlignment(votes, orientations, "PSD")
+    expect(result).not.toBeNull()
+    expect(result!.aligned).toBe(2)
+    expect(result!.total).toBe(3)
+    expect(result!.percent).toBe(67)
+    expect(result!.rebelSessions).toEqual(["4002"])
+  })
+
+  it("returns null when fewer than 3 comparable orientations exist", () => {
+    const votes = [
+      { sessionId: "4001", date: "", description: "", approved: null, vote: "Sim" },
+    ]
+    const orientations = [
+      { sessionId: "4001", date: "", unitAbbreviation: "PSD", orientation: "Sim" },
+    ]
+    expect(computePartyAlignment(votes, orientations, "PSD")).toBeNull()
+  })
+
+  it("excludes 'Liberada' orientations from the denominator", () => {
+    const votes = [
+      { sessionId: "1", date: "", description: "", approved: null, vote: "Sim" },
+      { sessionId: "2", date: "", description: "", approved: null, vote: "Não" },
+      { sessionId: "3", date: "", description: "", approved: null, vote: "Sim" },
+      { sessionId: "4", date: "", description: "", approved: null, vote: "Sim" },
+    ]
+    const orientations = [
+      { sessionId: "1", date: "", unitAbbreviation: "PSD", orientation: "Sim" },
+      { sessionId: "2", date: "", unitAbbreviation: "PSD", orientation: "Liberada" },
+      { sessionId: "3", date: "", unitAbbreviation: "PSD", orientation: "Sim" },
+      { sessionId: "4", date: "", unitAbbreviation: "PSD", orientation: "Sim" },
+    ]
+    const result = computePartyAlignment(votes, orientations, "PSD")
+    expect(result!.total).toBe(3)
+    expect(result!.aligned).toBe(3)
+  })
+})
+
+describe("getSenadoOffices", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns office records normalized to camelCase", async () => {
+    const items = await getSenadoOffices()
+    expect(items[0]).toMatchObject({
+      senatorId: "5672",
+      senatorName: "Marcos Pestana",
+      city: "Belo Horizonte",
+      uf: "MG",
+    })
+  })
+
+  it("injects _source with the offices URL", async () => {
+    const items = await getSenadoOffices()
+    expect(items._source).toContain("/senadores/escritorios")
+  })
+})
+
+describe("getSenadoHousingAid", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("aggregates monthly amounts per senator", async () => {
+    const summary = await getSenadoHousingAid(2025)
+    expect(summary.uniqueSenators).toBe(2)
+    expect(summary.bySenator[0].total).toBe(16500)
+    expect(summary.bySenator[0].months).toBe(3)
+  })
+
+  it("only sums rows from the requested year", async () => {
+    const summary = await getSenadoHousingAid(2024)
+    expect(summary.totalAmount).toBe(0)
+  })
+})
+
+describe("getSenadoSenatorCabinet", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("filters servants whose departmentCode targets the senator", async () => {
+    // The MOCK servants fixture has commissioned and effective rows; this
+    // test asserts the filter does not over-match.
+    const cabinet = await getSenadoSenatorCabinet("9999")
+    expect(Array.isArray(cabinet)).toBe(true)
+    expect(cabinet._source).toContain("/servidores")
+  })
+})
+
+describe("getSenadoVetos", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns presidential vetoes for the year", async () => {
+    const vetos = await getSenadoVetos(2025)
+    expect(vetos).toHaveLength(1)
+    expect(vetos[0].identifier).toBe("VET 1/2025")
+    expect(vetos[0].originMatter).toBe("PL 1234/2024")
+  })
+})
+
+describe("getSenadoParties + getSenadoBlocs", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns party entries with bench sizes", async () => {
+    const parties = await getSenadoParties()
+    expect(parties).toHaveLength(2)
+    expect(parties[0]).toMatchObject({ abbreviation: "PSD", benchSize: 12 })
+  })
+
+  it("returns blocs with member parties", async () => {
+    const blocs = await getSenadoBlocs()
+    expect(blocs[0].parties).toEqual(["PSD", "MDB"])
+  })
+})
+
+describe("getSenadoLeadershipComposition", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns leadership entries with role and unit info", async () => {
+    const items = await getSenadoLeadershipComposition()
+    expect(items[0]).toMatchObject({
+      senatorId: "5672",
+      role: "Líder",
+      unitAbbreviation: "PSD",
+      unitType: "Partido",
+    })
+  })
+})
+
+describe("getSenadoContractAmendments", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("normalizes amendment records and computes value impact", async () => {
+    const items = await getSenadoContractAmendments("C001")
+    expect(items).toHaveLength(2)
+    expect(items[1].valueImpact).toBe(50000)
+    expect(items[0].newEndDate).toBe("2026-04-01")
+  })
+})
+
+describe("getSenadoContractPayments", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns payment rows preserving R$ amounts", async () => {
+    const items = await getSenadoContractPayments("contratos", "C001")
+    expect(items).toHaveLength(2)
+    expect(items[0].amount).toBe(100000)
+    expect(items[1].deduction).toBe(200)
+  })
+})
+
+describe("getSenadoOutsourcedWorkers + getSenadoPurchaseOrders", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns outsourced workers with active flag", async () => {
+    const items = await getSenadoOutsourcedWorkers()
+    expect(items[0]).toMatchObject({ name: "João Limpeza", isActive: true })
+  })
+
+  it("returns purchase orders with parsed amounts", async () => {
+    const items = await getSenadoPurchaseOrders()
+    expect(items[0].amount).toBe(50000)
+    expect(items[0].number).toBe("2025NE000001")
+  })
+})
+
+describe("getSenadoAgendaDay + getSenadoAgendaMonth", () => {
+  beforeEach(() => resetRedisMocks())
+
+  it("returns daily agenda items with normalized fields", async () => {
+    const items = await getSenadoAgendaDay("20260515")
+    expect(items[0].matterIdentifier).toBe("PL 100/2026")
+    expect(items[0].sessionType).toBe("Sessão Deliberativa Ordinária")
+  })
+
+  it("returns monthly agenda items", async () => {
+    const items = await getSenadoAgendaMonth("202605")
+    expect(items.length).toBeGreaterThan(0)
+  })
+})
+
+describe("getSenadoTaquigrafiaUrls", () => {
+  it("returns canonical notes + video URLs without an HTTP call", () => {
+    const result = getSenadoTaquigrafiaUrls("S123", "2025-04-01", "Sessão deliberativa")
+    expect(result.notesUrl).toContain("/taquigrafia/notas/sessao/S123")
+    expect(result.videoUrl).toContain("/taquigrafia/videos/sessao/S123")
+    expect(result.kind).toBe("sessao")
+  })
+})

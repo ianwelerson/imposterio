@@ -262,6 +262,212 @@ export interface SenadoServantRemuneration {
   netPay: number
 }
 
+/** A regional senator office from `/api/v1/senadores/escritorios`. */
+export interface SenadoOffice {
+  /** Internal record ID. */
+  id: string
+  /** Senator API code (`codSenador`). */
+  senatorId: string
+  /** Senator display name. */
+  senatorName: string
+  /** Office street address. */
+  address: string
+  /** City. */
+  city: string
+  /** UF. */
+  uf: string
+  /** Office phone (may be empty). */
+  phone?: string
+  /** Email contact (may be empty). */
+  email?: string
+}
+
+/** A monthly housing-aid record from `/api/v1/senadores/auxilio-moradia`. */
+export interface SenadoHousingAid {
+  /** Senator API code. */
+  senatorId: string
+  /** Senator display name. */
+  senatorName: string
+  /** Reference year. */
+  year: number
+  /** Reference month (1–12). */
+  month: number
+  /** Amount paid in BRL. */
+  amount: number
+}
+
+/** Pre-aggregated housing-aid summary across senators for a year. */
+export interface SenadoHousingAidSummary {
+  /** Reference year. */
+  year: number
+  /** Total housing aid disbursed across all senators in BRL. */
+  totalAmount: number
+  /** Number of senators who received any aid in the year. */
+  uniqueSenators: number
+  /** Per-senator totals sorted descending by amount. */
+  bySenator: Array<{
+    senatorId: string
+    senatorName: string
+    months: number
+    total: number
+  }>
+  /** Raw monthly rows for downstream filtering. */
+  rows: SenadoHousingAid[]
+}
+
+/** A presidential veto entry from `GET /materia/vetos/{ano}`. */
+export interface SenadoVeto {
+  /** Veto code/ID. */
+  id: string
+  /** Veto formal identifier (e.g. "VET 38/2024"). */
+  identifier: string
+  /** Year of the veto. */
+  year: number
+  /** Veto number within the year. */
+  number: number
+  /** ISO date when published in DOU. */
+  publicationDate?: string
+  /** Original matter that was vetoed (e.g. "PL 1234/2024"). */
+  originMatter?: string
+  /** Subject summary. */
+  summary?: string
+  /** Veto type ("Total", "Parcial"). */
+  type?: string
+  /** Current legislative status text. */
+  status?: string
+}
+
+/** A parliamentary party currently represented in the Senate. */
+export interface SenadoPartyEntry {
+  /** Party abbreviation (e.g. "PT"). */
+  abbreviation: string
+  /** Full party name. */
+  name?: string
+  /** Number of senators currently affiliated. */
+  benchSize?: number
+}
+
+/** A parliamentary bloc from `GET /dados/ListaBlocoParlamentar.json`. */
+export interface SenadoBloc {
+  /** Bloc ID. */
+  id: string
+  /** Bloc name. */
+  name: string
+  /** Bloc abbreviation/sigla. */
+  abbreviation?: string
+  /** ISO date when the bloc was created. */
+  creationDate?: string
+  /** Member parties (abbreviations). */
+  parties: string[]
+  /** Total senators across member parties. */
+  totalMembers?: number
+}
+
+/**
+ * Active leadership composition entry from
+ * `GET /composicao/lideranca`.
+ */
+export interface SenadoLeadershipEntry {
+  /** Senator code holding the leadership role. */
+  senatorId: string
+  /** Senator display name. */
+  senatorName: string
+  /** Leadership unit abbreviation (party, bloc, "Governo", etc.). */
+  unitAbbreviation: string
+  /** Full unit name. */
+  unitName?: string
+  /** Type of leadership unit ("Partido", "Bloco", "Governo", etc.). */
+  unitType?: string
+  /** Role (e.g. "Líder", "Vice-Líder"). */
+  role: string
+  /** ISO start date. */
+  startDate?: string
+}
+
+/** A contract amendment (aditivo) from `/contratos/{id}/aditivos`. */
+export interface SenadoContractAmendment {
+  /** Internal amendment ID. */
+  id: string
+  /** Amendment number. */
+  number: string
+  /** Amendment type (e.g. "Aditivo de prazo", "Aditivo de valor"). */
+  type: string
+  /** ISO date when signed. */
+  signatureDate: string
+  /** Optional value impact (R$). */
+  valueImpact?: number
+  /** Optional new end date for term-extension amendments. */
+  newEndDate?: string
+  /** Description of the amendment object. */
+  object?: string
+}
+
+/** An outsourced worker (terceirizado) from `/contratacoes/terceirizados`. */
+export interface SenadoOutsourcedWorker {
+  /** Internal record ID. */
+  id: string
+  /** Worker name. */
+  name: string
+  /** Function/role description. */
+  role: string
+  /** Contracting company. */
+  companyName: string
+  /** Senate department where the worker is assigned. */
+  departmentName?: string
+  /** Whether the assignment is currently active. */
+  isActive: boolean
+}
+
+/** A purchase order (nota de empenho) from `/contratacoes/notas_empenho`. */
+export interface SenadoPurchaseOrder {
+  /** Internal order ID. */
+  id: string
+  /** Order number (e.g. "2025NE000123"). */
+  number: string
+  /** ISO issue date. */
+  issueDate: string
+  /** Supplier name. */
+  supplierName: string
+  /** Supplier CNPJ/CPF. */
+  supplierDocument?: string
+  /** Total committed value (R$). */
+  amount: number
+  /** Linked contract identifier (may be empty for direct purchases). */
+  contractNumber?: string
+  /** Description of the underlying expense. */
+  description: string
+}
+
+/** A plenary agenda item from `/plenario/agenda/dia/{...}` or `/mes/{...}`. */
+export interface SenadoAgendaItem {
+  /** ISO date of the planned session. */
+  date: string
+  /** Session type description. */
+  sessionType?: string
+  /** Free-form description / topic. */
+  description: string
+  /** Affected matter identifier when present. */
+  matterIdentifier?: string
+  /** Affected matter id (linkable to `/processo/{id}`). */
+  matterId?: string
+}
+
+/** A taquigrafia transcript record. */
+export interface SenadoTaquigrafia {
+  /** Session/meeting ID. */
+  sessionId: string
+  /** Whether this is a session (plenary) or committee meeting. */
+  kind: "sessao" | "reuniao"
+  /** ISO date of the event. */
+  date?: string
+  /** URL to the full notes (PDF or HTML). */
+  notesUrl?: string
+  /** URL to the video stream. */
+  videoUrl?: string
+  /** Title or short description. */
+  title?: string
+}
+
 /** Pre-aggregated monthly remuneration summary cached in Redis. */
 export interface SenadoRemunerationSummary {
   /** Reference year. */

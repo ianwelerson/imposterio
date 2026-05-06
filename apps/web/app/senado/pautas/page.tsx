@@ -159,6 +159,57 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
     )
     .slice(0, 5)
 
+  const voteColumns = [
+    {
+      header: "Data",
+      className: "whitespace-nowrap",
+      cell: (row: SenadoVotingSession) => (
+        <span className="text-sm tabular-nums text-gray-900">
+          {row.date ? new Date(row.date).toLocaleDateString("pt-BR") : "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Matéria",
+      className: "whitespace-nowrap",
+      cell: (row: SenadoVotingSession) => (
+        <span className="font-medium text-gray-900">{row.matterIdentifier ?? "—"}</span>
+      ),
+    },
+    {
+      header: "Descrição",
+      className: "max-w-md",
+      cell: (row: SenadoVotingSession) => (
+        <span className="text-gray-700 line-clamp-1 text-xs">{row.description}</span>
+      ),
+    },
+    {
+      header: "Resultado",
+      className: "whitespace-nowrap",
+      cell: (row: SenadoVotingSession) =>
+        row.approved === true ? (
+          <Badge variant="green">Aprovada</Badge>
+        ) : row.approved === false ? (
+          <Badge variant="red">Rejeitada</Badge>
+        ) : (
+          <Badge variant="gray">Sem registro</Badge>
+        ),
+    },
+    {
+      header: "",
+      align: "right" as const,
+      className: "whitespace-nowrap",
+      cell: (row: SenadoVotingSession) => (
+        <Link
+          href={`/senado/pautas/votacoes/${row.id}`}
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Detalhes →
+        </Link>
+      ),
+    },
+  ]
+
   const columns = [
     {
       header: "Proposição",
@@ -280,7 +331,7 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
           <SectionHeader
             title={`Últimas proposições (${selectedYear})`}
             sourceUrl={propositions._source}
-            action={{ label: "Ver todas", href: "/senado/pautas/lista" }}
+            action={{ label: "Ver todas", href: `/senado/pautas/lista?ano=${selectedYear}` }}
           />
 
           <DataTable columns={columns} data={latest5} rowKey={(r) => r.id} />
@@ -289,7 +340,7 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
             <SectionHeader
               title={`Sessões de votação (${selectedYear})`}
               sourceUrl={votingSessions._source}
-              action={{ label: "Ver todas", href: "/senado/pautas/votacoes" }}
+              action={{ label: "Ver todas", href: `/senado/pautas/votacoes?ano=${selectedYear}` }}
             />
             {failed.has("Votações") ? (
               <DataFetchError label="as sessões de votação" />
@@ -298,9 +349,13 @@ export default async function SenadoPautasPage({ searchParams }: PageProps) {
                 Nenhuma sessão de votação registrada em {selectedYear}.
               </p>
             ) : (
-              <p className="text-sm text-gray-600">
-                {votingSessions.length} sessões registradas em {selectedYear}.
-              </p>
+              <DataTable
+                columns={voteColumns}
+                data={[...votingSessions]
+                  .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                  .slice(0, 5)}
+                rowKey={(r) => r.id}
+              />
             )}
           </div>
         </>

@@ -39,12 +39,14 @@ import {
   getSenadoVotingSessions,
   getSenatorAttendanceBulk,
   getCeapsBulkSummary,
+  getSenadoAgendaMonth,
 } from "@imposterio/fetchers"
 import type {
   Proposition,
   SenadoVotingSession,
   SenatorCeapsBulkSummary,
   SenatorAttendanceBulkSummary,
+  SenadoAgendaItem,
 } from "@imposterio/types"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
 import { YearSelector } from "@/app/camara/[id]/YearSelector"
@@ -82,7 +84,13 @@ export default async function SenadoPage({ searchParams }: PageProps) {
   const errors: PageError[] = []
   const failed = new Set<string>()
 
-  const [senators, propositions, votingSessions, attendance, ceapsBulk] = await Promise.all([
+  // Forward-looking agenda panel: fetch the current month so visitors see
+  // upcoming sessions on the home dashboard. Only shown for the current year.
+  const now2 = new Date()
+  const yyyymm = `${now2.getFullYear()}${String(now2.getMonth() + 1).padStart(2, "0")}`
+  const showAgenda = selectedYear === now
+
+  const [senators, propositions, votingSessions, attendance, ceapsBulk, agenda] = await Promise.all([
     collectErrors(
       () => getSenatorsList(),
       emptySourced([]),
@@ -132,7 +140,23 @@ export default async function SenadoPage({ searchParams }: PageProps) {
       "Gastos CEAPS",
       failed,
     ),
+    showAgenda
+      ? collectErrors(
+          () => getSenadoAgendaMonth(yyyymm),
+          emptySourced<SenadoAgendaItem[]>([]),
+          errors,
+          "Agenda do mês",
+          failed,
+        )
+      : Promise.resolve(emptySourced<SenadoAgendaItem[]>([])),
   ])
+
+  // Filter to upcoming items only and cap at 5.
+  const todayKey = now2.toISOString().slice(0, 10)
+  const upcomingAgenda = agenda
+    .filter((a) => a.date.slice(0, 10) >= todayKey)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 5)
 
   // ── Aggregations ──────────────────────────────────────────────────
 
@@ -342,6 +366,39 @@ export default async function SenadoPage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      {/* ── Próximas sessões (agenda) ─────────────────────────────── */}
+      {showAgenda && upcomingAgenda.length > 0 && (
+        <section className="mb-12 border-t border-gray-200/60 pt-10">
+          <SectionHeader
+            title="Próximas sessões"
+            description="Pauta plenária prevista para os próximos dias."
+            sourceUrl={agenda._source}
+          />
+          <div className="rounded-2xl bg-gray-50/60 p-4 sm:p-5">
+            <ul className="divide-y divide-gray-100">
+              {upcomingAgenda.map((item, i) => (
+                <li key={`${item.date}-${i}`} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <span className="text-xs font-medium text-gray-400 tabular-nums whitespace-nowrap">
+                      {item.date.slice(0, 10).split("-").reverse().join("/")}
+                    </span>
+                    {item.sessionType && <Badge variant="gray">{item.sessionType}</Badge>}
+                    {item.matterIdentifier && (
+                      <span className="text-sm font-medium text-gray-900">
+                        {item.matterIdentifier}
+                      </span>
+                    )}
+                  </div>
+                  {item.description && (
+                    <p className="mt-1 text-sm text-gray-700 line-clamp-2">{item.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
       {/* ── 2. Charts ────────────────────────────────────────────── */}
       <section className="mb-12 border-t border-gray-200/60 pt-10">
         <SectionHeader title="Gráficos e comparativos" />
@@ -400,6 +457,34 @@ export default async function SenadoPage({ searchParams }: PageProps) {
             >
               <span className="text-sm font-semibold text-gray-900">Senadores</span>
               <p className="mt-1 text-xs text-gray-500">Lista completa com presença e CEAPS</p>
+            </Link>
+            <Link
+              href="/senado/blocos"
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Partidos e blocos</span>
+              <p className="mt-1 text-xs text-gray-500">Bancadas, blocos e lideranças em exercício</p>
+            </Link>
+            <Link
+              href={`/senado/vetos?ano=${selectedYear}`}
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Vetos presidenciais</span>
+              <p className="mt-1 text-xs text-gray-500">Vetos em deliberação no Congresso</p>
+            </Link>
+            <Link
+              href="/senado/contratacoes"
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Contratações</span>
+              <p className="mt-1 text-xs text-gray-500">Contratos, terceirizados e empenhos</p>
+            </Link>
+            <Link
+              href="/senado/servidores"
+              className="rounded-xl border border-gray-200/80 bg-white px-5 py-4 shadow-card hover:shadow-card-hover hover:border-accent/30 transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-900">Servidores</span>
+              <p className="mt-1 text-xs text-gray-500">Quadro funcional e folha de pagamento</p>
             </Link>
           </div>
         </div>

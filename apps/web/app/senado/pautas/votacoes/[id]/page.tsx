@@ -14,7 +14,11 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ApiError, getSenadoVotingSessionDetail } from "@imposterio/fetchers"
+import {
+  ApiError,
+  getSenadoVotingSessionDetail,
+  getSenadoTaquigrafiaUrls,
+} from "@imposterio/fetchers"
 import {
   Badge,
   StatCard,
@@ -148,6 +152,47 @@ export default async function VotingSessionDetailPage({ params }: PageProps) {
           />
         </div>
       </section>
+
+      {/* Taquigrafia — full transcript and video for the session */}
+      {(() => {
+        const taquigrafia = getSenadoTaquigrafiaUrls(
+          session.id,
+          session.date,
+          session.matterIdentifier ?? undefined,
+        )
+        return (
+          <section className="mb-12">
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-gray-900 sm:text-lg">
+              Taquigrafia
+            </h2>
+            <p className="mb-4 text-xs text-gray-500">
+              Notas taquigráficas e vídeo oficial da sessão. Disponibilidade depende da publicação pela Secretaria-Geral da Mesa.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {taquigrafia.notesUrl && (
+                <a
+                  href={taquigrafia.notesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-accent/40 hover:text-accent transition-colors shadow-card"
+                >
+                  Ver notas taquigráficas ↗
+                </a>
+              )}
+              {taquigrafia.videoUrl && (
+                <a
+                  href={taquigrafia.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-accent/40 hover:text-accent transition-colors shadow-card"
+                >
+                  Vídeo da sessão ↗
+                </a>
+              )}
+            </div>
+          </section>
+        )
+      })()}
     </>
   )
 }

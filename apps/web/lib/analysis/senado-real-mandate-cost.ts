@@ -72,6 +72,22 @@ export interface CabinetPayrollInput {
 }
 
 /**
+ * Optional housing-aid (auxílio-moradia) input for the cost breakdown.
+ *
+ * The Senate publishes a per-senator monthly housing allowance for senators
+ * who do not occupy official residences. Confirmed values come from the admin
+ * API. Months without a published row are not extrapolated.
+ */
+export interface HousingAidInput {
+  /** Confirmed housing-aid amount disbursed in the year so far (BRL). */
+  confirmedAmount: number
+  /** Number of months with a published payment in the year. */
+  months: number
+  /** Source URL for the housing-aid endpoint. */
+  sourceUrl: string
+}
+
+/**
  * Assembles the full taxpayer cost of a senator's mandate for a given year.
  *
  * @param year - Reference year
@@ -95,6 +111,7 @@ export function computeSenadoRealMandateCost(
   ceapsSourceUrl: string = "",
   salarySourceUrl: string = "",
   cabinetPayroll?: CabinetPayrollInput,
+  housingAid?: HousingAidInput,
 ): RealMandateCostResult {
   const annualSalary = SENADOR_SALARIO * 12
   const lines: CostLineItem[] = []
@@ -158,6 +175,20 @@ export function computeSenadoRealMandateCost(
       attribution: "confirmed",
       attributionNote: "✓ via API",
       sourceUrl: ceapsSourceUrl,
+    })
+  }
+
+  if (housingAid && housingAid.confirmedAmount > 0) {
+    lines.push({
+      label: `Auxílio-moradia (${housingAid.months} ${housingAid.months === 1 ? "mês" : "meses"})`,
+      value: housingAid.confirmedAmount,
+      confirmedValue: housingAid.confirmedAmount,
+      estimatedValue: 0,
+      attribution: "confirmed",
+      attributionNote: "✓ via API administrativa do Senado",
+      sourceUrl: housingAid.sourceUrl,
+      tooltip:
+        "Verba paga a senadores que não ocupam imóvel funcional, regulamentada por Ato da Comissão Diretora.",
     })
   }
 

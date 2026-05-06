@@ -21,9 +21,18 @@ import Link from "next/link"
 import { StatCard, SectionHeader, Badge, DataTable, SourcePill, ToastTrigger, DataFetchError } from "@/components/ui"
 import { ChartCard, BarChart } from "@/components/charts"
 import type { BarChartItem } from "@/components/charts"
-import { getSenadoContractsBulk } from "@imposterio/fetchers"
+import {
+  getSenadoContractsBulk,
+  getSenadoOutsourcedWorkers,
+  getSenadoPurchaseOrders,
+} from "@imposterio/fetchers"
 import { collectErrors, emptySourced, type PageError } from "@/lib/error-utils"
-import type { SenadoContract, SenadoContractsSummary } from "@imposterio/types"
+import type {
+  SenadoContract,
+  SenadoContractsSummary,
+  SenadoOutsourcedWorker,
+  SenadoPurchaseOrder,
+} from "@imposterio/types"
 
 const EMPTY_SUMMARY: SenadoContractsSummary = {
   totalContracts: 0,
@@ -40,13 +49,35 @@ export default async function SenadoContratacoesPage() {
   const errors: PageError[] = []
   const failed = new Set<string>()
 
-  const summary = await collectErrors(
-    () => getSenadoContractsBulk(),
-    emptySourced(EMPTY_SUMMARY),
-    errors,
-    "Contratações",
-    failed,
-  )
+  const [summary, outsourced, empenhos] = await Promise.all([
+    collectErrors(
+      () => getSenadoContractsBulk(),
+      emptySourced(EMPTY_SUMMARY),
+      errors,
+      "Contratações",
+      failed,
+    ),
+    collectErrors(
+      () => getSenadoOutsourcedWorkers(),
+      emptySourced<SenadoOutsourcedWorker[]>([]),
+      errors,
+      "Terceirizados",
+      failed,
+    ),
+    collectErrors(
+      () => getSenadoPurchaseOrders(),
+      emptySourced<SenadoPurchaseOrder[]>([]),
+      errors,
+      "Empenhos",
+      failed,
+    ),
+  ])
+
+  const activeOutsourced = outsourced.filter((w) => w.isActive).length
+  const totalEmpenhoValue = empenhos.reduce((sum, e) => sum + e.amount, 0)
+  const top10Empenhos = [...empenhos]
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 10)
 
   // Latest 5 contracts by signature date (newest first).
   const latest5 = [...summary.contracts]
@@ -71,7 +102,12 @@ export default async function SenadoContratacoesPage() {
       header: "Número",
       className: "whitespace-nowrap",
       cell: (row: SenadoContract) => (
-        <span className="font-semibold text-gray-900">{row.formattedNumber || row.number}</span>
+        <Link
+          href={`/senado/contratacoes/${row.id}`}
+          className="font-semibold text-gray-900 hover:text-accent transition-colors"
+        >
+          {row.formattedNumber || row.number}
+        </Link>
       ),
     },
     {
@@ -184,8 +220,7 @@ export default async function SenadoContratacoesPage() {
                 />
               </div>
               <p className="mt-4 text-xs leading-relaxed text-gray-500">
-                A API administrativa do Senado não divulga valores totais por contrato no endpoint de listagem.
-                Para visualizar valores executados, é preciso navegar até os pagamentos individuais de cada contrato.
+                Valores totais por contrato não são divulgados no endpoint de listagem. Clique em um contrato para ver pagamentos executados, aditivos e impacto financeiro.
               </p>
             </div>
           </section>
@@ -234,6 +269,120 @@ export default async function SenadoContratacoesPage() {
             <section className="mb-12 border-t border-gray-200/60 pt-10">
               <SectionHeader title="Maiores fornecedores por número de contratos" sourceUrl={summary._source} />
               <DataTable columns={contractorColumns} data={top5Contractors} rowKey={(r) => r.document} />
+            </section>
+          )}
+
+          {/* Outsourced workers (terceirizados) */}
+          {outsourced.length > 0 && (
+            <section className="mb-12 border-t border-gray-200/60 pt-10">
+              <SectionHeader
+                title="Terceirizados"
+                sourceUrl={outsourced._source}
+              />
+              <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatCard label="Total cadastrados" value={String(outsourced.length)} />
+                <StatCard label="Atualmente ativos" value={String(activeOutsourced)} />
+                <StatCard
+                  label="Empresas distintas"
+                  value={String(new Set(outsourced.map((o) => o.companyName)).size)}
+                />
+              </div>
+              <DataTable
+                columns={[
+                  {
+                    header: "Nome",
+                    cell: (r: SenadoOutsourcedWorker) => (
+                      <span className="text-sm font-medium text-gray-900">{r.name}</span>
+                    ),
+                  },
+                  {
+                    header: "Função",
+                    cell: (r: SenadoOutsourcedWorker) => (
+                      <span className="text-sm text-gray-700">{r.role}</span>
+                    ),
+                  },
+                  {
+                    header: "Empresa",
+                    cell: (r: SenadoOutsourcedWorker) => (
+                      <span className="text-xs text-gray-600">{r.companyName}</span>
+                    ),
+                  },
+                  {
+                    header: "Lotação",
+                    cell: (r: SenadoOutsourcedWorker) => (
+                      <span className="text-xs text-gray-600">{r.departmentName ?? "—"}</span>
+                    ),
+                  },
+                  {
+                    header: "Status",
+                    align: "right" as const,
+                    cell: (r: SenadoOutsourcedWorker) => (
+                      <Badge variant={r.isActive ? "green" : "gray"}>
+                        {r.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    ),
+                  },
+                ]}
+                data={outsourced.slice(0, 20)}
+                rowKey={(r) => r.id}
+              />
+            </section>
+          )}
+
+          {/* Purchase orders (empenhos) */}
+          {empenhos.length > 0 && (
+            <section className="mb-12 border-t border-gray-200/60 pt-10">
+              <SectionHeader
+                title="Notas de empenho"
+                sourceUrl={empenhos._source}
+              />
+              <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <StatCard
+                  label="Total de empenhos"
+                  value={empenhos.length.toLocaleString("pt-BR")}
+                  tooltip="Notas de empenho são reservas orçamentárias — valores comprometidos antes do pagamento."
+                />
+                <StatCard
+                  label="Valor total empenhado"
+                  value={totalEmpenhoValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                />
+              </div>
+              <DataTable
+                columns={[
+                  {
+                    header: "Nº",
+                    className: "whitespace-nowrap",
+                    cell: (r: SenadoPurchaseOrder) => (
+                      <span className="font-medium text-gray-900 tabular-nums">{r.number}</span>
+                    ),
+                  },
+                  {
+                    header: "Descrição",
+                    className: "max-w-md",
+                    cell: (r: SenadoPurchaseOrder) => (
+                      <span className="text-xs text-gray-700 line-clamp-2">{r.description}</span>
+                    ),
+                  },
+                  {
+                    header: "Fornecedor",
+                    cell: (r: SenadoPurchaseOrder) => (
+                      <span className="text-xs text-gray-700">{r.supplierName}</span>
+                    ),
+                  },
+                  {
+                    header: "Valor",
+                    align: "right" as const,
+                    className: "whitespace-nowrap",
+                    cell: (r: SenadoPurchaseOrder) => (
+                      <span className="text-sm font-medium tabular-nums text-gray-900">
+                        {r.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                      </span>
+                    ),
+                  },
+                ]}
+                data={top10Empenhos}
+                rowKey={(r) => r.id}
+              />
             </section>
           )}
         </>

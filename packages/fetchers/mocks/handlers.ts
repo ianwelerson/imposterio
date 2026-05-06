@@ -1181,6 +1181,12 @@ export const handlers: RequestHandler[] = [
     },
   ),
 
+  /** GET /senador/partidos.json — Senate parties (declared before :id.json) */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/partidos.json",
+    () => HttpResponse.json(MOCK_SENADO_PARTIES),
+  ),
+
   /** GET /senador/:id.json — senator detail */
   http.get(
     "https://legis.senado.leg.br/dadosabertos/senador/:id.json",
@@ -1383,4 +1389,418 @@ export const handlers: RequestHandler[] = [
       return HttpResponse.json([])
     },
   ),
+
+  // ── Senado Federal — Phase 9 (parity expansion) ────────────────────
+
+  /** GET /senador/:id/licencas.json — formal leaves */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/:id/licencas.json",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "5672") return HttpResponse.json(MOCK_SENADO_LEAVES_5672)
+      return HttpResponse.json({})
+    },
+  ),
+
+  /** GET /senador/:id/historicoAcademico.json — education history */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/:id/historicoAcademico.json",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "5672") return HttpResponse.json(MOCK_SENADO_ACADEMIC_5672)
+      return HttpResponse.json({})
+    },
+  ),
+
+  /** GET /senador/:id/profissao.json — declared professions */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/:id/profissao.json",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "5672") return HttpResponse.json(MOCK_SENADO_PROFESSIONS_5672)
+      return HttpResponse.json({})
+    },
+  ),
+
+  /** GET /senador/:id/apartes.json — interjections */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/:id/apartes.json",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "5672") return HttpResponse.json(MOCK_SENADO_INTERJECTIONS_5672)
+      return HttpResponse.json({})
+    },
+  ),
+
+  /** GET /votacaoComissao/parlamentar/:id — committee votes */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/votacaoComissao/parlamentar/:id",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "5672") return HttpResponse.json(MOCK_SENADO_COMMITTEE_VOTES_5672)
+      return HttpResponse.json([])
+    },
+  ),
+
+  /** GET /plenario/votacao/orientacaoBancada/:ini/:fim — leadership orientations */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/plenario/votacao/orientacaoBancada/:ini/:fim",
+    () => HttpResponse.json(MOCK_SENADO_VOTING_ORIENTATIONS),
+  ),
+
+  /** GET admin /senadores/escritorios — regional offices */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/senadores/escritorios",
+    () => HttpResponse.json(MOCK_SENADO_OFFICES),
+  ),
+
+  /** GET admin /senadores/auxilio-moradia — housing aid */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/senadores/auxilio-moradia",
+    () => HttpResponse.json(MOCK_SENADO_HOUSING_AID),
+  ),
+
+  /** GET /materia/vetos/:ano — presidential vetoes */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/materia/vetos/:ano",
+    ({ params }) => {
+      const ano = params.ano as string
+      if (ano === "2025") return HttpResponse.json(MOCK_SENADO_VETOS_2025)
+      return HttpResponse.json({ ListaMaterias: { Materia: [] } })
+    },
+  ),
+
+  /** GET /senador/partidos.json — Senate parties */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/senador/partidos.json",
+    () => HttpResponse.json(MOCK_SENADO_PARTIES),
+  ),
+
+  /** GET /dados/ListaBlocoParlamentar.json — parliamentary blocs */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/dados/ListaBlocoParlamentar.json",
+    () => HttpResponse.json(MOCK_SENADO_BLOCS),
+  ),
+
+  /** GET /composicao/lideranca — active leadership composition */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/composicao/lideranca",
+    () => HttpResponse.json(MOCK_SENADO_LEADERSHIP_COMPOSITION),
+  ),
+
+  /** GET admin /contratacoes/contratos/:id/aditivos — contract amendments */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/contratos/:id/aditivos",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "C001") return HttpResponse.json(MOCK_SENADO_CONTRACT_AMENDMENTS_C001)
+      return HttpResponse.json([])
+    },
+  ),
+
+  /** GET admin /contratacoes/:tipo/:id/pagamentos — contract payments */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/:tipo/:id/pagamentos",
+    ({ params }) => {
+      const id = params.id as string
+      if (id === "C001") return HttpResponse.json(MOCK_SENADO_CONTRACT_PAYMENTS_C001)
+      return HttpResponse.json([])
+    },
+  ),
+
+  /** GET admin /contratacoes/terceirizados — outsourced workers */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/terceirizados",
+    () => HttpResponse.json(MOCK_SENADO_OUTSOURCED),
+  ),
+
+  /** GET admin /contratacoes/notas_empenho — purchase orders */
+  http.get(
+    "https://adm.senado.gov.br/adm-dadosabertos/api/v1/contratacoes/notas_empenho",
+    () => HttpResponse.json(MOCK_SENADO_EMPENHOS),
+  ),
+
+  /** GET /plenario/agenda/dia/:yyyymmdd — daily plenary agenda */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/plenario/agenda/dia/:yyyymmdd",
+    () => HttpResponse.json(MOCK_SENADO_AGENDA_DAY),
+  ),
+
+  /** GET /plenario/agenda/mes/:yyyymm — monthly plenary agenda */
+  http.get(
+    "https://legis.senado.leg.br/dadosabertos/plenario/agenda/mes/:yyyymm",
+    () => HttpResponse.json(MOCK_SENADO_AGENDA_DAY),
+  ),
+]
+
+// ── Phase 9 mock fixtures (parity expansion) ──────────────────────────
+
+export const MOCK_SENADO_LEAVES_5672 = {
+  LicencaParlamentar: {
+    Parlamentar: {
+      Licencas: {
+        Licenca: [
+          {
+            CodigoLicenca: "L1",
+            TipoLicenca: { DescricaoTipoLicenca: "Saúde" },
+            DataInicio: "2025-04-10",
+            DataFim: "2025-04-30",
+            Motivo: "Tratamento médico",
+          },
+          {
+            CodigoLicenca: "L2",
+            TipoLicenca: { DescricaoTipoLicenca: "Atividade política" },
+            DataInicio: "2025-08-15",
+            DataFim: "2025-08-22",
+          },
+        ],
+      },
+    },
+  },
+}
+
+export const MOCK_SENADO_ACADEMIC_5672 = {
+  HistoricoAcademicoParlamentar: {
+    Parlamentar: {
+      HistoricoAcademico: {
+        Curso: [
+          {
+            Curso: "Bacharelado em Direito",
+            Estabelecimento: "Universidade Federal de Minas Gerais",
+            Grau: "Superior",
+            AnoConclusao: "1992",
+          },
+          {
+            Curso: "Mestrado em Direito Constitucional",
+            Estabelecimento: "PUC-MG",
+            Grau: "Pós-graduação",
+            AnoConclusao: "1998",
+          },
+        ],
+      },
+    },
+  },
+}
+
+export const MOCK_SENADO_PROFESSIONS_5672 = {
+  ProfissaoParlamentar: {
+    Parlamentar: {
+      Profissoes: {
+        Profissao: [
+          {
+            NomeProfissao: "Advogado",
+            IndicadorAtividadePrincipal: "Sim",
+            IndicadorExercendoAtividade: "Sim",
+          },
+          {
+            NomeProfissao: "Empresário",
+            IndicadorAtividadePrincipal: "Não",
+            IndicadorExercendoAtividade: "Não",
+          },
+        ],
+      },
+    },
+  },
+}
+
+export const MOCK_SENADO_INTERJECTIONS_5672 = {
+  ApartesParlamentar: {
+    Parlamentar: {
+      Apartes: {
+        Aparte: [
+          {
+            CodigoPronunciamento: "P1",
+            DataPronunciamento: "2025-03-12T14:00:00",
+            TextoResumo: "Aparte sobre reforma tributária",
+            UrlTexto: "https://www.senado.leg.br/notas/p1.txt",
+            Indexacao: "Reforma tributária",
+            NomeAutor: "Senador X",
+          },
+          {
+            CodigoPronunciamento: "P2",
+            DataPronunciamento: "2025-04-22T10:30:00",
+            TextoResumo: "Aparte sobre orçamento",
+          },
+        ],
+      },
+    },
+  },
+}
+
+export const MOCK_SENADO_COMMITTEE_VOTES_5672 = [
+  {
+    codigoSessaoVotacao: "CV1",
+    dataSessao: "2025-04-15",
+    siglaComissao: "CCJ",
+    nomeComissao: "Comissão de Constituição, Justiça e Cidadania",
+    descricaoVotacao: "PL 100/2025 — projeto sobre LGPD",
+    voto: "Sim",
+    siglaResultado: "APROVADA",
+    identificacaoMateria: "PL 100/2025",
+    codigoMateriaPrincipal: 9100,
+  },
+  {
+    codigoSessaoVotacao: "CV2",
+    dataSessao: "2025-05-03",
+    siglaComissao: "CAE",
+    nomeComissao: "Comissão de Assuntos Econômicos",
+    descricaoVotacao: "PL 200/2025",
+    voto: "Não",
+    siglaResultado: "REJEITADA",
+  },
+]
+
+export const MOCK_SENADO_VOTING_ORIENTATIONS = [
+  {
+    codigoSessaoVotacao: "4001",
+    dataSessao: "2024-03-15",
+    siglaPartido: "PSD",
+    orientacao: "Sim",
+  },
+  {
+    codigoSessaoVotacao: "4002",
+    dataSessao: "2024-05-10",
+    siglaPartido: "PSD",
+    orientacao: "Não",
+  },
+  {
+    codigoSessaoVotacao: "4001",
+    dataSessao: "2024-03-15",
+    siglaPartido: "PT",
+    orientacao: "Não",
+  },
+]
+
+export const MOCK_SENADO_OFFICES = [
+  {
+    codigo: 1,
+    codigoSenador: 5672,
+    nomeSenador: "Marcos Pestana",
+    endereco: "Av. Afonso Pena, 1500, Sala 201",
+    cidade: "Belo Horizonte",
+    uf: "MG",
+    telefone: "(31) 3333-4444",
+    email: "gabinete@example.com",
+  },
+]
+
+export const MOCK_SENADO_HOUSING_AID = [
+  { codigoSenador: 5672, nomeSenador: "Marcos Pestana", ano: 2025, mes: 1, valorPago: 5500 },
+  { codigoSenador: 5672, nomeSenador: "Marcos Pestana", ano: 2025, mes: 2, valorPago: 5500 },
+  { codigoSenador: 5672, nomeSenador: "Marcos Pestana", ano: 2025, mes: 3, valorPago: 5500 },
+  { codigoSenador: 5321, nomeSenador: "Outro Senador", ano: 2025, mes: 1, valorPago: 10000 },
+]
+
+export const MOCK_SENADO_VETOS_2025 = {
+  ListaMaterias: {
+    Materia: [
+      {
+        codigoMateria: "V1",
+        identificacao: "VET 1/2025",
+        numero: 1,
+        ano: 2025,
+        data: "2025-02-10",
+        ementa: "Veta dispositivos da Lei XYZ",
+        tipoVeto: "Parcial",
+        situacaoAtual: "Em deliberação",
+        materiaOrigem: { identificacao: "PL 1234/2024" },
+      },
+    ],
+  },
+}
+
+export const MOCK_SENADO_PARTIES = {
+  ListaPartidos: {
+    Partidos: {
+      Partido: [
+        { Sigla: "PSD", Nome: "Partido Social Democrático", NumeroSenadores: 12 },
+        { Sigla: "PT", Nome: "Partido dos Trabalhadores", NumeroSenadores: 9 },
+      ],
+    },
+  },
+}
+
+export const MOCK_SENADO_BLOCS = {
+  ListaBlocoParlamentar: {
+    Blocos: {
+      Bloco: [
+        {
+          CodigoBloco: "B1",
+          NomeBloco: "Bloco Parlamentar Vanguarda",
+          NomeApelido: "Vanguarda",
+          SiglaBloco: "VAN",
+          DataCriacao: "2023-02-01",
+          Membros: { Membro: [{ Sigla: "PSD" }, { Sigla: "MDB" }] },
+        },
+      ],
+    },
+  },
+}
+
+export const MOCK_SENADO_LEADERSHIP_COMPOSITION = [
+  {
+    codigoParlamentar: "5672",
+    nomeParlamentar: "Marcos Pestana",
+    siglaUnidade: "PSD",
+    nomeUnidade: "Partido Social Democrático",
+    tipoUnidade: "Partido",
+    descricaoCargo: "Líder",
+    dataInicio: "2024-02-01",
+  },
+]
+
+export const MOCK_SENADO_CONTRACT_AMENDMENTS_C001 = [
+  {
+    codigo: "A1",
+    numero: "1",
+    tipoAditivo: "Aditivo de prazo",
+    dataAssinatura: "2025-04-01",
+    novaDataFim: "2026-04-01",
+    objeto: "Prorrogação de 12 meses",
+  },
+  {
+    codigo: "A2",
+    numero: "2",
+    tipoAditivo: "Aditivo de valor",
+    dataAssinatura: "2025-08-15",
+    valorAcrescimo: 50000,
+    valorReducao: 0,
+  },
+]
+
+export const MOCK_SENADO_CONTRACT_PAYMENTS_C001 = [
+  { codigo: "P1", observacao: "", multa: 0, glosa: 0, descricaoDespesa: "Janeiro/2025", valor: 100000 },
+  { codigo: "P2", observacao: "", multa: 0, glosa: 200, descricaoDespesa: "Fevereiro/2025", valor: 100000 },
+]
+
+export const MOCK_SENADO_OUTSOURCED = [
+  {
+    codigo: "T1",
+    nome: "João Limpeza",
+    funcao: "Auxiliar de Serviços Gerais",
+    empresa: "ABC Serviços Ltda",
+    unidadeLotacao: "DGER",
+    situacao: "ATIVO",
+  },
+]
+
+export const MOCK_SENADO_EMPENHOS = [
+  {
+    codigo: "E1",
+    numero: "2025NE000001",
+    data: "2025-01-15",
+    fornecedor: "Fornecedor X Ltda",
+    cnpjFornecedor: "12345678000100",
+    valor: 50000,
+    descricao: "Aquisição de material de escritório",
+  },
+]
+
+export const MOCK_SENADO_AGENDA_DAY = [
+  {
+    Data: "2026-05-15",
+    TipoSessao: "Sessão Deliberativa Ordinária",
+    Descricao: "Votação do PL 100/2026",
+    Materia: { Identificacao: "PL 100/2026", IdProcesso: 9100 },
+  },
 ]

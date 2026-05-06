@@ -685,6 +685,125 @@ export interface SenatorAttendanceDetail {
   percentage: number
 }
 
+// ── Senator extras (Phase 9: parity expansion) ───────────────────────
+
+/**
+ * A senator's leave record from `GET /senador/{id}/licencas.json`.
+ *
+ * The Senado registers formal leaves (medical, parental, political mission,
+ * etc.) that legally exempt a senator from plenary attendance. This is the
+ * authoritative signal needed to suppress false-positive low-attendance
+ * red flags.
+ */
+export interface SenatorLeave {
+  /** Internal leave code (`CodigoLicenca`). */
+  id: string
+  /** Type description (e.g. "Saúde", "Atividade política", "Maternidade"). */
+  type: string
+  /** ISO start date (YYYY-MM-DD). */
+  startDate: string
+  /** ISO end date (YYYY-MM-DD), undefined for open-ended leaves. */
+  endDate?: string
+  /** Free-form motive text. */
+  motive?: string
+}
+
+/** A formal-education entry from `GET /senador/{id}/historicoAcademico.json`. */
+export interface SenatorAcademic {
+  /** Course or degree (e.g. "Bacharelado em Direito"). */
+  course: string
+  /** Institution name. */
+  institution: string
+  /** Education level ("Superior", "Pós-graduação", etc.). */
+  level?: string
+  /** Year the course was concluded. */
+  conclusionYear?: number
+}
+
+/**
+ * A declared profession from `GET /senador/{id}/profissao.json`.
+ *
+ * The detail endpoint exposes only the primary profession; this fetcher
+ * surfaces the full multi-entry list (e.g. "Advogado", "Empresário").
+ */
+export interface SenatorProfessionEntry {
+  /** Profession title (e.g. "Empresário"). */
+  title: string
+  /** Whether this is the principal declared profession. */
+  isPrincipal: boolean
+  /** Whether actively exercised at the time of declaration. */
+  isActive: boolean
+}
+
+/**
+ * A floor interjection (aparte) from `GET /senador/{id}/apartes.json`.
+ *
+ * Apartes are short interventions interrupting another senator's speech.
+ * They are a meaningful proxy for floor engagement beyond the formal
+ * `discursos` list.
+ */
+export interface SenatorInterjection {
+  /** Pronunciamento ID where the interjection happened. */
+  id: string
+  /** ISO date of the speech where the interjection happened. */
+  date: string
+  /** Brief summary or topic. */
+  summary?: string
+  /** URL to the official text record. */
+  textUrl?: string
+  /** Topic (assunto) tag if classified. */
+  topic?: string
+  /** Speaker who was interjected. */
+  interruptedSpeaker?: string
+}
+
+/**
+ * A vote cast by a senator inside a committee from
+ * `GET /votacaoComissao/parlamentar/{id}`.
+ *
+ * Committee votes are not surfaced by `/votacao` (which is plenary-only).
+ * This is critical context — most policy work happens in committees.
+ */
+export interface SenatorCommitteeVote {
+  /** Committee voting session ID. */
+  sessionId: string
+  /** ISO date of the committee session. */
+  date: string
+  /** Committee abbreviation (e.g. "CCJ"). */
+  committeeAbbreviation: string
+  /** Full committee name. */
+  committeeName: string
+  /** Description of the matter voted. */
+  description: string
+  /** How the senator voted ("Sim", "Não", "Abstenção", "Não votou", etc.). */
+  vote: string
+  /** Whether the measure was approved overall. */
+  approved: boolean | null
+  /** Identifier of the affected matter (e.g. "PL 1234/2024"). */
+  matterIdentifier?: string
+  /** ID of the affected matter (linkable to `/processo/{id}`). */
+  matterId?: string
+}
+
+/**
+ * A party-leadership voting orientation from
+ * `GET /plenario/votacao/orientacaoBancada/{ini}/{fim}`.
+ *
+ * The Senate's party leaders publish recommendations ("Sim", "Não",
+ * "Liberada") for each plenary vote. Cross-referencing senator votes against
+ * orientations identifies "rebel votes" against own-party guidance.
+ */
+export interface SenadoVotingOrientation {
+  /** Voting session ID (`CodigoSessaoVotacao`). */
+  sessionId: string
+  /** ISO date of the session. */
+  date: string
+  /** Party / bloc / leadership unit issuing the orientation. */
+  unitAbbreviation: string
+  /** Recommendation ("Sim", "Não", "Liberada", "Obstrução"). */
+  orientation: string
+}
+
 // ── Shared types ─────────────────────────────────────────────────────
 
 /** Compensation breakdown used for both deputies, senators, and servants. */

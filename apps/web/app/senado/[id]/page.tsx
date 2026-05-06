@@ -52,6 +52,17 @@ import {
   getCeapsBulkSummary,
   getSenadoVotingSessions,
   getSenadoServantsRemuneration,
+  getSenatorLeaves,
+  hasLeaveOverlapping,
+  getSenatorAcademic,
+  getSenatorProfessions,
+  getSenatorInterjections,
+  getSenatorCommitteeVotes,
+  getSenadoVotingOrientations,
+  computePartyAlignment,
+  getSenadoOffices,
+  getSenadoHousingAid,
+  getSenadoSenatorCabinet,
   ApiError,
   ENDPOINTS,
 } from "@imposterio/fetchers"
@@ -72,6 +83,15 @@ import type {
   SenadoVotingSession,
   Proposition,
   SenadoRemunerationSummary,
+  SenatorLeave,
+  SenatorAcademic,
+  SenatorProfessionEntry,
+  SenatorInterjection,
+  SenatorCommitteeVote,
+  SenadoVotingOrientation,
+  SenadoOffice,
+  SenadoHousingAidSummary,
+  SenadoServant,
 } from "@imposterio/types"
 import { formatBRL, formatBRLCompact, safePercent } from "@/lib/calc"
 import { SENADO_CEAPS_MONTHLY_CAPS_BY_UF, SENADOR_SALARIO_SOURCE } from "@/lib/constants/senado"
@@ -392,6 +412,15 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
     ceapsBulk,
     yearVotingSessions,
     cabinetPayroll,
+    leaves,
+    academic,
+    professions,
+    interjections,
+    committeeVotes,
+    orientations,
+    offices,
+    housingAid,
+    cabinet,
     gameStats,
   ] = await Promise.all([
     collectErrors(
@@ -548,6 +577,79 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
         failed,
       )
     })(),
+    collectErrors(
+      () => getSenatorLeaves(id),
+      emptySourced<SenatorLeave[]>([]),
+      errors,
+      "Licenças",
+      failed,
+    ),
+    collectErrors(
+      () => getSenatorAcademic(id),
+      emptySourced<SenatorAcademic[]>([]),
+      errors,
+      "Histórico acadêmico",
+      failed,
+    ),
+    collectErrors(
+      () => getSenatorProfessions(id),
+      emptySourced<SenatorProfessionEntry[]>([]),
+      errors,
+      "Profissões",
+      failed,
+    ),
+    collectErrors(
+      () => getSenatorInterjections(id, selectedYear),
+      emptySourced<SenatorInterjection[]>([]),
+      errors,
+      "Apartes",
+      failed,
+    ),
+    collectErrors(
+      () => getSenatorCommitteeVotes(id, selectedYear),
+      emptySourced<SenatorCommitteeVote[]>([]),
+      errors,
+      "Votações em comissão",
+      failed,
+    ),
+    collectErrors(
+      () =>
+        getSenadoVotingOrientations(
+          `${selectedYear}0101`,
+          `${selectedYear}1231`,
+        ),
+      emptySourced<SenadoVotingOrientation[]>([]),
+      errors,
+      "Orientações de bancada",
+      failed,
+    ),
+    collectErrors(
+      () => getSenadoOffices(),
+      emptySourced<SenadoOffice[]>([]),
+      errors,
+      "Escritórios regionais",
+      failed,
+    ),
+    collectErrors(
+      () => getSenadoHousingAid(selectedYear),
+      emptySourced<SenadoHousingAidSummary>({
+        year: selectedYear,
+        totalAmount: 0,
+        uniqueSenators: 0,
+        bySenator: [],
+        rows: [],
+      }),
+      errors,
+      "Auxílio-moradia",
+      failed,
+    ),
+    collectErrors(
+      () => getSenadoSenatorCabinet(id),
+      emptySourced<SenadoServant[]>([]),
+      errors,
+      "Gabinete",
+      failed,
+    ),
     getEntityVoteStats("senado", id).catch(() => null),
   ])
 
@@ -559,15 +661,55 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
   if (sex) personalFields.push({ label: "Sexo", value: sex })
   if (detail.birthDate) personalFields.push({ label: "Data de nascimento", value: formatDate(detail.birthDate) })
   if (detail.birthPlace) personalFields.push({ label: "Naturalidade", value: detail.birthPlace })
-  if (detail.profession) personalFields.push({ label: "Profissão", value: detail.profession })
+  // Prefer the multi-entry professions list when available — falls back to
+  // the single profession field on `detail` for senators with sparse profile data.
+  const professionLabel = professions.length > 0
+    ? professions
+        .filter((p) => p.title)
+        .map((p) => (p.isPrincipal ? `${p.title}*` : p.title))
+        .join(", ")
+    : detail.profession
+  if (professionLabel) personalFields.push({ label: "Profissão", value: professionLabel })
+  // Highest-level academic title when present.
+  if (academic.length > 0) {
+    const top = academic[0]
+    const label = [top.level, top.course].filter(Boolean).join(" — ")
+    if (label) {
+      personalFields.push({
+        label: "Formação",
+        value: top.institution
+          ? `${label} (${top.institution}${top.conclusionYear ? `, ${top.conclusionYear}` : ""})`
+          : label,
+      })
+    }
+  }
   if (detail.email) {
     personalFields.push({ label: "E-mail", value: detail.email, href: `mailto:${detail.email}` })
   }
   if (detail.phone) personalFields.push({ label: "Telefone do gabinete", value: detail.phone })
   if (detail.office) personalFields.push({ label: "Gabinete", value: detail.office })
+  // Show the first regional office when published.
+  const senatorOffice = offices.find((o) => o.senatorId === id)
+  if (senatorOffice && senatorOffice.address) {
+    personalFields.push({
+      label: "Escritório regional",
+      value: `${senatorOffice.address}${senatorOffice.city ? ` — ${senatorOffice.city}/${senatorOffice.uf}` : ""}`,
+    })
+  }
   if (detail.websiteUrl) {
     personalFields.push({ label: "Página oficial", value: "Acessar perfil", href: detail.websiteUrl })
   }
+
+  // ── Housing aid (auxílio-moradia) for the year ────────────────────
+  const housingForSenator = housingAid.bySenator.find((h) => h.senatorId === id)
+  const housingTotal = housingForSenator?.total ?? 0
+  const housingMonths = housingForSenator?.months ?? 0
+
+  // ── Active leave today (used to badge the header) ─────────────────
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const activeLeave = leaves.find(
+    (l) => l.startDate <= todayISO && (l.endDate ?? "9999-12-31") >= todayISO,
+  )
 
   // ── Activity-section derived stats ─────────────────────────────────
   const propTypeBreakdown = aggregatePropositionsByType(propositions)
@@ -684,6 +826,13 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
           referenceLabel: cabinetPayrollMonthLabel,
         }
       : undefined,
+    housingTotal > 0
+      ? {
+          confirmedAmount: housingTotal,
+          months: housingMonths,
+          sourceUrl: housingAid._source ?? "",
+        }
+      : undefined,
   )
 
   // ── Cost per output metrics ────────────────────────────────────────
@@ -747,9 +896,18 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
     })
   }
 
+  // Compute the year window covered by the attendance feed and check whether
+  // the senator was on a registered leave during it. Formal leaves
+  // (medical, parental, political mission) legally exempt from attendance,
+  // so they should suppress a low-attendance flag instead of triggering it.
+  const yearStart = `${selectedYear}-01-01`
+  const yearEnd = `${selectedYear}-12-31`
+  const onLeaveDuringYear = hasLeaveOverlapping(leaves, yearStart, yearEnd)
+
   if (
     attendance.totalDeliberative >= 10
     && attendance.percentage < 50
+    && !onLeaveDuringYear
   ) {
     redFlags.push({
       id: "LOW_ATTENDANCE",
@@ -757,6 +915,19 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
       description: `Presente em apenas ${attendance.percentage.toFixed(0)}% das sessões deliberativas (${attendance.attended} de ${attendance.totalDeliberative}).`,
       anchorHref: "#presenca",
       severity: "red",
+    })
+  }
+
+  // Party alignment — flag senators who voted against their own party's
+  // published orientation in more than 30% of the year's votes (rebel votes).
+  const partyAlignment = computePartyAlignment(votes, orientations, detail.party)
+  if (partyAlignment && partyAlignment.percent < 70) {
+    redFlags.push({
+      id: "LOW_PARTY_ALIGNMENT",
+      title: "Baixo alinhamento com o próprio partido",
+      description: `Votou no sentido oposto à orientação de ${detail.party} em ${partyAlignment.total - partyAlignment.aligned} de ${partyAlignment.total} votações analisadas (${100 - partyAlignment.percent}% de divergência).`,
+      anchorHref: "#votacoes",
+      severity: "amber",
     })
   }
 
@@ -782,6 +953,19 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
       />
 
       <SectionNav />
+
+      {activeLeave && (
+        <div className="mb-6 mt-10 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">
+            Em licença oficial: {activeLeave.type}
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            {formatDate(activeLeave.startDate)}
+            {activeLeave.endDate ? ` – ${formatDate(activeLeave.endDate)}` : " – em curso"}
+            {activeLeave.motive ? ` — ${activeLeave.motive}` : ""}
+          </p>
+        </div>
+      )}
 
       {/* ── Dados pessoais ─────────────────────────────────────────── */}
       <section className="mb-12 mt-10">
@@ -1064,6 +1248,22 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
             tooltip="Percentual de vezes em que o senador votou no mesmo sentido do resultado final."
           />
         </div>
+        {partyAlignment && (
+          <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-card">
+            <p className="text-xs font-medium text-gray-500">
+              Alinhamento com {detail.party}
+            </p>
+            <p className="mt-1 text-base font-semibold tabular-nums text-gray-900">
+              {partyAlignment.percent}%
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                ({partyAlignment.aligned} de {partyAlignment.total} votações com orientação publicada)
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Comparado com a orientação de bancada divulgada pela liderança partidária no plenário.
+            </p>
+          </div>
+        )}
 
         {votes.length > 0 && (
           <VotingCharts
@@ -1211,7 +1411,7 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
       <section className="mb-12 rounded-2xl bg-gray-50/40 pt-10" id="comissoes">
         <SectionHeader
           title="Comissões"
-          description="Memberships ativas e cargos de direção."
+          description="Participações ativas e cargos de direção."
           sourceUrl={ENDPOINTS.SENADO_SENATOR_COMMITTEES(id)}
           action={{ label: "Ver todas as comissões", href: `/senado/${id}/comissoes` }}
           accent="border-rose-400"
@@ -1274,6 +1474,248 @@ export default async function SenatorDetailPage({ params, searchParams }: Senato
           />
         )}
       </section>
+
+      {/* ── Apartes (interjections) ────────────────────────────────── */}
+      {interjections.length > 0 && (
+        <section className="mb-12 border-t border-gray-200/60 pt-10" id="apartes">
+          <SectionHeader
+            title="Apartes"
+            description={`Intervenções curtas durante discursos de outros senadores em ${selectedYear}.`}
+            sourceUrl={interjections._source}
+            accent="border-cyan-300"
+          />
+          <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Total de apartes"
+              value={String(interjections.length)}
+              tooltip="Apartes registrados pela Taquigrafia no ano selecionado — proxy de engajamento em plenário além dos discursos formais."
+            />
+            <StatCard
+              label="Com texto disponível"
+              value={String(interjections.filter((i) => i.textUrl).length)}
+            />
+            <StatCard
+              label="Com tema indexado"
+              value={String(interjections.filter((i) => i.topic).length)}
+            />
+          </div>
+          <DataTable
+            columns={[
+              {
+                header: "Data",
+                cell: (r: SenatorInterjection) => (
+                  <span className="text-gray-600 tabular-nums">{formatDate(r.date)}</span>
+                ),
+              },
+              {
+                header: "Tema",
+                cell: (r: SenatorInterjection) => (
+                  <span className="text-gray-700">{r.topic ?? "—"}</span>
+                ),
+              },
+              {
+                header: "Resumo",
+                cell: (r: SenatorInterjection) => (
+                  <span className="line-clamp-2 text-gray-700">{r.summary ?? "—"}</span>
+                ),
+              },
+              {
+                header: "Texto",
+                align: "right" as const,
+                cell: (r: SenatorInterjection) =>
+                  r.textUrl ? (
+                    <a
+                      href={r.textUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-accent hover:text-accent-hover"
+                    >
+                      Abrir ↗
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  ),
+              },
+            ]}
+            data={interjections.slice(0, 8)}
+            rowKey={(r) => r.id}
+          />
+        </section>
+      )}
+
+      {/* ── Votações em comissão ───────────────────────────────────── */}
+      {committeeVotes.length > 0 && (
+        <section className="mb-12 rounded-2xl bg-gray-50/40 pt-10" id="votacoes-comissao">
+          <SectionHeader
+            title="Votações em comissão"
+            description={`Votos do senador em sessões de comissão em ${selectedYear} — onde a maior parte do trabalho substantivo acontece.`}
+            sourceUrl={committeeVotes._source}
+            accent="border-blue-300"
+          />
+          <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Total de votos" value={String(committeeVotes.length)} />
+            <StatCard
+              label="Comissões distintas"
+              value={String(new Set(committeeVotes.map((c) => c.committeeAbbreviation)).size)}
+            />
+            <StatCard
+              label="Aprovadas"
+              value={String(committeeVotes.filter((c) => c.approved === true).length)}
+            />
+            <StatCard
+              label="Rejeitadas"
+              value={String(committeeVotes.filter((c) => c.approved === false).length)}
+            />
+          </div>
+          <DataTable
+            columns={[
+              {
+                header: "Data",
+                cell: (r: SenatorCommitteeVote) => (
+                  <span className="text-gray-600 tabular-nums">{formatDate(r.date)}</span>
+                ),
+              },
+              {
+                header: "Comissão",
+                cell: (r: SenatorCommitteeVote) => (
+                  <Badge variant="gray">{r.committeeAbbreviation}</Badge>
+                ),
+              },
+              {
+                header: "Matéria",
+                cell: (r: SenatorCommitteeVote) => (
+                  <span className="line-clamp-2 text-gray-700">{r.description}</span>
+                ),
+              },
+              {
+                header: "Voto",
+                cell: (r: SenatorCommitteeVote) => {
+                  const v = r.vote
+                  const color =
+                    v === "Sim"
+                      ? "text-emerald-600"
+                      : v === "Não"
+                        ? "text-red-600"
+                        : "text-amber-600"
+                  return <span className={`font-medium ${color}`}>{v || "—"}</span>
+                },
+              },
+            ]}
+            data={committeeVotes.slice(0, 8)}
+            rowKey={(r) => r.sessionId}
+          />
+        </section>
+      )}
+
+      {/* ── Gabinete (cabinet staff) ─────────────────────────────────── */}
+      {cabinet.length > 0 && (
+        <section className="mb-12 border-t border-gray-200/60 pt-10" id="gabinete">
+          <SectionHeader
+            title="Gabinete"
+            description="Servidores comissionados ou requisitados ao gabinete do senador."
+            sourceUrl={cabinet._source}
+            accent="border-pink-400"
+          />
+          <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Total de assessores"
+              value={String(cabinet.length)}
+              tooltip="Servidores cuja lotação aponta para o gabinete deste senador, conforme a base administrativa."
+            />
+            <StatCard
+              label="Comissionados"
+              value={String(cabinet.filter((c) => c.bond === "COMISSIONADO").length)}
+            />
+            <StatCard
+              label="Requisitados / outros"
+              value={String(cabinet.filter((c) => c.bond !== "COMISSIONADO").length)}
+            />
+          </div>
+          <DataTable
+            columns={[
+              {
+                header: "Nome",
+                cell: (r: SenadoServant) => (
+                  <span className="font-medium text-gray-900">{r.name}</span>
+                ),
+              },
+              {
+                header: "Cargo",
+                cell: (r: SenadoServant) => (
+                  <span className="text-gray-700">{r.position || r.role || "—"}</span>
+                ),
+              },
+              {
+                header: "Vínculo",
+                cell: (r: SenadoServant) => <Badge variant="gray">{r.bond || "—"}</Badge>,
+              },
+              {
+                header: "Admissão",
+                align: "right" as const,
+                cell: (r: SenadoServant) => (
+                  <span className="text-gray-600 tabular-nums">
+                    {r.admissionYear > 0 ? r.admissionYear : "—"}
+                  </span>
+                ),
+              },
+            ]}
+            data={cabinet.slice(0, 12)}
+            rowKey={(r) => r.id}
+          />
+        </section>
+      )}
+
+      {/* ── Licenças ────────────────────────────────────────────────── */}
+      {leaves.length > 0 && (
+        <section className="mb-12 border-t border-gray-200/60 pt-10" id="licencas">
+          <SectionHeader
+            title="Licenças"
+            description="Afastamentos formais registrados (saúde, atividade política, missão, maternidade)."
+            sourceUrl={leaves._source}
+            accent="border-amber-300"
+          />
+          <DataTable
+            columns={[
+              {
+                header: "Tipo",
+                cell: (r: SenatorLeave) => (
+                  <Badge
+                    variant={
+                      r.type.toLowerCase().includes("saúde") || r.type.toLowerCase().includes("saude")
+                        ? "amber"
+                        : "gray"
+                    }
+                  >
+                    {r.type}
+                  </Badge>
+                ),
+              },
+              {
+                header: "Início",
+                cell: (r: SenatorLeave) => (
+                  <span className="text-gray-600 tabular-nums">{formatDate(r.startDate)}</span>
+                ),
+              },
+              {
+                header: "Fim",
+                cell: (r: SenatorLeave) => (
+                  <span className="text-gray-600 tabular-nums">
+                    {r.endDate ? formatDate(r.endDate) : "Em curso"}
+                  </span>
+                ),
+              },
+              {
+                header: "Motivo",
+                cell: (r: SenatorLeave) => (
+                  <span className="text-gray-700 line-clamp-2">{r.motive ?? "—"}</span>
+                ),
+              },
+            ]}
+            data={leaves}
+            rowKey={(r) => r.id}
+          />
+        </section>
+      )}
 
       {/* ── Carreira política ─────────────────────────────────────── */}
       {(mandates.length > 0 || affiliations.length > 0) && (
