@@ -220,10 +220,34 @@ export const TTL = {
   PARTY_FUND: 60 * 60 * 24 * 7,
   /** Electoral results by party — 30d (changes only after elections) */
   PARTY_ELECTION_RESULTS: 60 * 60 * 24 * 30,
+  /**
+   * TSE campaign donations (per CNPJ, per year) — 30d.
+   *
+   * The underlying datasets are immutable after election certification, so a
+   * 30-day TTL is plenty: we burn one cache miss per CNPJ per month at most.
+   * This also keeps pressure on the TSE CKAN endpoint low — it's a public
+   * service hosted on a relatively constrained portal.
+   */
+  TSE_CAMPAIGN_DONATIONS: 60 * 60 * 24 * 30,
 
-  // ── Companies ───────────────────────────────────────────────────────
-  /** Individual CNPJ lookup — 7d (corporate data changes infrequently) */
-  CNPJ_DETAIL: 60 * 60 * 24 * 7,
+  // ── Companies (OpenCNPJ) ────────────────────────────────────────────
+  /**
+   * Individual CNPJ lookup — 30d.
+   *
+   * OpenCNPJ refreshes from the Federal Revenue monthly bulk, so a 30-day
+   * TTL aligns with the upstream cadence: even a perfectly fresh fetch can
+   * be at most ~30 days behind the official register.
+   */
+  CNPJ_DETAIL: 60 * 60 * 24 * 30,
+  /**
+   * Negative cache for CNPJs that returned 404 from OpenCNPJ — 1h.
+   *
+   * Short TTL throttles repeated misses (e.g. typo'd CNPJ in a URL) without
+   * permanently hiding a CNPJ that may have been added to the bulk shortly
+   * after we first asked. Stored under a separate key (`cnpj:404:{cnpj}`)
+   * so it never collides with a successful detail entry.
+   */
+  CNPJ_NOT_FOUND: 60 * 60,
 
   // ── States (fiscal data) ────────────────────────────────────────────
   /** State fiscal overview (all 27 UFs) — 24h */

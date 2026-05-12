@@ -41,6 +41,7 @@
 
 import { ApiError, cachedFetch, redis } from "./lib/cache"
 import { ENDPOINTS } from "./lib/endpoints"
+import { recordCeapTransactions } from "./lib/transactions"
 import { TTL } from "./lib/ttl"
 import type {
   Senator,
@@ -1697,6 +1698,14 @@ export async function getSenatorExpenses(
   const filtered = all
     .filter((e) => e.senatorId === String(id))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+
+  // Record each CEAP receipt as a CompanyTransaction for the empresas
+  // partner-graph index (EMPRESAS-PLAN.md §5). Idempotent on
+  // (cnpj, "ceap", documentCode), so repeated visits to the same senator do
+  // not double-count. Recording happens here rather than in fetchCeapsRaw()
+  // so the bulk summary fetcher stays free of per-senator side effects.
+  await recordCeapTransactions(filtered, all._source, `senator:${id}`)
+
   return Object.assign(filtered, { _source: all._source })
 }
 

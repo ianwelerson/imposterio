@@ -177,15 +177,20 @@ Still simple GET endpoints, but returns paginated data that needs processing.
 
 ### 3C — Contracts, travel, payment cards — Portal da Transparência
 
-- [ ] **3C.1** Implement `getContracts(filters?)` — `GET /contratos`
+- [x] **3C.1** Implement `getContracts(filters?)` — `GET /contratos`
   - TTL: `TRANSP_CONTRACTS` (12h)
+  - Filters: `cnpj`, `agencyCode`, `dataInicial`, `dataFinal`, `pagina`
+  - Side effect: records `type='contract'` `CompanyTransaction` rows via
+    `recordContractTransactions()` (EMPRESAS-PLAN.md §5)
 - [ ] **3C.2** Implement `getTravel(filters?)` — `GET /viagens`
   - TTL: `TRANSP_TRAVEL` (24h)
 - [ ] **3C.3** Implement `getPaymentCards(filters?)` — `GET /cartoes`
   - TTL: `TRANSP_PAYMENT_CARDS` (12h)
-- [ ] **3C.4** Write MSW handlers + tests
+- [x] **3C.4** Write MSW handlers + tests for `getContracts`
 - [ ] **3C.5** Wire to `executivo/page.tsx` tables and StatCards
 - [ ] **3C.6** Wire to `executivo/ministros/[id]/page.tsx` contracts + card spending
+- [x] **3C.7** Wire `getContracts({ cnpj })` to `empresas/[cnpj]/page.tsx`
+  contracts section (Phase E7 — deep-link per row to Portal da Transparência)
 
 ### 3D — Sanctions (blacklists) — Portal da Transparência
 
@@ -255,25 +260,37 @@ REST APIs, no auth, but responses need parsing and cross-referencing.
 
 ---
 
-## Phase 6 — Company data (CNPJá + QSA bulk)
+## Phase 6 — Company data (OpenCNPJ + QSA bulk)
+
+> **Detailed plan:** see `EMPRESAS-PLAN.md`. Phase 6 here is a high-level
+> tracking summary; the empresas-specific phases (E1–E9) live in that file.
 
 ### 6A — Real-time CNPJ lookups
 
-- [ ] **6A.1** Create `packages/fetchers/cnpja.ts` with JSDoc file header
-- [ ] **6A.2** Implement `getCompanyDetail(cnpj)` — `GET /office/{cnpj}`
-  - TTL: `CNPJ_DETAIL` (7d)
-  - Rate limit: 5 req/min (anonymous)
-  - Returns: name, status, CNAE, address, partners (basic)
-- [ ] **6A.3** Write MSW handlers + tests
-- [ ] **6A.4** Wire to `empresas/[cnpj]/page.tsx`
+- [x] **6A.1** Create `packages/fetchers/opencnpj.ts` with JSDoc file header
+- [x] **6A.2** Implement `getCompanyDetail(cnpj)` — `GET https://api.opencnpj.org/{cnpj}`
+  - TTL: `CNPJ_DETAIL` (30d), `CNPJ_NOT_FOUND` (1h) for 404 negative cache
+  - Rate limit: none documented (aggressive caching is safe — monthly upstream refresh)
+  - Returns: name, status, CNAE, address, partners (QSA with masked CPFs)
+- [x] **6A.3** Write MSW handlers + tests
+- [x] **6A.4** Wire to `empresas/[cnpj]/page.tsx` (E5 — detail page now reads
+  OpenCNPJ + `getCompanyAggregates` + `findRelatedPartners`; sanctions section
+  remains a placeholder until Phase 3D ships)
 
-### 6B — QSA partner graph (PostgreSQL bulk)
+### 6B — QSA partner graph (incremental PostgreSQL index)
 
-- [ ] **6B.1** Implement `packages/db/queries/qsa.ts`
-  - `findCompaniesByPartnerCpf(cpf)` — reverse lookup
-  - `getCompanyPartners(cnpjBase)` — full QSA list
-- [ ] **6B.2** Write tests
-- [ ] **6B.3** Wire to `empresas/[cnpj]/page.tsx` partners table
+> The original "QSA bulk" approach was replaced by an incremental partner
+> graph built on demand from OpenCNPJ — see `EMPRESAS-PLAN.md` §2.2 and
+> the `Company` / `CompanyPartner` / `CompanyTransaction` Prisma models
+> added in `0002_add_company_partner_graph`.
+
+- [x] **6B.1** Implement `packages/db/queries/companies.ts`
+  - `upsertCompany`, `upsertCompanyPartners`, `recordCompanyTransaction`
+  - `getCompanyAggregates`, `findRelatedPartners` (heuristic cross-reference)
+- [x] **6B.2** Write tests (real Postgres test DB, no mocks)
+- [x] **6B.3** Wire to `empresas/[cnpj]/page.tsx` partners table (E5 —
+  `CompanyPartnersTable` renders QSA with expandable cross-references via
+  `ProvavelBadge`)
 
 ---
 
@@ -283,7 +300,11 @@ Complex: CKAN API is non-standard, some data requires CSV file downloads.
 
 ### 7A — Party fund data
 
-- [ ] **7A.1** Create `packages/fetchers/tse.ts` with JSDoc file header
+- [x] **7A.1** Create `packages/fetchers/tse.ts` with JSDoc file header
+  (landed via Phase E8 — `getCompanyDonations` + `computeDonationRoi`.
+  Phase 7A items below are still pending; the file is now ready for
+  party-fund and election-result fetchers to be added beside the
+  donations slice.)
 - [ ] **7A.2** Implement `getPartyFundDistribution(year)` — TSE CKAN or cached CSV
   - TTL: `PARTY_FUND` (7d)
 - [ ] **7A.3** Write MSW handlers + tests
@@ -402,15 +423,15 @@ Lowest priority — requires HTML scraping, one scraper per court system.
 | 0 | Infrastructure | 3 | 2 |
 | 1 | Personnel lists | 17 | 8 |
 | 2 | Activity data | 20 | 13 |
-| 3 | Financial data | 19 | 5 |
+| 3 | Financial data | 21 | 8 |
 | 4 | Bulk files | 5 | 0 |
 | 5 | State fiscal | 13 | 0 |
 | 6 | Company data | 7 | 0 |
-| 7 | TSE electoral | 8 | 0 |
+| 7 | TSE electoral | 8 | 1 |
 | 8 | Judiciary ES | 8 | 0 |
 | 9 | Aggregations | 5 | 0 |
 | 10 | Game system | 7 | 0 |
 | 11 | Tax counter | 5 | 0 |
 | 12 | QSA worker | 4 | 0 |
 | 13 | Court scraping | 5 | 0 |
-| **Total** | | **126** | **29** |
+| **Total** | | **128** | **33** |

@@ -95,3 +95,21 @@ export {
   getSenadoTaquigrafiaUrls,
   ensureArray,
 } from "./senado"
+
+export {
+  getCompanyDetail,
+  ingestCompany,
+} from "./opencnpj"
+
+export {
+  getContracts,
+  type GetContractsFilters,
+} from "./transparencia"
+
+export {
+  getCompanyDonations,
+  computeDonationRoi,
+  DONATION_RESOURCES,
+  type DonationRoiRow,
+  type GetCompanyDonationsFilters,
+} from "./tse"

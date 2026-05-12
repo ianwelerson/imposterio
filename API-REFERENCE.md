@@ -78,9 +78,41 @@ Extracted from CLAUDE.md to keep it under the performance threshold.
 - **Schema:** `https://www.gov.br/receitafederal/dados/cnpj-metadados.pdf`
 - **Size:** ~85GB uncompressed. Monthly import via Railway worker.
 
-## CNPJá
-- **Free URL:** `https://open.cnpja.com/office/{cnpj}`
-- **Rate limit:** 5 req/min (anonymous)
+## OpenCNPJ
+- **Project:** `https://opencnpj.org` — open-source CNPJ API rebuilt monthly from the Federal Revenue bulk
+- **Base URL:** `https://api.opencnpj.org`
+- **Endpoint:** `GET https://api.opencnpj.org/{cnpj}` — full company detail (cadastral data + QSA partners). The 14-digit CNPJ must be passed without punctuation.
+- **Auth:** none
+- **Rate limit:** none documented at time of writing. Aggressive caching (30-day TTL `CNPJ_DETAIL`) is safe given the monthly upstream cadence.
+- **Update cadence:** monthly — sourced from the official Federal Revenue open-data release.
+- **Response shape (abridged):**
+  ```json
+  {
+    "cnpj": "00000000000000",
+    "razao_social": "...",
+    "nome_fantasia": "...",
+    "situacao_cadastral": "ATIVA",
+    "data_situacao_cadastral": "YYYY-MM-DD",
+    "cnae_principal": { "codigo": "0000000", "descricao": "..." },
+    "cnaes_secundarios": [{ "codigo": "...", "descricao": "..." }],
+    "porte": "MEI" | "ME" | "EPP" | "DEMAIS",
+    "natureza_juridica": "...",
+    "capital_social": 0,
+    "data_inicio_atividade": "YYYY-MM-DD",
+    "endereco": { "logradouro": "...", "numero": "...", "complemento": "...", "bairro": "...", "municipio": "...", "uf": "..", "cep": "..." },
+    "qsa": [
+      {
+        "nome_socio": "...",
+        "cpf_cnpj_socio": "***.456.789-**",
+        "qualificacao_socio": "Sócio-Administrador",
+        "data_entrada_sociedade": "YYYY-MM-DD"
+      }
+    ]
+  }
+  ```
+  Verify the exact field names from `https://opencnpj.org/#api` on first implementation and adjust the mapper if upstream contracts differ.
+- **404 handling:** OpenCNPJ returns HTTP 404 for unknown CNPJs. Fetcher must cache 404s under a separate key (`cnpj:404:{cnpj}`) with a short TTL (`CNPJ_NOT_FOUND`, 1h) to throttle repeated misses without permanently hiding a CNPJ added to a later bulk.
+- **Reverse lookup:** OpenCNPJ does **not** expose CPF → companies. The partner-graph feature is built locally — see `EMPRESAS-PLAN.md` §6 and the `CompanyPartner` model in `packages/db/schema.prisma`.
 
 ## IBGE
 - **Base URL:** `https://servicodados.ibge.gov.br/api/v3/`

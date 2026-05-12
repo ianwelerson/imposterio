@@ -1110,6 +1110,236 @@ export const MOCK_SENADO_REMUNERATION_2025_3 = [
   },
 ]
 
+// ── Mock data: Portal da Transparência (contracts) ─────────────────
+
+/**
+ * Mock contracts list for `GET /api-de-dados/contratos?cnpjContratada=...`.
+ *
+ * Three rows tied to CNPJ "11222333000181": two with full PJ payload
+ * (signature + start/end dates, both values published) and one minimal row
+ * exercising defensive mapping (missing dates, value as a comma-decimal
+ * string, no `valorFinalCompra`).
+ */
+export const MOCK_TRANSP_CONTRACTS_11222333000181 = [
+  {
+    id: 9001,
+    numero: "10/2024",
+    objeto: "Aquisição de equipamentos de TI para o Ministério da Educação",
+    fundamentoLegal: "Lei 14.133/2021",
+    modalidadeCompra: "Pregão Eletrônico",
+    situacaoCompra: "ATIVO",
+    dataAssinatura: "2024-02-15",
+    dataPublicacaoDOU: "2024-02-20",
+    dataInicioVigencia: "2024-03-01",
+    dataFimVigencia: "2025-03-01",
+    valorInicialCompra: 250000.00,
+    valorFinalCompra: 250000.00,
+    fornecedor: {
+      tipo: "PJ",
+      nome: "ACME COMERCIO E SERVICOS LTDA",
+      razaoSocialReceita: "ACME COMERCIO E SERVICOS LTDA",
+      nomeFantasiaReceita: "ACME",
+      cnpjFormatado: "11.222.333/0001-81",
+      cpfFormatado: null,
+      cpfCnpj: "11222333000181",
+    },
+    unidadeGestora: {
+      codigo: "200999",
+      nomeResumido: "COORD-GERAL TI/MEC",
+      nome: "Coordenação Geral de Tecnologia da Informação",
+      descricaoPoder: "EXECUTIVO",
+      orgaoVinculado: {
+        codigoSIAFI: "26000",
+        cnpj: "00394445000131",
+        sigla: "MEC",
+        nome: "Ministério da Educação",
+      },
+      orgaoMaximo: {
+        codigo: "26000",
+        sigla: "MEC",
+        nome: "Ministério da Educação",
+      },
+    },
+    linkPaginaContrato:
+      "https://portaldatransparencia.gov.br/contratos/numero?id=9001",
+  },
+  {
+    id: 9002,
+    numero: "42/2023",
+    objeto: "Manutenção preventiva de servidores",
+    fundamentoLegal: "Lei 8.666/93",
+    modalidadeCompra: "Dispensa de Licitação",
+    situacaoCompra: "ENCERRADO",
+    dataAssinatura: "15/06/2023",
+    dataInicioVigencia: "01/07/2023",
+    dataFimVigencia: "30/06/2024",
+    valorInicialCompra: 80000,
+    valorFinalCompra: 95000,
+    fornecedor: {
+      tipo: "PJ",
+      nome: "ACME COMERCIO E SERVICOS LTDA",
+      razaoSocialReceita: "ACME COMERCIO E SERVICOS LTDA",
+      cnpjFormatado: "11.222.333/0001-81",
+      cpfCnpj: "11222333000181",
+    },
+    unidadeGestora: {
+      codigo: "110001",
+      orgaoVinculado: {
+        codigoSIAFI: "20000",
+        sigla: "PRESID",
+        nome: "Presidência da República",
+      },
+    },
+    linkPaginaContrato:
+      "https://portaldatransparencia.gov.br/contratos/numero?id=9002",
+  },
+  {
+    id: 9003,
+    numero: "5/2025",
+    objeto: "Licença de software",
+    modalidadeCompra: "Pregão Eletrônico",
+    situacaoCompra: "ATIVO",
+    valorInicialCompra: "12.500,00",
+    valorFinalCompra: null,
+    fornecedor: {
+      tipo: "PJ",
+      nome: "ACME COMERCIO E SERVICOS LTDA",
+      cpfCnpj: "11222333000181",
+    },
+    unidadeGestora: {
+      codigo: "200999",
+      orgaoVinculado: {
+        codigoSIAFI: "26000",
+        sigla: "MEC",
+        nome: "Ministério da Educação",
+      },
+    },
+    linkPaginaContrato:
+      "https://portaldatransparencia.gov.br/contratos/numero?id=9003",
+  },
+]
+
+// ── Mock data: TSE campaign donations ───────────────────────────────
+
+/**
+ * Mock receitas (donor-side) rows for CNPJ "11222333000181" in 2022.
+ *
+ * Two rows are intentionally seeded so tests can exercise the SUM
+ * aggregation in the ROI helper as well as the ordering branch.
+ */
+export const MOCK_TSE_RECEITAS_2022_11222333000181 = {
+  success: true,
+  result: {
+    records: [
+      {
+        SQ_RECEITA: "R-1",
+        ANO_ELEICAO: 2022,
+        NR_CPF_CNPJ_DOADOR: "11222333000181",
+        NM_DOADOR: "ACME COMERCIO E SERVICOS LTDA",
+        NM_DOADOR_RFB: "ACME COMERCIO E SERVICOS LTDA",
+        NR_CPF_CANDIDATO: "12345678901",
+        NM_CANDIDATO: "FULANO DE TAL",
+        DS_CARGO: "DEPUTADO FEDERAL",
+        SG_PARTIDO: "PT",
+        SG_UF: "SP",
+        VR_RECEITA: "10000,00",
+        DT_RECEITA: "15/08/2022",
+      },
+      {
+        SQ_RECEITA: "R-2",
+        ANO_ELEICAO: 2022,
+        NR_CPF_CNPJ_DOADOR: "11222333000181",
+        NM_DOADOR_RFB: "ACME COMERCIO E SERVICOS LTDA",
+        NR_CPF_CANDIDATO: "98765432109",
+        NM_CANDIDATO: "BELTRANO SOUZA",
+        DS_CARGO: "SENADOR",
+        SG_PARTIDO: "PSDB",
+        SG_UF: "SP",
+        VR_RECEITA: 5000,
+        DT_RECEITA: "2022-09-10",
+      },
+    ],
+  },
+}
+
+/**
+ * Mock despesas (vendor-side) rows for CNPJ "11222333000181" in 2022.
+ *
+ * Carries one row whose candidate is also in the receitas fixture
+ * (`12345678901`) so the ROI helper has a counterparty with both
+ * directions to net against.
+ */
+export const MOCK_TSE_DESPESAS_2022_11222333000181 = {
+  success: true,
+  result: {
+    records: [
+      {
+        SQ_DESPESA: "D-1",
+        ANO_ELEICAO: 2022,
+        NR_CPF_CNPJ_FORNECEDOR: "11222333000181",
+        NM_FORNECEDOR: "ACME COMERCIO E SERVICOS LTDA",
+        NM_FORNECEDOR_RFB: "ACME COMERCIO E SERVICOS LTDA",
+        NR_CPF_CANDIDATO: "12345678901",
+        NM_CANDIDATO: "FULANO DE TAL",
+        DS_CARGO: "DEPUTADO FEDERAL",
+        SG_PARTIDO: "PT",
+        SG_UF: "SP",
+        VR_DESPESA: "3500,00",
+        DT_DESPESA: "20/09/2022",
+      },
+    ],
+  },
+}
+
+// ── Mock data: OpenCNPJ ─────────────────────────────────────────────
+
+/**
+ * Mock OpenCNPJ detail for CNPJ "11222333000181" — a fictional company with
+ * a mixed QSA (one natural-person partner with masked CPF, one juridical
+ * person partner with a CNPJ).
+ */
+export const MOCK_OPENCNPJ_11222333000181 = {
+  cnpj: "11222333000181",
+  razao_social: "ACME COMERCIO E SERVICOS LTDA",
+  nome_fantasia: "ACME",
+  situacao_cadastral: "ATIVA",
+  data_situacao_cadastral: "2010-05-12",
+  matriz_filial: "Matriz",
+  data_inicio_atividade: "2010-05-12",
+  // OpenCNPJ exposes CNAEs as bare 7-digit codes (no description).
+  cnae_principal: "4751201",
+  cnaes_secundarios: ["6201501"],
+  natureza_juridica: "Sociedade Empresária Limitada",
+  // Bracelet-style top-level address fields — there is no nested `endereco`.
+  tipo_logradouro: "RUA",
+  logradouro: "DAS FLORES",
+  numero: "100",
+  complemento: "Sala 5",
+  bairro: "Centro",
+  cep: "01000000",
+  uf: "SP",
+  municipio: "São Paulo",
+  porte_empresa: "EPP",
+  capital_social: "100000,00",
+  // QSA list is capitalized and partner ID lives under `cnpj_cpf_socio`.
+  QSA: [
+    {
+      nome_socio: "João da Silva",
+      cnpj_cpf_socio: "***456789**",
+      qualificacao_socio: "Sócio-Administrador",
+      data_entrada_sociedade: "2010-05-12",
+      identificador_socio: "Pessoa Física",
+    },
+    {
+      nome_socio: "ACME HOLDING SA",
+      cnpj_cpf_socio: "99888777000166",
+      qualificacao_socio: "Sócio",
+      data_entrada_sociedade: "2015-03-01",
+      identificador_socio: "Pessoa Jurídica",
+    },
+  ],
+}
+
 // ── Handlers ─────────────────────────────────────────────────────────
 
 export const handlers: RequestHandler[] = [
@@ -1531,6 +1761,83 @@ export const handlers: RequestHandler[] = [
     "https://legis.senado.leg.br/dadosabertos/plenario/agenda/mes/:yyyymm",
     () => HttpResponse.json(MOCK_SENADO_AGENDA_DAY),
   ),
+
+  // ── Portal da Transparência ─────────────────────────────────────────
+
+  /**
+   * GET /api-de-dados/contratos — federal contracts.
+   *
+   * The handler honors the most common filter (`cnpjContratada`); when no
+   * filter matches the fixture, it returns an empty array so callers exercise
+   * the empty-result code path. Tests that need other filters can install a
+   * one-off handler via `server.use()`.
+   */
+  http.get(
+    "https://api.portaldatransparencia.gov.br/api-de-dados/contratos",
+    ({ request }) => {
+      const url = new URL(request.url)
+      const cnpj = url.searchParams.get("cnpjContratada")
+      if (cnpj === "11222333000181") {
+        return HttpResponse.json(MOCK_TRANSP_CONTRACTS_11222333000181)
+      }
+      return HttpResponse.json([])
+    },
+  ),
+
+  // ── TSE CKAN datastore_search ───────────────────────────────────────
+
+  /**
+   * GET /api/3/action/datastore_search — donations dataset.
+   *
+   * The handler routes by `resource_id` and the JSON-encoded `filters`
+   * query param. Resource IDs match {@link DONATION_RESOURCES} in
+   * `tse.ts`; non-matching combinations return an empty `records` array
+   * to exercise the empty-result code path.
+   */
+  http.get(
+    "https://dadosabertos.tse.jus.br/api/3/action/datastore_search",
+    ({ request }) => {
+      const url = new URL(request.url)
+      const resourceId = url.searchParams.get("resource_id") ?? ""
+      const rawFilters = url.searchParams.get("filters") ?? "{}"
+      let filters: Record<string, string> = {}
+      try {
+        filters = JSON.parse(rawFilters)
+      } catch {
+        filters = {}
+      }
+      const cnpjDoador = filters["NR_CPF_CNPJ_DOADOR"] ?? ""
+      const cnpjFornecedor = filters["NR_CPF_CNPJ_FORNECEDOR"] ?? ""
+
+      if (
+        resourceId === "tse-receitas-candidatos-2022" &&
+        cnpjDoador === "11222333000181"
+      ) {
+        return HttpResponse.json(MOCK_TSE_RECEITAS_2022_11222333000181)
+      }
+      if (
+        resourceId === "tse-despesas-contratadas-candidatos-2022" &&
+        cnpjFornecedor === "11222333000181"
+      ) {
+        return HttpResponse.json(MOCK_TSE_DESPESAS_2022_11222333000181)
+      }
+      return HttpResponse.json({ success: true, result: { records: [] } })
+    },
+  ),
+
+  // ── OpenCNPJ ────────────────────────────────────────────────────────
+
+  /** GET /:cnpj — full company detail by 14-digit CNPJ */
+  http.get("https://api.opencnpj.org/:cnpj", ({ params }) => {
+    const cnpj = String(params.cnpj ?? "")
+    if (cnpj === "11222333000181") {
+      return HttpResponse.json(MOCK_OPENCNPJ_11222333000181)
+    }
+    // Any other CNPJ is treated as not-in-bulk to exercise the negative
+    // cache code path. Tests that need a different CNPJ should use
+    // `server.use()` to install a one-off handler.
+    return new HttpResponse(null, { status: 404 })
+  }),
 ]
 
 // ── Phase 9 mock fixtures (parity expansion) ──────────────────────────

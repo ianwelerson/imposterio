@@ -57,6 +57,23 @@ vi.mock("@upstash/redis", () => ({
   },
 }))
 
+// Mock the DB queries module so the empresas side-effect
+// (recordCompanyTransaction) does not require a live Postgres instance.
+const mockRecordCompanyTransaction = vi.fn(async () => undefined)
+
+vi.mock("@imposterio/db/queries/companies", () => ({
+  recordCompanyTransaction: mockRecordCompanyTransaction,
+}))
+
+// Mock the OpenCNPJ fetcher so the side-effect chain
+// (recordCeapTransactions → backfillCompanies → ingestCompany) does not
+// hit OpenCNPJ or the negative-cache key during senado tests. The senado
+// fetchers do not exercise the empresas-ingestion path themselves.
+vi.mock("./opencnpj", () => ({
+  ingestCompany: vi.fn(async () => null),
+  getCompanyDetail: vi.fn(async () => null),
+}))
+
 // Import after mocks are set up.
 const {
   getSenatorsList,
@@ -96,6 +113,7 @@ function resetRedisMocks() {
   mockRedisGet.mockResolvedValue(null)
   mockRedisSet.mockResolvedValue("OK")
   mockRedisDel.mockResolvedValue(0)
+  mockRecordCompanyTransaction.mockClear()
 }
 
 describe("ensureArray", () => {
@@ -683,6 +701,78 @@ describe("getSenatorExpenses", () => {
 
     expect(second).toHaveLength(1)
     expect(mockRedisSet).not.toHaveBeenCalled()
+  })
+
+  // ── EMPRESAS-PLAN.md §5 Phase E4: CEAP → CompanyTransaction side effect ──
+  //
+  // The Senado fixture has two CNPJ-keyed receipts for senator 5672 (LATAM
+  // Airlines + Imobiliária Central). Both should be recorded with the
+  // senator counterparty tag and stripped CNPJ digits.
+
+  it("records each CEAP receipt with a CNPJ supplier as a CompanyTransaction", async () => {
+    await getSenatorExpenses("5672", 2024)
+
+    // Two of the three rows for senator 5672 carry CNPJ suppliers; both
+    // should generate a write. Senator 5321 is filtered out by the fetcher.
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(2)
+
+    const latam = mockRecordCompanyTransaction.mock.calls.find(
+      (c) => c[0].sourceKey === "7712345",
+    )
+    expect(latam?.[0]).toMatchObject({
+      type: "ceap",
+      counterparty: "senator:5672",
+      cnpj: "33469172000140",
+      value: 8430.5,
+      year: 2024,
+      month: 3,
+      sourceUrl: expect.stringContaining(
+        "/senadores/despesas_ceaps/2024",
+      ),
+    })
+
+    const imobiliaria = mockRecordCompanyTransaction.mock.calls.find(
+      (c) => c[0].sourceKey === "7712400",
+    )
+    // Brazilian-format value "12.500,00" was parsed to 12500 by the mapper.
+    expect(imobiliaria?.[0]).toMatchObject({
+      cnpj: "12345678000190",
+      value: 12500,
+      counterparty: "senator:5672",
+    })
+  })
+
+  it("records the same rows on a cache hit (idempotency lives in the DB layer)", async () => {
+    // First call populates the shared `sen:ceaps:raw:2024` cache key.
+    await getSenatorExpenses("5672", 2024)
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(2)
+
+    // Second call: simulate cache hit by replaying the raw bulk feed.
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(MOCK_SENADO_CEAPS_2024))
+    mockRecordCompanyTransaction.mockClear()
+
+    await getSenatorExpenses("5672", 2024)
+
+    // The same two writes happen again; uniqueness is enforced by the DB
+    // (cnpj, type, sourceKey) constraint, not by the fetcher.
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not throw when the DB layer fails — public-data page must keep rendering", async () => {
+    mockRecordCompanyTransaction.mockRejectedValueOnce(new Error("db down"))
+
+    await expect(getSenatorExpenses("5672", 2024)).resolves.toHaveLength(2)
+  })
+
+  it("does not record a transaction for a different senator's rows", async () => {
+    await getSenatorExpenses("5321", 2024)
+
+    // Senator 5321 has one CNPJ row in the fixture.
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(1)
+    expect(mockRecordCompanyTransaction.mock.calls[0][0]).toMatchObject({
+      counterparty: "senator:5321",
+      sourceKey: "7712500",
+    })
   })
 })
 

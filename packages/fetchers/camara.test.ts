@@ -29,6 +29,25 @@ vi.mock("@upstash/redis", () => ({
   },
 }))
 
+// Mock the DB queries module so the empresas side-effect
+// (recordCompanyTransaction) does not require a live Postgres instance.
+// `mockRecordCompanyTransaction` is asserted against in the CEAP-side-effect
+// tests below.
+const mockRecordCompanyTransaction = vi.fn(async () => undefined)
+
+vi.mock("@imposterio/db/queries/companies", () => ({
+  recordCompanyTransaction: mockRecordCompanyTransaction,
+}))
+
+// Mock the OpenCNPJ fetcher so the side-effect chain
+// (recordCeapTransactions → backfillCompanies → ingestCompany) does not
+// hit OpenCNPJ during camara tests. The camara fetchers do not exercise
+// the empresas-ingestion path themselves.
+vi.mock("./opencnpj", () => ({
+  ingestCompany: vi.fn(async () => null),
+  getCompanyDetail: vi.fn(async () => null),
+}))
+
 // Import after mocks are set up
 const { getDeputiesList, getDeputyDetail, getDeputyExpenses } = await import("./camara")
 
@@ -205,6 +224,7 @@ describe("getDeputyExpenses", () => {
     mockRedisGet.mockResolvedValue(null)
     mockRedisSet.mockResolvedValue("OK")
     mockRedisDel.mockResolvedValue(0)
+    mockRecordCompanyTransaction.mockClear()
   })
 
   it("returns expenses with normalized fields", async () => {
@@ -265,6 +285,89 @@ describe("getDeputyExpenses", () => {
       expect.stringContaining("deputados/204554/despesas?ano=2024"),
       expect.any(String),
       { ex: 60 * 60 * 6 },
+    )
+  })
+
+  // ── EMPRESAS-PLAN.md §5 Phase E4: CEAP → CompanyTransaction side effect ──
+  //
+  // Each CEAP receipt with a CNPJ supplier becomes an idempotent
+  // CompanyTransaction row. CPF suppliers are filtered out because the
+  // empresas module only indexes companies. The fixture has three rows,
+  // all with CNPJ suppliers, so we expect three writes per visit.
+
+  it("records each CEAP receipt with a CNPJ supplier as a CompanyTransaction", async () => {
+    await getDeputyExpenses("204554", 2024)
+
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(
+      MOCK_EXPENSES_204554.dados.length,
+    )
+
+    // Every call carries the contract demanded by the empresas aggregator:
+    // type "ceap", the deputy counterparty tag, the source URL, and the
+    // codDocumento as the idempotency key.
+    for (const call of mockRecordCompanyTransaction.mock.calls) {
+      expect(call[0]).toMatchObject({
+        type: "ceap",
+        counterparty: "deputy:204554",
+        sourceUrl: expect.stringContaining("deputados/204554/despesas?ano=2024"),
+      })
+    }
+
+    // Verify a specific row's payload — the first fixture entry (Gráfica Nacional).
+    const grafica = mockRecordCompanyTransaction.mock.calls.find(
+      (c) => c[0].sourceKey === "7712345",
+    )
+    expect(grafica?.[0]).toMatchObject({
+      cnpj: "12345678000190",
+      value: 15200,
+      year: 2024,
+      month: 3,
+    })
+  })
+
+  it("records the same rows on a cache hit (idempotency lives in the DB layer)", async () => {
+    // Prime the combined-result cache so the next call serves from Redis.
+    await getDeputyExpenses("204554", 2024)
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(
+      MOCK_EXPENSES_204554.dados.length,
+    )
+
+    // Simulate cache hit on the combined-result key.
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(
+      MOCK_EXPENSES_204554.dados.map((d) => ({
+        date: d.dataDocumento,
+        type: d.tipoDespesa,
+        supplierName: d.nomeFornecedor,
+        document: d.numDocumento,
+        supplierDocument: d.cnpjCpfFornecedor,
+        value: d.valorLiquido,
+        documentCode: d.codDocumento,
+        year: d.ano,
+        month: d.mes,
+      })),
+    ))
+    mockRecordCompanyTransaction.mockClear()
+
+    await getDeputyExpenses("204554", 2024)
+
+    // The recorded set is the same on every visit; idempotency is enforced
+    // by the (cnpj, type, sourceKey) unique index, NOT by the fetcher
+    // skipping the writes on cache hits.
+    expect(mockRecordCompanyTransaction).toHaveBeenCalledTimes(
+      MOCK_EXPENSES_204554.dados.length,
+    )
+    expect(mockRecordCompanyTransaction.mock.calls[0][0]).toMatchObject({
+      type: "ceap",
+      counterparty: "deputy:204554",
+      sourceKey: "7712345",
+    })
+  })
+
+  it("does not throw when the DB layer fails — public-data page must keep rendering", async () => {
+    mockRecordCompanyTransaction.mockRejectedValueOnce(new Error("db down"))
+
+    await expect(getDeputyExpenses("204554", 2024)).resolves.toHaveLength(
+      MOCK_EXPENSES_204554.dados.length,
     )
   })
 })

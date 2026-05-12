@@ -21,9 +21,11 @@ interface ProfileHeaderProps {
   tags: string[]
   /**
    * API source URL for the profile data.
-   * Rendered as a SourcePill next to the name.
+   * Rendered as a SourcePill next to the name. Omit when the profile is
+   * synthesised from local data and has no single upstream URL (e.g. the
+   * empresas partner-detail page consolidates rows from many companies).
    */
-  sourceUrl: string
+  sourceUrl?: string
   /** Optional photo URL. When provided, renders an image instead of initials. */
   photoUrl?: string
   /** Optional actions rendered on the right side of the header (e.g. year selector, compare button). */
@@ -54,7 +56,7 @@ export function ProfileHeader({ initials, name, tags, sourceUrl, photoUrl, actio
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">{name}</h1>
-              <SourcePill url={sourceUrl} />
+              {sourceUrl && <SourcePill url={sourceUrl} />}
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {tags.map((tag) => (

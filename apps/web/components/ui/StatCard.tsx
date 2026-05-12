@@ -32,6 +32,12 @@ interface StatCardProps {
   tooltip?: string
   /** Optional footer content rendered at the bottom of the card (e.g. action links). */
   footer?: ReactNode
+  /**
+   * Optional note rendered at the bottom of the card (e.g. ParcialNote).
+   * Kept inside the card so a row of cards stays vertically aligned even
+   * when only one of them carries a disclaimer.
+   */
+  note?: ReactNode
 }
 
 /**
@@ -50,9 +56,9 @@ interface StatCardProps {
  * />
  * ```
  */
-export function StatCard({ label, value, badge, tooltip, footer }: StatCardProps) {
+export function StatCard({ label, value, badge, tooltip, footer, note }: StatCardProps) {
   return (
-    <article className="flex flex-col rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-5">
+    <article className="flex h-full flex-col rounded-xl border border-gray-200/80 bg-white p-4 shadow-card sm:p-5">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-medium text-gray-500 sm:text-[13px]">
           {label}
@@ -75,6 +81,7 @@ export function StatCard({ label, value, badge, tooltip, footer }: StatCardProps
         </p>
         {badge && <Badge variant={badge.variant}>{badge.text}</Badge>}
       </div>
+      {note && <div className="mt-auto pt-2">{note}</div>}
     </article>
   )
 }

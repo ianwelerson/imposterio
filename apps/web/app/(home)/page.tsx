@@ -23,9 +23,14 @@ export default function HomePage() {
 // import Link from "next/link"
 // import {
 //   TopBar, StatCard, DataTable, SourcePill,
-//   RankingList, SectionHeader, AvatarInitials, Badge,
+//   RankingList, SectionHeader, AvatarInitials, Badge, ParcialNote,
 //   TaxCounter,
 // } from "@/components/ui"
+// import {
+//   getCompanyOverviewStats, getTopCompaniesByObservedValue,
+//   type TopCompanyRow,
+// } from "@imposterio/db/queries/companies"
+// import { formatBRLCompact } from "@/lib/calc/currency"
 // import { HomeGameCard } from "./HomeGameCard"
 // import { HomeCharts } from "./HomeCharts"
 //
@@ -175,6 +180,55 @@ export default function HomePage() {
 //     description: "27 UFs — arrecadação, ICMS, IPVA, dívida, CAPAG",
 //     href: "/estados",
 //   },
+//   {
+//     title: "Empresas",
+//     description: "Quadro societário, contratos federais, doações eleitorais e sanções por CNPJ",
+//     href: "/empresas",
+//   },
+// ]
+//
+// // -- Column definitions for the empresas top-suppliers preview ---------------
+//
+// const empresasTopColumns = [
+//   {
+//     header: "Empresa",
+//     cell: (r: TopCompanyRow) => (
+//       <div className="flex flex-col">
+//         <Link
+//           href={`/empresas/${r.cnpj}`}
+//           className="font-medium text-accent transition-colors hover:text-accent-hover"
+//         >
+//           {r.tradeName || r.legalName || r.cnpj}
+//         </Link>
+//         {r.tradeName && r.legalName && r.tradeName !== r.legalName && (
+//           <span className="text-[11px] text-gray-400">{r.legalName}</span>
+//         )}
+//       </div>
+//     ),
+//   },
+//   {
+//     header: "UF",
+//     align: "center" as const,
+//     cell: (r: TopCompanyRow) => (
+//       <span className="text-gray-600">{r.uf || "—"}</span>
+//     ),
+//   },
+//   {
+//     header: "Total observado",
+//     align: "right" as const,
+//     cell: (r: TopCompanyRow) => (
+//       <span className="font-semibold text-gray-900">
+//         {formatBRLCompact(r.total)}
+//       </span>
+//     ),
+//   },
+//   {
+//     header: "Registros",
+//     align: "right" as const,
+//     cell: (r: TopCompanyRow) => (
+//       <span className="font-mono tabular-nums text-gray-600">{r.count}</span>
+//     ),
+//   },
 // ]
 //
 // // -- Category badge colors ---------------------------------------------------
@@ -240,7 +294,22 @@ export default function HomePage() {
 //  * salaries, attendance, wealth, voting records, and more — across legislative,
 //  * executive, and judiciary branches. All data is currently static mock.
 //  */
-// export default function HomePage() {
+// export default async function HomePage() {
+//   // Empresas indicators — populated incrementally as users browse the
+//   // platform. See /sobre/metodologia#empresas for the full methodology.
+//   const [empresasStats, empresasTop] = await Promise.all([
+//     getCompanyOverviewStats().catch(() => ({
+//       companiesIndexed: 0,
+//       totalObservedValue: 0,
+//       transactionsObserved: 0,
+//     })),
+//     getTopCompaniesByObservedValue(5).catch(() => [] as TopCompanyRow[]),
+//   ])
+//   const empresasLastObservedAt = empresasTop.reduce<Date | null>(
+//     (latest, row) => (!latest || row.lastObservedAt > latest ? row.lastObservedAt : latest),
+//     null,
+//   )
+//
 //   return (
 //     <>
 //       <TopBar title="Painel geral" defaultPeriod="30d" />
@@ -309,6 +378,43 @@ export default function HomePage() {
 //           data={MOCK_HIGHLIGHTS}
 //           rowKey={(row) => row.id}
 //         />
+//       </section>
+//
+//       {/* Empresas — incremental indicators (see /sobre/metodologia#empresas) */}
+//       <section className="mt-8" aria-label="Empresas">
+//         <SectionHeader
+//           title="Empresas"
+//           action={{ label: "Ver todas", href: "/empresas" }}
+//         />
+//         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+//           <StatCard
+//             label="CNPJs indexados"
+//             value={empresasStats.companiesIndexed.toLocaleString("pt-BR")}
+//             tooltip="Empresas que a plataforma já observou ao menos uma vez via OpenCNPJ ou em uma transação federal."
+//           />
+//           <div>
+//             <StatCard
+//               label="Total observado"
+//               value={formatBRLCompact(empresasStats.totalObservedValue)}
+//               tooltip="Soma de despesas CEAP, contratos e doações eleitorais para CNPJs já indexados. Cresce conforme novas páginas são consultadas."
+//             />
+//             <ParcialNote lastObservedAt={empresasLastObservedAt} />
+//           </div>
+//           <StatCard
+//             label="Eventos observados"
+//             value={empresasStats.transactionsObserved.toLocaleString("pt-BR")}
+//             tooltip="Total de transações registradas no índice — uma linha por (CNPJ, tipo, registro original)."
+//           />
+//         </div>
+//         {empresasTop.length > 0 && (
+//           <div className="mt-4">
+//             <DataTable
+//               columns={empresasTopColumns}
+//               data={empresasTop}
+//               rowKey={(r) => r.cnpj}
+//             />
+//           </div>
+//         )}
 //       </section>
 //
 //       {/* Section quick links — navigate to each area */}

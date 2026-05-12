@@ -37,8 +37,14 @@ export const BASE_URLS = {
   /** TSE candidate asset declarations and campaign finance */
   TSE_DIVULGA: "https://divulgacandcontas.tse.jus.br",
 
-  /** CNPJa free API (real-time individual CNPJ lookups) */
-  CNPJA: "https://open.cnpja.com",
+  /**
+   * OpenCNPJ — open-source CNPJ lookup API rebuilt monthly from the Federal
+   * Revenue bulk. No auth, no documented rate limit. Replaces CNPJá, which
+   * imposed a 5 req/min cap on anonymous use.
+   *
+   * Project page: https://opencnpj.org
+   */
+  OPENCNPJ: "https://api.opencnpj.org",
 } as const
 
 /**
@@ -250,6 +256,21 @@ export const ENDPOINTS = {
   TSE_CKAN_PACKAGE: (name: string) => `${BASE_URLS.TSE}/api/3/action/package_show?id=${name}`,
   TSE_CKAN_DATASTORE: (resourceId: string) => `${BASE_URLS.TSE}/api/3/action/datastore_search?resource_id=${resourceId}`,
 
+  // ── TSE — Campaign donations (CKAN datastore_search with filters) ──
+  /**
+   * Filtered query against a CKAN datastore resource.
+   *
+   * `filters` is a JSON object whose keys must match the resource's column
+   * names verbatim (e.g. `NR_CPF_CNPJ_DOADOR` for donor CNPJ in the
+   * "receitas de candidatos" dataset). The serialized JSON is URL-encoded
+   * so the URL is safe to use as a Redis cache key.
+   *
+   * Used by Phase E8 (`tse.ts`) to query the per-year donation resources.
+   */
+  TSE_CKAN_DATASTORE_FILTERED: (resourceId: string, filters: Record<string, string>) =>
+    `${BASE_URLS.TSE}/api/3/action/datastore_search?resource_id=${resourceId}` +
+    `&filters=${encodeURIComponent(JSON.stringify(filters))}`,
+
   // ── CEPESP/FGV — Electoral results by party ───────────────────────
   CEPESP_QUERY: "https://cepesp.io/api/consulta/athena/query",
 
@@ -265,8 +286,14 @@ export const ENDPOINTS = {
   /** POST endpoint — requires Elasticsearch query body + API key auth */
   DATAJUD_COURT: (court: string) => `${BASE_URLS.DATAJUD}/api_publica_${court}/_search`,
 
-  // ── CNPJa ───────────────────────────────────────────────────────────
-  CNPJA_OFFICE: (cnpj: string) => `${BASE_URLS.CNPJA}/office/${cnpj}`,
+  // ── OpenCNPJ ────────────────────────────────────────────────────────
+  /**
+   * Full company detail (cadastral data + QSA partners) by 14-digit CNPJ.
+   *
+   * The exact path is documented at https://opencnpj.org/#api — adjust here
+   * if upstream changes the contract.
+   */
+  OPENCNPJ_DETAIL: (cnpj: string) => `${BASE_URLS.OPENCNPJ}/${cnpj}`,
 
   // ── IBGE (population, GDP, geographic data) ────────────────────────
   /** Population estimates by state (latest period, all 27 UFs) */

@@ -64,3 +64,107 @@ model GameVote {
 // QSA bulk import tables (company, establishment, partner, simples) are
 // created dynamically by the worker at apps/worker/src/qsa-import.ts.
 // See DECISIONS.md entry: "Federal Revenue QSA bulk stored in proprietary PostgreSQL"
+
+/// Lightweight CNPJ index for the empresas module.
+///
+/// Authoritative company data lives in Redis (cached from OpenCNPJ for 30
+/// days). This row exists only to support the partner graph (`CompanyPartner`)
+/// and the incremental aggregation index (`CompanyTransaction`).
+///
+/// Detail pages always re-fetch through `getCompanyDetail()` — we never serve
+/// the columns below as the canonical source for the public UI. They are
+/// denormalized only to power inexpensive list/search queries.
+///
+/// See DECISIONS.md entry: "Incremental partner graph in PostgreSQL".
+model Company {
+  /// 14-digit CNPJ with no punctuation.
+  cnpj           String   @id
+  /// Razão social — nullable until the first OpenCNPJ fetch completes.
+  legalName      String?
+  /// Nome fantasia.
+  tradeName      String?
+  /// "ATIVA" | "BAIXADA" | etc., as returned by OpenCNPJ.
+  status         String?
+  /// Primary CNAE — 7 digits, no punctuation.
+  mainCnae       String?
+  /// Two-letter UF of the main establishment.
+  uf             String?
+  /// First time the platform observed this CNPJ in any data source.
+  firstSeenAt    DateTime @default(now())
+  /// Last time the OpenCNPJ detail was refreshed.
+  lastFetchedAt  DateTime @default(now())
+  partners       CompanyPartner[]
+  transactions   CompanyTransaction[]
+
+  @@index([uf])
+  @@map("companies")
+}
+
+/// A single partner (sócio) extracted from OpenCNPJ QSA.
+///
+/// CPFs are masked at the source as `***.456.789-**`; we store them verbatim
+/// and never attempt to reconstruct the full number. Cross-references built
+/// from these rows are always heuristic — see EMPRESAS-PLAN.md §6.
+model CompanyPartner {
+  id              String   @id @default(uuid())
+  cnpj            String
+  company         Company  @relation(fields: [cnpj], references: [cnpj], onDelete: Cascade)
+  /// Partner display name as returned by OpenCNPJ.
+  partnerName     String
+  /// Normalized lowercase + accent-stripped form of `partnerName`, used for
+  /// O(log n) joins when looking for the same person across companies.
+  partnerNameKey  String
+  /// Masked CPF (e.g. "***.456.789-**"); null when the partner is a juridical
+  /// person.
+  maskedCpf       String?
+  /// 6 digits in the middle of CPF (e.g. "456789" from "***.456.789-**").
+  /// Indexed so reverse lookups by partial CPF + name are O(log n).
+  cpfMid          String?
+  /// When the partner is itself a company, the partner's CNPJ.
+  partnerCnpj     String?
+  /// Qualification text, e.g. "Sócio-Administrador".
+  qualification   String?
+  joinedAt        DateTime?
+  observedAt      DateTime @default(now())
+
+  @@unique([cnpj, partnerName, maskedCpf])
+  @@index([cpfMid, partnerNameKey])
+  @@index([partnerNameKey])
+  @@map("company_partners")
+}
+
+/// A single observed financial event involving a CNPJ.
+///
+/// Inserted whenever the platform encounters new data (CEAP expense viewed,
+/// contract listed, donation seen, etc.). Aggregations are computed by SQL
+/// `SUM` on read — see `getCompanyAggregates()`.
+///
+/// `(cnpj, type, sourceKey)` is the idempotency anchor: the same expense
+/// viewed twice never double-counts.
+model CompanyTransaction {
+  id           String   @id @default(uuid())
+  cnpj         String
+  company      Company  @relation(fields: [cnpj], references: [cnpj], onDelete: Cascade)
+  /// "ceap" | "contract" | "donation_in" | "donation_out" | "bid_won" | "bid_lost"
+  ///
+  /// Add new types only after updating EMPRESAS-PLAN.md §5 + this JSDoc list.
+  type         String
+  /// Stable natural key from the source API (e.g. CEAP `idDocumento`,
+  /// contract number, TSE record ID).
+  sourceKey    String
+  /// Source API URL — used to populate `_source` on aggregated rows.
+  sourceUrl    String
+  value        Decimal  @db.Decimal(14, 2)
+  year         Int
+  month        Int?
+  /// Free-form counterparty identity (e.g. "deputy:204554",
+  /// "candidate:1234"). Lets us answer "who paid this CNPJ" / "whom did
+  /// this CNPJ pay".
+  counterparty String?
+  observedAt   DateTime @default(now())
+
+  @@unique([cnpj, type, sourceKey])
+  @@index([cnpj, type, year])
+  @@index([counterparty])
+  @@map("company_transactions")
+}

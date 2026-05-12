@@ -87,7 +87,7 @@ imposterio/
 │   ├── fetchers/                    # Public API clients
 │   │   ├── lib/{cache,endpoints,ttl}.ts
 │   │   ├── mocks/handlers.ts        # MSW handlers
-│   │   └── {camara,senado,transparencia,tse,cnj,cnpj}.ts
+│   │   └── {camara,senado,transparencia,tse,cnj,opencnpj}.ts
 │   ├── db/                          # Prisma schema + typed queries
 │   └── types/                       # Shared TypeScript types
 ├── CLAUDE.md
@@ -259,12 +259,14 @@ Page header placement (box style):
 - TSE: `https://dadosabertos.tse.jus.br/api/3/` (CKAN)
 - IBGE: `https://servicodados.ibge.gov.br/api/v3/` (no auth)
 - SICONFI: `https://apidatalake.tesouro.gov.br/ords/siconfi/tt/` (no auth)
+- OpenCNPJ: `https://api.opencnpj.org` (no auth, monthly refresh from Federal Revenue bulk)
 
 **Important notes:**
 - `GET /deputados/{id}/votacoes` is **BROKEN** (405 since March 2026) — use `GET /votacoes` + `GET /votacoes/{id}/votos`
 - Portal da Transparência requires a free API key (register via email)
 - DataJud uses POST with Elasticsearch query bodies
 - Tax collection counter uses statistical interpolation (no real-time API exists)
+- OpenCNPJ replaces CNPJá for individual CNPJ lookups — no rate limit, 30-day Redis TTL is safe given the monthly upstream cadence
 
 ---
 

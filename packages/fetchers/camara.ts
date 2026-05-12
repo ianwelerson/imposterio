@@ -38,6 +38,7 @@ import { inflateRaw } from "node:zlib"
 import { promisify } from "node:util"
 import { cachedFetch, ApiError, redis } from "./lib/cache"
 import { ENDPOINTS } from "./lib/endpoints"
+import { recordCeapTransactions } from "./lib/transactions"
 import { TTL } from "./lib/ttl"
 import type {
   Deputy, DeputyDetail, DeputyExpense, DeputyCommittee, DeputyCaucus,
@@ -574,7 +575,13 @@ export async function getDeputyExpenses(
       if (cached !== null && cached !== undefined) {
         const parsed = typeof cached === "object" ? cached : JSON.parse(cached as string)
         if (Array.isArray(parsed)) {
-          return Object.assign(parsed as DeputyExpense[], { _source: sourceUrl })
+          const cachedExpenses = parsed as DeputyExpense[]
+          // Record each CEAP receipt as a CompanyTransaction for the empresas
+          // partner-graph index (EMPRESAS-PLAN.md §5). Idempotent on
+          // (cnpj, "ceap", documentCode), so repeated cache hits do not
+          // double-count. Errors are swallowed by the helper.
+          await recordCeapTransactions(cachedExpenses, sourceUrl, `deputy:${id}`)
+          return Object.assign(cachedExpenses, { _source: sourceUrl })
         }
         await redis.del(combinedKey).catch(() => {})
       }
@@ -625,6 +632,12 @@ export async function getDeputyExpenses(
       // Cache write failure is non-fatal
     }
   }
+
+  // Record each CEAP receipt as a CompanyTransaction for the empresas
+  // partner-graph index (EMPRESAS-PLAN.md §5). Idempotent on
+  // (cnpj, "ceap", documentCode), so the deputy can be re-fetched as often
+  // as needed without inflating aggregates. Failures are contained.
+  await recordCeapTransactions(expenses, sourceUrl, `deputy:${id}`)
 
   return Object.assign(expenses, { _source: sourceUrl })
 }

@@ -39,7 +39,7 @@ interface NavSection {
 }
 
 /** Routes that are publicly visible without the "Coming soon" overlay. */
-const PUBLIC_PATHS = ["/sobre", "/camara", "/senado", "/acha-justo"]
+const PUBLIC_PATHS = ["/sobre", "/camara", "/senado", "/empresas", "/acha-justo"]
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -147,6 +147,12 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Empresas",
         href: "/empresas",
         icon: "M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm-2 8.755V14a2 2 0 002 2h4a2 2 0 002-2v-.245A23.89 23.89 0 0110 15a23.89 23.89 0 01-4-1.245z",
+        children: [
+          { label: "Consultar CNPJ", href: "/empresas#consulta" },
+          { label: "Maiores fornecedores", href: "/empresas#fornecedores" },
+          { label: "Sanções (CEIS / CNEP)", href: "/empresas#sancoes" },
+          { label: "Metodologia", href: "/sobre/metodologia#empresas" },
+        ],
       },
     ],
   },
